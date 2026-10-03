@@ -239,24 +239,8 @@
     var next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
     root.setAttribute("data-theme", next);
     try { localStorage.setItem("yk-theme", next); } catch (e) {}
-    pikaZoom();
+    if (window.ykThemePop) window.ykThemePop();
   });
-  /* pikachu zoom easter egg on theme toggle: 1px -> fullscreen + fade, 0.5s */
-  var pikaZoomImg = new Image();
-  pikaZoomImg.src = "assets/pikachu.png";
-  function pikaZoom() {
-    var img = document.createElement("img");
-    img.src = "assets/pikachu.png";
-    img.alt = "";
-    img.style.cssText = "position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);z-index:9999;pointer-events:none;opacity:1;";
-    document.body.appendChild(img);
-    void img.offsetWidth;
-    img.style.transition = "width .5s ease-out,height .5s ease-out,opacity .5s ease-out";
-    img.style.width = "274px";
-    img.style.height = "280px";
-    img.style.opacity = "0";
-    setTimeout(function () { img.remove(); }, 550);
-  }
   motionBtn.addEventListener("click", function () {
     var off = root.getAttribute("data-motion") !== "off";
     root.setAttribute("data-motion", off ? "off" : "on");
@@ -467,6 +451,29 @@
     var blastCount = 0;
     var pikachus = [];
 
+    /* theme toggle: 100 pokeballs burst from the button */
+    var popBalls = [];
+    window.ykThemePop = function () {
+      if (!motionOK()) return;
+      var btn = document.getElementById("themeBtn");
+      if (!btn) return;
+      var r = btn.getBoundingClientRect();
+      var x = r.left + r.width / 2, y = r.top + r.height / 2;
+      blast(x, y);
+      for (var i = 0; i < 100; i++) {
+        var a = Math.random() * Math.PI * 2;
+        var sp = 1.5 + Math.random() * 4.5;
+        popBalls.push({
+          x: x, y: y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2.5,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.25,
+          sz: 12 + Math.random() * 16,
+          life: 1
+        });
+      }
+    };
+
     /* blast fx (foreground, above content) */
     var bursts = [];
     var parts = [];
@@ -660,6 +667,22 @@
         fgx.translate(pk.x, pk.y);
         fgx.rotate(pk.rot);
         fgx.drawImage(pikaImg, -psz / 2, -psz / 2, psz, psz);
+        fgx.restore();
+      }
+
+      /* theme pop balls: 100 pokeballs burst out, arc down, fade */
+      for (var qi = popBalls.length - 1; qi >= 0; qi--) {
+        var qb = popBalls[qi];
+        qb.x += qb.vx; qb.y += qb.vy;
+        qb.vy += 0.14; qb.vx *= 0.99;
+        qb.rot += qb.vrot;
+        qb.life -= 0.009;
+        if (qb.life <= 0) { popBalls.splice(qi, 1); continue; }
+        fgx.save();
+        fgx.globalAlpha = Math.min(1, qb.life * 2);
+        fgx.translate(qb.x, qb.y);
+        fgx.rotate(qb.rot);
+        if (pokeReady) fgx.drawImage(pokeImg, -qb.sz / 2, -qb.sz / 2, qb.sz, qb.sz);
         fgx.restore();
       }
 
