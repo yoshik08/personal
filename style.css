@@ -234,6 +234,7 @@ body.link-hover .cursor-ring { width: 48px; height: 48px; opacity: .85; }
   display: inline-block; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
   padding: 10px 22px; border-radius: 99px; border: 1px solid var(--line);
   background: var(--panel); color: var(--ink); will-change: transform;
+  text-decoration: none; cursor: pointer;
   transition: transform .38s cubic-bezier(.34, 1.56, .64, 1), border-color .15s ease, background .15s ease, color .15s ease;
 }
 .pill-btn:hover { border-color: var(--ink); transform: scale(1.06); }
