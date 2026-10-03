@@ -101,9 +101,9 @@
   /* ---------- 3. typing ---------- */
   var roles = [
     "full-stack developer",
-    "ml tinkerer",
-    "android hacker",
-    "professional shipper"
+    "ml engineer",
+    "android developer",
+    "backend engineer"
   ];
   var typedEl = document.getElementById("typed");
   var ri = 0, ci = 0, deleting = false;
