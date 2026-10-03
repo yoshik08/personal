@@ -421,7 +421,7 @@
       var c = bgx;
       var rr = b.r * (1 + b.pop * 0.3);
       c.save();
-      c.globalAlpha = b.alpha;
+      c.globalAlpha = root.getAttribute("data-theme") === "light" ? 0.25 : b.alpha;
       c.translate(b.x, b.y);
       c.rotate(b.rot);
       if (pokeReady) {
@@ -639,7 +639,7 @@
         var eob = 1 + 2.70158 * Math.pow(pp - 1, 3) + 1.70158 * Math.pow(pp - 1, 2);
         var psz = pk.sz * Math.max(0.01, eob);
         fgx.save();
-        fgx.globalAlpha = Math.min(1, pk.life * 2.5) * 0.95;
+        fgx.globalAlpha = Math.min(1, pk.life * 2.5) * (root.getAttribute("data-theme") === "light" ? 0.25 : 0.95);
         fgx.translate(pk.x, pk.y);
         fgx.rotate(pk.rot);
         fgx.drawImage(pikaImg, -psz / 2, -psz / 2, psz, psz);
