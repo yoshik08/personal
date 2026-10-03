@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>type — yoshik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">yk<span>.</span></a>
+  <button class="lb-btn" id="lbBtn">leaderboard</button>
+</header>
+
+<main class="stage">
+  <div class="hud">
+    <span class="timer" id="timer">15</span>
+    <span class="live-wpm" id="liveWpm"></span>
+    <span class="mode">15s</span>
+  </div>
+
+  <div class="words-wrap" id="wordsWrap">
+    <div class="words-inner" id="wordsInner"></div>
+    <div class="caret" id="caret"></div>
+  </div>
+
+  <div class="result hidden" id="result">
+    <div class="result-stats">
+      <div><span class="r-label">wpm</span><span class="r-val" id="rWpm">0</span></div>
+      <div><span class="r-label">acc</span><span class="r-val" id="rAcc">0%</span></div>
+    </div>
+    <button class="restart-btn" id="restartBtn">restart</button>
+    <p class="hint">tab to restart</p>
+  </div>
+
+  <button class="icon-restart" id="iconRestart" title="restart">↻</button>
+</main>
+
+<!-- name prompt -->
+<div class="overlay" id="nameOverlay">
+  <div class="prompt-box">
+    <p class="prompt-q">whats your name</p>
+    <input class="prompt-input" id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="type here">
+  </div>
+</div>
+
+<!-- leaderboard -->
+<div class="overlay hidden" id="lbOverlay">
+  <div class="lb-box">
+    <div class="lb-head">
+      <p>leaderboard</p>
+      <button class="lb-close" id="lbClose">✕</button>
+    </div>
+    <div class="lb-rows" id="lbRows"></div>
+  </div>
+</div>
+
+<input class="hidden-input" id="hiddenInput" autocomplete="off" autocapitalize="off" spellcheck="false">
+
+<script src="script.js"></script>
+</body>
+</html>
