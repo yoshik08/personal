@@ -248,12 +248,12 @@
     var img = document.createElement("img");
     img.src = "assets/pikachu-zoom.png";
     img.alt = "";
-    img.style.cssText = "position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);z-index:9999;pointer-events:none;opacity:1;";
+    img.style.cssText = "position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);z-index:9999;pointer-events:none;opacity:1;object-fit:cover;";
     document.body.appendChild(img);
     void img.offsetWidth;
     img.style.transition = "width .5s ease-out,height .5s ease-out,opacity .5s ease-out";
-    img.style.width = "300px";
-    img.style.height = "290px";
+    img.style.width = "100vw";
+    img.style.height = "100vh";
     img.style.opacity = "0";
     setTimeout(function () { img.remove(); }, 550);
   }
