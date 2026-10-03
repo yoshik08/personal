@@ -9,7 +9,7 @@
   /* ---------- config ---------- */
   var DISCORD_ID = "746561388612157460"; // discord settings > advanced > developer mode > right-click yourself > copy user id
   var DISCORD_USERNAME = "yoshik08";
-  var EMAIL = "yoshik08@yoshik.xyz";
+  var EMAIL = "me@yoshik.xyz";
 
   var root = document.documentElement;
   var motionOK = function () { return root.getAttribute("data-motion") !== "off"; };
