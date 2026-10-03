@@ -1,0 +1,2100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SportSphere — Sports Subscription</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=Instrument+Serif:ital,wght@1,400&display=swap" rel="stylesheet">
+  <style>
+:root{
+  --bg:#0a0a0b; --bg2:#101013;
+  --line:rgba(244,242,237,.1); --line-soft:rgba(244,242,237,.055);
+  --text:#f4f2ed; --muted:#a09c93; --faint:#6f6b62;
+  --lime:#d8ff3f;
+  --on-lime:#0a0a0b;
+  --nav:rgba(10,10,11,.72); --nav-mobile:rgba(10,10,11,.97);
+  --hover:rgba(255,255,255,.055); --hover-line:rgba(255,255,255,.28);
+  --ring:rgba(244,242,237,.35);
+  --ink:#f4f2ed; --mut:#a09c93; --body:'DM Sans',-apple-system,sans-serif;
+  --sans:'DM Sans',-apple-system,sans-serif;
+  --disp:'Sora',var(--sans);
+  --serif:'Instrument Serif',Georgia,serif;
+}
+[data-theme="light"]{
+  --bg:#f4f2ed; --bg2:#fffdf7;
+  --line:rgba(23,21,15,.13); --line-soft:rgba(23,21,15,.07);
+  --text:#17150f; --muted:#6b675c; --faint:#a39e90;
+  --nav:rgba(244,242,237,.75); --nav-mobile:rgba(244,242,237,.97);
+  --hover:rgba(23,21,15,.05); --hover-line:rgba(23,21,15,.28);
+  --ring:rgba(23,21,15,.35);
+  --ink:#17150f; --mut:#6b675c;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--lime);color:#0a0a0b}
+a{color:inherit}
+img,iframe{max-width:100%}
+button{font-family:var(--sans)}
+:focus-visible{outline:1.5px solid var(--lime);outline-offset:3px}
+::-webkit-scrollbar{width:10px;height:8px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#26262a;border-radius:8px}
+#cursor-dot,#cursor-ring{display:none}
+@media (pointer:fine){
+  body,a,button,select,input,.sport,.explore-item,.dropdown-item,.program,.portal-tab,.admin-tab{cursor:none}
+  #cursor-dot{display:block;position:fixed;top:0;left:0;width:7px;height:7px;background:var(--lime);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}
+  #cursor-ring{display:block;position:fixed;top:0;left:0;width:34px;height:34px;border:1px solid var(--ring);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .25s,height .25s,border-color .25s,background-color .25s}
+  #cursor-ring.grow{width:58px;height:58px;border-color:var(--lime);background:rgba(216,255,63,.06)}
+}
+.navbar{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:0 4%;height:66px;background:var(--nav);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line-soft)}
+.brand{display:flex;align-items:center;gap:11px;text-decoration:none;font-family:var(--disp);font-weight:600;font-size:15px;letter-spacing:.01em}
+.brand-mark{width:9px;height:9px;border-radius:50%;background:var(--lime)}
+.navbar nav{display:flex;gap:30px;align-items:center}
+.navbar nav a{font-size:13px;color:var(--muted);text-decoration:none;transition:color .2s;letter-spacing:.02em}
+.navbar nav a:hover{color:var(--text)}
+.login-btn{background:var(--text);color:var(--bg);border:0;border-radius:99px;padding:10px 22px;font-size:13px;font-weight:600;transition:background .2s}
+.login-btn:hover{background:var(--lime)}
+.primary-btn{display:inline-flex;align-items:center;justify-content:center;background:var(--lime);color:var(--on-lime);font-weight:600;font-size:14.5px;padding:15px 32px;border-radius:99px;text-decoration:none;border:0;transition:transform .22s,box-shadow .22s}
+.primary-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px -10px rgba(216,255,63,.45)}
+.text-btn{font-size:14.5px;color:var(--muted);text-decoration:none;transition:color .2s}
+.text-btn:hover{color:var(--text)}
+.secondary-btn,.outline-btn{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--line);color:var(--text);padding:14px 30px;border-radius:99px;font-size:14.5px;text-decoration:none;transition:border-color .2s}
+.secondary-btn:hover,.outline-btn:hover{border-color:var(--hover-line)}
+.small-btn{background:transparent;border:1px solid var(--line);color:var(--text);font-size:12.5px;padding:9px 16px;border-radius:99px;transition:all .2s}
+.small-btn:hover{border-color:var(--lime);color:var(--lime)}
+.close-portal{background:none;border:0;color:var(--faint);font-size:13.5px;padding:8px 0}
+.close-portal:hover{color:var(--text)}
+.hero{padding:180px 6% 120px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-320px;left:50%;transform:translateX(-50%);width:900px;height:640px;background:radial-gradient(ellipse,rgba(216,255,63,.055),transparent 65%);pointer-events:none}
+.hero-inner{max-width:900px;margin:0 auto;position:relative}
+.eyebrow{display:flex;align-items:center;justify-content:center;gap:12px;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--faint);font-weight:500}
+.tick{width:26px;height:1px;background:var(--lime);flex:none}
+.hero h1{font-family:var(--disp);font-weight:500;font-size:clamp(56px,8vw,108px);line-height:1;letter-spacing:-.035em;margin:30px 0 0}
+.serif{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-.015em}
+.lede{color:var(--muted);font-size:17px;line-height:1.75;max-width:540px;margin:28px auto 0}
+.hero-actions{display:flex;gap:30px;justify-content:center;align-items:center;margin-top:42px;flex-wrap:wrap}
+.metrics{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.metrics div{padding:34px 10px;text-align:center}
+.metrics div+div{border-left:1px solid var(--line)}
+.metrics b{display:block;font-family:var(--disp);font-size:32px;font-weight:500;letter-spacing:-.02em}
+.metrics span{font-size:11px;color:var(--faint);letter-spacing:.16em;text-transform:uppercase}
+.section{max-width:1120px;margin:0 auto;padding:120px 6%}
+.section .eyebrow{justify-content:flex-start}
+.section-title{margin-bottom:60px;max-width:660px}
+.section-title h2{font-family:var(--disp);font-size:clamp(34px,4.2vw,54px);font-weight:500;letter-spacing:-.028em;margin:22px 0 0;line-height:1.06}
+.section-title p{color:var(--muted);font-size:16px;line-height:1.7;margin:18px 0 0}
+.sports-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:22px;overflow:hidden;counter-reset:sport}
+.sport{background:var(--bg);padding:36px 26px 30px;position:relative;transition:background .25s}
+.sport:hover{background:var(--bg2)}
+.sport::before{counter-increment:sport;content:counter(sport,decimal-leading-zero);position:absolute;top:22px;right:22px;font-size:11px;color:var(--faint);letter-spacing:.12em;font-family:var(--disp)}
+.sport .icon{font-size:27px;margin-bottom:52px;display:block}
+.sport h3{margin:0 0 6px;font-size:15.5px;font-weight:600;letter-spacing:-.01em}
+.sport span{font-size:12.5px;color:var(--faint)}
+.filters{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:44px}
+.dropdown{position:relative;min-width:230px;z-index:30}
+.dropdown-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:14px;padding:15px 18px;font-size:14.5px;font-family:var(--sans);cursor:pointer;transition:border-color .25s}
+.dropdown-btn:hover{border-color:var(--hover-line)}
+.dropdown.open .dropdown-btn{border-color:rgba(216,255,63,.55)}
+.dropdown-btn svg{width:14px;height:14px;color:var(--faint);transition:transform .3s,color .3s;flex:none}
+.dropdown.open .dropdown-btn svg{transform:rotate(180deg);color:var(--lime)}
+.dropdown-menu{position:absolute;top:calc(100% + 10px);left:0;right:0;background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:8px;opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .28s,transform .28s cubic-bezier(.16,1,.3,1);max-height:330px;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.dropdown.open .dropdown-menu{opacity:1;transform:none;pointer-events:auto}
+.dropdown-item{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:transparent;border:0;color:var(--text);padding:13px 15px;border-radius:10px;font-size:14.5px;font-family:var(--sans);cursor:pointer;transition:background .18s}
+.dropdown-item:hover{background:var(--hover)}
+.dropdown-item.selected{color:var(--lime)}
+.dropdown-item.selected::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--lime);flex:none}
+.program-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.program{border:1px solid var(--line);border-radius:20px;padding:30px;background:transparent;transition:transform .28s,border-color .28s;display:flex;flex-direction:column;cursor:pointer}
+.program-hint{opacity:.55;font-size:15px;padding:26px 4px;grid-column:1/-1}
+.pm-rows{margin:24px 0 10px;border-top:1px solid var(--line-soft)}
+.pm-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:15px 2px;border-bottom:1px solid var(--line-soft);font-size:14.5px}
+.pm-row span:first-child{color:var(--faint)}
+.pm-row b{font-weight:600}
+.pm-row b small{font-size:11px;color:var(--faint);font-weight:400}
+.program:hover{transform:translateY(-5px);border-color:var(--hover-line)}
+.program h3{margin:2px 0 16px;font-size:20px;font-weight:600;letter-spacing:-.02em;font-family:var(--disp);line-height:1.25}
+.tag-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.tag{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:99px;border:1px solid var(--line);color:var(--muted);display:inline-block;margin-bottom:18px;align-self:flex-start}
+.schedule{font-size:14px;color:var(--muted);margin-bottom:6px}
+.schedule span{margin-right:10px}
+.capacity{font-size:13.5px;color:var(--faint);margin-bottom:26px}
+.pprice{font-family:var(--disp);font-size:21px;margin:12px 0 4px}
+.pprice small{font-size:11px;color:var(--faint);font-family:var(--body)}
+.explore{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:48px;align-items:start}
+.explore-list{max-height:600px;overflow-y:auto;padding-right:8px}
+.explore-label{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);padding:22px 6px 6px}
+.explore-label:first-child{padding-top:0}
+.explore-item{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line-soft);padding:17px 6px;cursor:pointer;color:var(--text);font-family:var(--sans);position:relative;transition:padding .22s,background .22s}
+.explore-item:hover{background:var(--hover)}
+.explore-item h4{margin:0 0 4px;font-size:15.5px;font-weight:600;letter-spacing:-.01em}
+.explore-item span{font-size:13px;color:var(--faint)}
+.explore-item.active{padding-left:22px;background:rgba(216,255,63,.03)}
+.explore-item.active::before{content:'';position:absolute;left:0;top:20px;bottom:20px;width:2px;background:var(--lime);border-radius:2px}
+.explore-hint{padding:17px 6px;color:var(--faint);font-size:13.5px}
+.explore-preview{position:sticky;top:90px;min-width:0}
+.sat-wrap{position:relative;border:1px solid var(--line);border-radius:20px;overflow:hidden;background:var(--bg2)}
+.sat-wrap iframe{width:100%;height:440px;border:0;display:block}
+.sat-tag{position:absolute;top:14px;left:14px;font-size:10.5px;letter-spacing:.2em;background:rgba(5,5,6,.72);border:1px solid var(--line);padding:8px 14px;border-radius:99px;color:#f4f2ed;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.area-chip{position:absolute;top:14px;right:14px;z-index:2;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;background:rgba(5,5,6,.72);border:1px solid var(--line);padding:8px 14px;border-radius:99px;color:var(--lime);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.explore-actions{display:flex;gap:12px;margin:18px 0}
+.explore-actions .primary-btn,.explore-actions .ghost-btn{flex:1;text-align:center}
+.ghost-btn{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--line);color:var(--text);padding:15px 32px;border-radius:99px;font-size:14.5px;text-decoration:none;transition:border-color .2s}
+.ghost-btn:hover{border-color:var(--lime);color:var(--lime)}
+.ex-prow{padding:12px 0;border-top:1px solid var(--line-soft)}
+.ex-prow:first-child{border-top:0}
+.ex-prow strong{display:block;font-size:14.5px;margin-bottom:3px}
+.ex-prow span{font-size:12.5px;color:var(--faint)}
+.ex-contact{font-size:13px;color:var(--lime);margin-bottom:12px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
+.plan{border:1px solid var(--line);border-radius:22px;padding:40px 34px;position:relative;transition:transform .28s,border-color .28s;display:flex;flex-direction:column}
+.plan:hover{transform:translateY(-5px);border-color:var(--hover-line)}
+.plan.featured{border-color:rgba(216,255,63,.5);background:rgba(216,255,63,.02)}
+.plan.featured::before{content:'most popular';position:absolute;top:-13px;left:34px;background:var(--lime);color:var(--on-lime);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 13px;border-radius:99px}
+.plan h3{font-family:var(--disp);font-size:21px;font-weight:600;margin:0;letter-spacing:-.01em}
+.plan>span{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint)}
+.plan strong{font-family:var(--disp);font-size:48px;font-weight:500;letter-spacing:-.03em;margin:20px 0 4px;display:block}
+.plan p{color:var(--muted);font-size:14.5px;line-height:1.7;margin:14px 0 0;flex:1}
+.plan .primary-btn{width:100%;margin-top:30px}
+.billing p{color:var(--muted);font-size:15px}
+.empty-state{color:var(--faint);font-size:14.5px;padding:30px 0}
+#ai-widget{position:fixed;bottom:26px;left:26px;z-index:40}
+.chat-btn{background:var(--lime);color:var(--on-lime);border:0;border-radius:99px;height:54px;padding:0 24px;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:9px;box-shadow:0 14px 34px -12px rgba(0,0,0,.65);transition:transform .2s}
+.chat-btn:hover{transform:translateY(-2px)}
+.chat-window{display:none;flex-direction:column;position:absolute;bottom:66px;left:0;width:350px;height:460px;background:var(--bg2);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 30px 70px -20px rgba(0,0,0,.7)}
+.chat-window.show{display:flex}
+.chat-header{padding:17px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600}
+.chat-header .close{position:static;font-size:20px;color:var(--faint);background:none;border:0}
+.chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.msg{font-size:13.5px;line-height:1.6;padding:12px 16px;border-radius:15px;max-width:86%}
+.msg.bot{background:var(--hover);align-self:flex-start;border-bottom-left-radius:5px}
+.msg.user{background:var(--lime);color:var(--on-lime);align-self:flex-end;border-bottom-right-radius:5px}
+.chat-input-area{display:flex;gap:9px;padding:15px;border-top:1px solid var(--line)}
+.chat-input-area input{flex:1;background:transparent;border:1px solid var(--line);border-radius:99px;padding:11px 17px;color:var(--text);font-size:13.5px;font-family:var(--sans)}
+.chat-input-area input::placeholder{color:var(--faint)}
+.chat-input-area button{background:var(--lime);border:0;border-radius:50%;width:40px;height:40px;font-size:16px;color:var(--on-lime);flex:none}
+.modal{display:none;position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px}
+.modal.show{display:flex}
+/* qr pass */
+.qr-frame{background:#fff;border-radius:16px;padding:18px;display:inline-block;margin:10px auto 0}
+.qr-frame img,.qr-frame canvas{display:block}
+#user-subscriptions .table-row{grid-template-columns:1.5fr 1fr 1fr 1fr auto}
+.qr-btn{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:999px;padding:6px 14px;font-size:12px;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s}
+.qr-btn:hover{border-color:var(--lime);color:var(--lime)}
+.modal-box{background:var(--bg2);border:1px solid var(--line);border-radius:22px;padding:48px 44px;width:min(410px,94vw);text-align:center;position:relative}
+.modal-x{position:absolute;top:16px;right:18px;background:none;border:0;color:var(--faint);font-size:16px;cursor:pointer}
+.modal-x:hover{color:var(--text)}
+.modal-box .eyebrow{margin-bottom:6px}
+.modal-box h2{font-family:var(--disp);font-size:28px;font-weight:500;letter-spacing:-.02em;margin:14px 0 8px}
+.modal-box p{color:var(--faint);font-size:13px}
+.mfa-code-input{font-size:30px;letter-spacing:12px;text-align:center;width:230px;padding:12px 8px 12px 20px;margin:18px auto 4px;display:block;background:var(--bg);border:1px solid var(--line);border-radius:14px;color:var(--text);font-family:var(--mono,monospace)}
+.mfa-code-input:focus{outline:none;border-color:var(--lime)}
+.mfa-error{color:#ff6b6b;font-size:13px;min-height:18px;margin:8px 0 0}
+.form-field label{display:block;font-size:11px;color:var(--faint);margin-bottom:6px;text-transform:uppercase;letter-spacing:.1em}
+.form-field input,.form-field select,.form-field textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-family:var(--sans);box-sizing:border-box}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{outline:none;border-color:var(--lime)}
+.form-field select option{background:var(--bg2)}
+.dark-input{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-family:var(--sans);width:100%;box-sizing:border-box}
+.dark-input:focus{outline:none;border-color:var(--lime)}
+/* booking modal */
+.book-box{width:min(520px,94vw);text-align:left;padding:40px 36px}
+.book-box .eyebrow{text-align:left}
+.book-box h2{margin:18px 0 12px}
+.book-contact{font-size:13px;color:var(--faint);margin-bottom:20px}
+.book-contact a{color:var(--lime);text-decoration:none}
+.book-sports{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.book-sport{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:99px;padding:8px 16px;font-size:13px;cursor:pointer}
+.book-sport.active{border-color:var(--lime);color:var(--lime)}
+.book-prog{display:flex;justify-content:space-between;align-items:center;gap:14px;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;cursor:pointer;background:transparent;width:100%;text-align:left;color:var(--ink)}
+.book-prog.active{border-color:var(--lime);background:rgba(216,255,63,.05)}
+.book-prog strong{display:block;font-size:14px}
+.book-prog span{display:block;font-size:12px;color:var(--faint);margin-top:3px}
+.book-prog b{font-family:var(--disp);font-size:17px;white-space:nowrap}
+.book-prog b small{font-size:11px;color:var(--faint);font-family:inherit}
+.book-total{display:flex;justify-content:space-between;align-items:center;margin:24px 0 20px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--faint)}
+.book-total b{font-family:var(--disp);font-size:26px;color:var(--ink)}
+.book-go{width:100%}
+.book-go:disabled{opacity:.35;cursor:not-allowed}
+.co-note{text-align:center;font-size:12px;color:var(--faint);margin:14px 0 0}
+#coDone .eyebrow{text-align:center}
+/* membership */
+.sec-sub{color:var(--faint);font-size:15px;max-width:560px;margin:12px 0 34px}
+.member-card{display:grid;grid-template-columns:1.2fr .8fr;gap:32px;border:1px solid var(--line);border-radius:24px;padding:44px;background:linear-gradient(180deg,rgba(216,255,63,.05),transparent 55%)}
+.member-card h3{font-family:var(--disp);font-size:30px;font-weight:500;letter-spacing:-.02em;margin-bottom:18px}
+.member-list{list-style:none;display:grid;gap:10px;font-size:14px;color:var(--mut)}
+.member-list li::before{content:"—";color:var(--lime);margin-right:10px}
+.member-buy{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:14px;border-left:1px solid var(--line);padding-left:32px}
+.member-price{font-family:var(--disp);font-size:52px;font-weight:500;letter-spacing:-.03em}
+.member-price span{font-size:15px;color:var(--faint);font-family:var(--body)}
+.member-note{font-size:12px;color:var(--faint)}
+@media(max-width:760px){.member-card{grid-template-columns:1fr}.member-buy{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:28px}}
+.close{position:absolute;top:16px;right:18px;background:none;border:0;color:var(--faint);font-size:24px;line-height:1}
+.close:hover{color:var(--text)}
+#toast{position:fixed;bottom:26px;right:26px;z-index:70;background:var(--text);color:var(--bg);font-size:13.5px;font-weight:600;padding:14px 24px;border-radius:99px;opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 14px 34px -12px rgba(0,0,0,.6)}
+.portal-section{display:none;padding:130px 6% 100px;max-width:1180px;margin:0 auto;min-height:85vh}
+.portal-section.active{display:block}
+.portal-section .eyebrow{justify-content:flex-start}
+.portal-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:40px;flex-wrap:wrap}
+.portal-head h2{font-family:var(--disp);font-size:clamp(30px,3.6vw,44px);font-weight:500;letter-spacing:-.025em;margin:16px 0 0}
+.portal-head p{color:var(--faint);font-size:14.5px;margin:10px 0 0}
+.portal-grid,.admin-layout{display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:start}
+.portal-sidebar{position:sticky;top:100px;display:flex;flex-direction:column;gap:2px}
+.portal-tab,.admin-tab{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--faint);padding:12px 4px;font-size:14.5px;transition:color .2s;position:relative;text-transform:lowercase}
+.portal-tab:hover,.admin-tab:hover{color:var(--text)}
+.portal-tab.active,.admin-tab.active{color:var(--text);font-weight:600}
+.portal-tab.active::before,.admin-tab.active::before{content:'';position:absolute;left:-14px;top:14px;bottom:14px;width:2px;background:var(--lime);border-radius:2px}
+.portal-panel,.admin-panel{display:none}
+.portal-panel.active,.admin-panel.active{display:block;animation:fadein .35s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.reveal{opacity:0;transform:translateY(36px);transition:opacity 1s ease,transform 1s cubic-bezier(.16,1,.3,1),background-color .25s,background .25s,border-color .25s,padding .25s}
+.reveal.visible{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1 !important;transform:none !important;transition:none}}
+.stat-row,.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:26px}
+.stat-row.cols5,.table-row.cols5{grid-template-columns:1fr 1.3fr 1fr 1.3fr .7fr}
+.portal-stat{background:var(--bg);padding:28px 26px}
+.portal-stat span{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.14em}
+.portal-stat strong,.portal-stat b{display:block;font-family:var(--disp);font-size:32px;font-weight:500;letter-spacing:-.02em;margin-top:10px}
+.panel-card{border:1px solid var(--line);border-radius:18px;padding:30px;margin-bottom:24px;background:transparent}
+.panel-card h3{margin:0 0 10px;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.panel-card p{color:var(--muted);font-size:14px;line-height:1.65;margin:6px 0}
+.table-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.table-title h3{margin:0}
+.portal-table{overflow-x:auto}
+.table-row{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:14px;padding:14px 4px;border-bottom:1px solid var(--line-soft);min-width:620px;font-size:14px;align-items:center}
+.table-row.table-header{font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--faint);border-bottom:1px solid var(--line)}
+.table-row:last-child{border-bottom:0}
+.badge{display:inline-flex;width:max-content;padding:5px 12px;border-radius:99px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);color:var(--muted)}
+.badge.success{color:var(--lime);border-color:rgba(216,255,63,.4);background:rgba(216,255,63,.06)}
+.badge.pending{color:#e8c15a;border-color:rgba(232,193,90,.35);background:rgba(232,193,90,.06)}
+.badge.paid{color:var(--lime);border-color:rgba(216,255,63,.4);background:rgba(216,255,63,.06)}
+.schedule-list{display:grid}
+.schedule-list>div{display:flex;justify-content:space-between;gap:18px;padding:16px 4px;border-bottom:1px solid var(--line-soft);font-size:14px;flex-wrap:wrap}
+.schedule-list>div:last-child{border-bottom:0}
+.schedule-list strong{font-weight:600}
+.schedule-list span{color:var(--faint);font-size:13px}
+.profile-form{display:grid;gap:14px;max-width:560px}
+.profile-form label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.profile-form input{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:13px 16px;color:var(--text);font-size:14px;font-family:var(--sans);width:100%}
+.portal-btn{margin-left:0;white-space:nowrap;background:transparent;border:1px solid var(--line);color:var(--text);border-radius:999px;padding:7px 20px 9px;font-family:var(--serif);font-style:italic;font-size:16px;letter-spacing:.03em;cursor:pointer;transition:border-color .25s,color .25s,background .25s}
+.portal-btn:hover{border-color:var(--lime);color:var(--lime)}
+.admin-nav-btn{background:none;border:0;color:var(--faint);font-size:13px;padding:6px 0;display:block}
+.admin-nav-btn:hover{color:var(--text)}
+.dark-section{background:var(--bg2);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
+.portal-content{min-width:0}
+footer{border-top:1px solid var(--line-soft);padding:44px 6%;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;color:var(--faint);font-size:13px;max-width:1180px;margin:0 auto}
+@media(max-width:1000px){
+  .sports-grid{grid-template-columns:repeat(3,1fr)}
+  .program-grid{grid-template-columns:repeat(2,1fr)}
+  .plans{grid-template-columns:1fr;max-width:480px;margin:0 auto}
+  .explore{grid-template-columns:1fr}
+  .explore-preview{position:static}
+  .sat-wrap iframe{height:380px}
+  .portal-grid,.admin-layout{grid-template-columns:1fr}
+  .portal-sidebar{position:static;flex-direction:row;flex-wrap:wrap;gap:4px 20px}
+  .portal-tab.active::before,.admin-tab.active::before{display:none}
+}
+.menu-btn{display:none;background:none;border:1px solid var(--line);border-radius:12px;color:var(--text);font-size:20px;line-height:1;width:44px;height:44px;cursor:pointer;flex:none}
+.theme-toggle{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;transition:border-color .2s,color .2s}
+.theme-toggle:hover{border-color:var(--lime);color:var(--lime)}
+.theme-toggle{position:relative}
+.theme-toggle svg{width:17px;height:17px;position:absolute;top:0;left:0;right:0;bottom:0;margin:auto;transition:opacity .3s ease,transform .45s ease}
+.theme-toggle .icon-sun{opacity:0;transform:rotate(90deg) scale(.5)}
+[data-theme="light"] .theme-toggle .icon-sun{opacity:1;transform:rotate(0deg) scale(1)}
+[data-theme="light"] .theme-toggle .icon-moon{opacity:0;transform:rotate(-90deg) scale(.5)}
+.theme-anim,.theme-anim *:not(#themeToggle):not(#themeToggle *){transition:background-color .55s ease var(--td,0s),border-color .55s ease var(--td,0s),color .55s ease var(--td,0s) !important}
+@media(max-width:700px){
+  .menu-btn{display:inline-flex;align-items:center;justify-content:center}
+  .navbar{padding:0 16px;gap:10px}
+  .navbar .brand{font-size:14px}
+  .navbar nav{display:none;position:fixed;top:66px;left:0;right:0;z-index:29;flex-direction:column;align-items:stretch;gap:0;background:var(--nav-mobile);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line);padding:10px 20px 22px;max-height:calc(100dvh - 66px);overflow-y:auto}
+  body.menu-open .navbar nav{display:flex}
+  .navbar nav a{padding:15px 4px;font-size:16px;border-bottom:1px solid var(--line-soft)}
+  .navbar nav .portal-btn,.navbar nav .admin-nav-btn{width:100%;margin:12px 0 0;padding:14px;box-sizing:border-box}
+  #authContainer{gap:6px}
+  #authContainer .outline-btn,#authContainer .small-btn{padding:10px 14px;font-size:12.5px}
+  #logoutContainer .outline-btn{padding:10px 14px;font-size:12.5px}
+  body{overflow-x:hidden}
+  .hero{padding:130px 6% 80px}
+  .hero h1{font-size:clamp(42px,12.5vw,64px)}
+  .lede{font-size:15.5px}
+  .hero-actions{gap:14px}
+  .primary-btn{padding:15px 26px;font-size:14px}
+  .sports-grid{grid-template-columns:repeat(2,1fr)}
+  .sport{padding:26px 18px 22px}
+  .sport .icon{margin-bottom:30px}
+  .program-grid{grid-template-columns:1fr}
+  .program{padding:24px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .metrics div:nth-child(3){border-left:0}
+  .metrics div{border-top:1px solid var(--line);padding:26px 8px}
+  .metrics div:nth-child(-n+2){border-top:0}
+  .metrics b{font-size:26px}
+  .section{padding:80px 6%}
+  .filters{gap:10px}
+  .dropdown{min-width:0;width:100%}
+  .sat-wrap iframe{height:300px}
+  .explore-actions{flex-direction:column}
+  .explore-actions .primary-btn,.explore-actions .ghost-btn{width:100%}
+  .chat-window{width:calc(100vw - 52px);height:min(460px,70dvh)}
+  #ai-widget{bottom:16px;left:16px}
+  .chat-btn{height:50px;padding:0 20px}
+  .stat-row,.admin-stats{grid-template-columns:1fr 1fr}
+  .stat-row.cols5{grid-template-columns:1fr 1fr}
+  .portal-section{padding:110px 5% 80px}
+  .portal-head h2{font-size:32px}
+  .panel-card{padding:22px}
+  .table-row{min-width:560px}
+  .modal-box{padding:36px 26px}
+  .member-price{font-size:42px}
+  .plan{padding:32px 26px}
+  .plan strong{font-size:40px}
+  .profile-form .primary-btn{width:100%}
+}
+
+</style>
+<script>
+try{var _t=localStorage.getItem('ss-theme');if(!_t){_t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.dataset.theme=_t}catch(e){document.documentElement.dataset.theme='dark'}
+</script>
+<script src="https://accounts.google.com/gsi/client" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+<header class="navbar">
+  <a class="brand" href="https://yoshik.xyz/sportsphere"><span class="brand-mark">S</span> SportSphere</a>
+  <button class="menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="menu">☰</button>
+  <nav id="mainNav">
+    <a href="#home" onclick="closePortals()">Home</a>
+    <a href="#sports" onclick="closePortals()">Sports</a>
+    <a href="#programs" onclick="closePortals()">Programs</a>
+    <a href="#membership" onclick="closePortals()">Membership</a>
+    <a href="#venues" onclick="closePortals()">Venues</a>
+  
+    <button class="portal-btn" id="userPortalBtn" style="display:none" onclick="showPortal('user')">dashboard</button>
+    <button class="portal-btn" id="gymPortalBtn" style="display:none" onclick="showPortal('gym')">gym portal</button>
+  </nav>
+  <button id="themeToggle" class="theme-toggle" aria-label="toggle dark and light mode" title="toggle theme">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+  <div id="authContainer" style="display:flex;gap:8px;align-items:center">
+    <div id="googleBtnNav" style="display:flex;align-items:center;min-height:40px"></div>
+  </div>
+  <div id="logoutContainer" style="display:none;gap:8px;align-items:center">
+    <button class="outline-btn" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<main>
+<section id="home" class="hero">
+  <div class="hero-inner reveal">
+    <div class="eyebrow"><span class="tick"></span>sports subscription management</div>
+    <h1>Train smarter,<br><span class="serif">play harder.</span></h1>
+    <p class="lede">One platform for athletes, sports programs, subscriptions and payments.</p>
+    <div class="hero-actions">
+      <a href="#programs" class="primary-btn">Explore programs</a>
+      <a href="#sports" class="text-btn">View sports →</a>
+    </div>
+  </div>
+</section>
+
+<section class="metrics reveal">
+  <div><b>19</b><span>Athletes</span></div>
+  <div><b>10</b><span>Sports</span></div>
+  <div><b>20</b><span>Programs</span></div>
+  <div><b>10</b><span>Active subscriptions</span></div>
+</section>
+
+<section id="sports" class="section">
+  <div class="section-title reveal">
+    <div><div class="eyebrow">DISCOVER</div><h2>Choose your sport</h2></div>
+    <p>Professional and fitness programs designed around your goals.</p>
+  </div>
+  <div class="sports-grid" id="sportGrid"></div>
+</section>
+
+<section id="programs" class="section dark-section">
+  <div class="section-title reveal">
+    <div><div class="eyebrow">TRAINING</div><h2>Available programs</h2></div>
+    <div class="dropdown" id="sportDropdown">
+      <button class="dropdown-btn" onclick="toggleDropdown(event)">
+        <span id="dropdownLabel">Pick a sport</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="dropdown-menu" id="dropdownMenu"></div>
+    </div>
+  </div>
+  <div class="program-grid" id="programGrid"></div>
+</section>
+
+<section id="venues" class="section">
+  <div class="section-title reveal">
+    <div><div class="eyebrow">FIND US</div><h2>Our venues</h2></div>
+    <p>Hover a gym or a sport to preview it from above, get directions or book a plan.</p>
+  </div>
+  <div class="explore">
+    <div class="explore-list reveal">
+      <div class="explore-label" id="gymListLabel">Gyms</div>
+      <div id="gymList"></div>
+      <div class="explore-label">Sports</div>
+      <div id="sportList"></div>
+    </div>
+    <div class="explore-preview reveal">
+      <h3 id="exName" style="font-family:var(--disp);font-size:30px;font-weight:500;letter-spacing:-.02em;margin:0 0 6px"></h3>
+      <p id="exSub" style="color:var(--muted);font-size:14px;margin:0 0 18px"></p>
+      <div class="sat-wrap">
+        <iframe id="exMap" title="satellite preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <span class="sat-tag">SATELLITE</span>
+        <span class="area-chip" id="exArea"></span>
+      </div>
+      <div class="explore-actions">
+        <a id="exDir" class="ghost-btn" target="_blank" rel="noopener">Directions</a>
+        <button class="primary-btn" id="exBook" onclick="openBooking()">Book here</button>
+      </div>
+      <div class="panel-card" id="exDetail"></div>
+    </div>
+  </div>
+</section>
+
+<section id="membership" class="section">
+  <div class="eyebrow">MEMBERSHIP</div>
+  <h2>Every sport. Every arena.<br><em>One membership.</em></h2>
+  <p class="sec-sub">Stop buying sessions one by one. One pass unlocks every venue, every coach and every program in the city.</p>
+  <div class="member-card reveal">
+    <div class="member-info">
+      <h3>All-Access</h3>
+      <ul class="member-list">
+        <li>All 10 sports, all venues, all programs</li>
+        <li>6 premium partner gyms included</li>
+        <li>Priority booking for peak-hour slots</li>
+        <li>1 personal training session every month</li>
+        <li>Pause anytime, no lock-in</li>
+      </ul>
+    </div>
+    <div class="member-buy">
+      <p class="member-price">₹20,000<span>/month</span></p>
+      <button class="primary-btn" onclick="goSubscribe()">Get All-Access →</button>
+      <p class="member-note">or pick a focused plan below</p>
+    </div>
+  </div>
+  <div id="planGrid" style="margin-top:16px;display:grid;gap:14px"></div>
+</section>
+
+</main>
+
+<footer class="reveal"><span>© 2026 SportSphere</span><span id="ftContact">Sports Subscription Management</span></footer>
+
+<div class="modal" id="bookModal">
+  <div class="modal-box book-box">
+    <button class="close" onclick="closeBook()">×</button>
+    <div class="eyebrow">BOOK A PROGRAM</div>
+    <h2 id="bkPlace"></h2>
+    <p class="book-contact" id="bkContact"></p>
+    <div class="book-sports" id="bkSports"></div>
+    <div id="bkPrograms"></div>
+    <div class="book-total"><span id="bkTotalLabel">Select a program</span><b id="bkPrice"></b></div>
+    <button class="primary-btn book-go" id="bkGo" onclick="bookContinue()" disabled>Continue →</button>
+  </div>
+</div>
+
+<div class="modal" id="programModal">
+  <div class="modal-box">
+    <button class="close" onclick="closeProgram()">×</button>
+    <div class="eyebrow" id="pmTag">PROGRAM</div>
+    <h2 id="pmName"></h2>
+    <p class="book-contact" id="pmPlace"></p>
+    <p class="book-contact" id="pmContact"></p>
+    <div class="pm-rows" id="pmRows"></div>
+    <button class="primary-btn book-go" onclick="bookProgramDirect()">Book this program →</button>
+  </div>
+</div>
+
+<!-- qr modal -->
+<div class="modal" id="qrModal">
+  <div class="modal-box">
+    <button class="modal-x" onclick="closeQr()">✕</button>
+    <div class="eyebrow">SPORTSPHERE PASS</div>
+    <h2 id="qrTitle">booking pass</h2>
+    <div class="qr-frame"><div id="qrBox"></div></div>
+    <p class="book-contact" id="qrCaption" style="text-align:center;margin-top:14px"></p>
+    <button class="primary-btn book-go" style="margin-top:8px" onclick="closeQr()">Done</button>
+  </div>
+</div>
+<div class="modal" id="checkoutModal">
+  <div class="modal-box">
+    <button class="close" onclick="closeCheckout()">×</button>
+    <div id="coMain">
+      <div class="eyebrow">CHECKOUT</div>
+      <h2 id="coName"></h2>
+      <p class="book-contact" id="coPlace"></p>
+      <div class="pm-rows" id="coRows"></div>
+      <div class="book-total"><span>Total due</span><b id="coTotal"></b></div>
+      <button class="primary-btn book-go" id="coPay" onclick="mockPay()">Pay →</button>
+      <p class="co-note">test checkout — razorpay plugs in here</p>
+    </div>
+    <div id="coDone" style="display:none;text-align:center;padding:16px 0">
+      <div style="font-size:42px;margin-bottom:14px">✓</div>
+      <div class="eyebrow">BOOKING CONFIRMED</div>
+      <h2 style="margin:16px 0 10px">You're in.</h2>
+      <p class="book-contact" id="coDoneText" style="text-align:center"></p>
+      <button class="primary-btn book-go" onclick="closeCheckout()">Done</button>
+      <div><button class="qr-btn" style="margin-top:12px" onclick="showLastQr()">show qr</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="loginModal">
+  <div class="modal-box">
+    <button class="close" onclick="hideLogin()">×</button>
+    <div class="eyebrow">WELCOME</div>
+    <h2>Login</h2>
+    <p style="font-size:13px;opacity:.65;margin:0 0 12px">continue with your google account</p>
+    <div id="googleBtn" style="display:flex;justify-content:center;margin:10px 0"></div>
+  </div>
+</div>
+
+<div class="modal" id="mfaModal">
+  <div class="modal-box">
+    <div class="eyebrow" id="mfaEyebrow">TWO FACTOR</div>
+    <h2 id="mfaTitle">check your app</h2>
+    <p>enter the 6-digit code from your authenticator app</p>
+    <input id="mfaCodeInput" class="mfa-code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="one-time-code" onkeydown="if(event.key==='Enter')submitMfa()">
+    <p id="mfaError" class="mfa-error"></p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
+      <button class="ghost-btn" onclick="cancelMfa()">cancel</button>
+      <button class="primary-btn" onclick="submitMfa()">verify</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="formModal" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='TEXTAREA'&&event.target.tagName!=='SELECT')submitFormModal();if(event.key==='Escape')closeFormModal(null)">
+  <div class="modal-box" style="text-align:left;max-height:88vh;overflow-y:auto">
+    <div class="eyebrow" id="formEyebrow">ADMIN</div>
+    <h2 id="formTitle">form</h2>
+    <div id="formFields" style="display:grid;gap:12px;margin-top:16px"></div>
+    <p id="formError" class="mfa-error"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="ghost-btn" onclick="closeFormModal(null)">cancel</button>
+      <button class="primary-btn" id="formSubmitBtn" onclick="submitFormModal()">save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="confirmModal" onkeydown="if(event.key==='Escape')closeConfirmModal(false)">
+  <div class="modal-box">
+    <div class="eyebrow">ARE YOU SURE</div>
+    <h2 id="confirmTitle">delete this?</h2>
+    <p id="confirmMsg" style="margin-top:8px"></p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+      <button class="ghost-btn" onclick="closeConfirmModal(false)">cancel</button>
+      <button class="primary-btn" id="confirmYesBtn" onclick="closeConfirmModal(true)">delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- portals -->
+<section id="userPortal" class="portal-section">
+  <div class="portal-head">
+    <div>
+      <span class="eyebrow">member area</span>
+      <h2>user portal</h2>
+      <p>Manage your profile, subscriptions, schedule and invoices.</p>
+    </div>
+    <button class="close-portal" onclick="closePortals()">back to site</button>
+  </div>
+
+  <div class="portal-grid">
+    <aside class="portal-sidebar">
+      <button class="portal-tab active" onclick="switchUserTab('overview', this)">overview</button>
+      <button class="portal-tab" onclick="switchUserTab('subscriptions', this)">my subscriptions</button>
+      <button class="portal-tab" onclick="switchUserTab('schedule', this)">schedule</button>
+      <button class="portal-tab" onclick="switchUserTab('billing', this)">billing</button>
+      <button class="portal-tab" onclick="switchUserTab('profile', this)">profile</button>
+    </aside>
+
+    <main class="portal-content">
+      <div id="user-overview" class="portal-panel active">
+        <div class="stat-row">
+          <div class="portal-stat"><span>active plans</span><strong>2</strong></div>
+          <div class="portal-stat"><span>upcoming sessions</span><strong>4</strong></div>
+          <div class="portal-stat"><span>pending invoices</span><strong>1</strong></div>
+        </div>
+        <div class="panel-card">
+          <h3 id="userGreeting">welcome back</h3>
+          <p>Your sports memberships, upcoming training and billing information are available here.</p>
+        </div>
+      </div>
+
+      <div id="user-subscriptions" class="portal-panel">
+        <div class="panel-card">
+          <div class="table-title"><h3>my subscriptions</h3></div>
+          <div class="portal-table">
+            <div class="table-row table-header"><span>plan</span><span>start</span><span>end</span><span>status</span></div>
+            <div class="table-row"><span>football training</span><span>01 sep 2026</span><span>28 feb 2027</span><span class="badge success">active</span></div>
+            <div class="table-row"><span>athletics fitness</span><span>01 sep 2026</span><span>28 nov 2026</span><span class="badge success">active</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="user-schedule" class="portal-panel">
+        <div class="panel-card">
+          <h3>upcoming schedule</h3>
+          <div class="schedule-list">
+            <div><strong>football training</strong><span>monday · 18:00–20:00 · hyderabad sports complex</span></div>
+            <div><strong>athletics fitness</strong><span>friday · 06:30–08:00 · delhi athletics stadium</span></div>
+            <div><strong>cricket academy</strong><span>tuesday · 17:00–19:30 · bangalore cricket ground</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="user-billing" class="portal-panel">
+        <div class="panel-card">
+          <h3>billing</h3>
+          <div class="portal-table">
+            <div class="table-row table-header"><span>invoice</span><span>date</span><span>amount</span><span>status</span></div>
+            <div class="table-row"><span>#INV-1001</span><span>01 sep 2026</span><span>₹4,999</span><span class="badge success">paid</span></div>
+            <div class="table-row"><span>#INV-1002</span><span>01 oct 2026</span><span>₹2,499</span><span class="badge pending">pending</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="user-profile" class="portal-panel">
+        <div class="panel-card profile-form">
+          <h3>profile</h3>
+          <label>full name<input type="text" value="demo athlete"></label>
+          <label>email<input type="email" value="athlete@example.com"></label>
+          <label>phone<input type="tel" value="+91 98765 43210"></label>
+          <label>location<input type="text" value="hyderabad"></label>
+          <button class="primary-btn" onclick="saveProfile()">save changes</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- AI Assistant Widget -->
+<div id="ai-widget">
+  <div class="chat-window" id="aiChatWindow">
+    <div class="chat-header">
+      <b>✨ ask for help</b>
+      <button class="close" onclick="toggleChat()" style="position:static; font-size:22px; padding:0;">×</button>
+    </div>
+    <div class="chat-messages" id="aiMessages">
+      <div class="msg bot">hey, need a hand? ask me about sports, venues, plans or billing and ill point you to the right place.</div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" id="aiInput" placeholder="Ask about programs..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeypress="if(event.key==='Enter') sendAiMessage()">
+      <button onclick="sendAiMessage()">→</button>
+    </div>
+  </div>
+  <button class="chat-btn" onclick="toggleChat()">✨ ask for help</button>
+</div>
+
+<!-- gym portal -->
+<section id="gymPortal" class="portal-section">
+  <div class="portal-head">
+    <div>
+      <span class="eyebrow">venue owner area</span>
+      <h2>gym portal</h2>
+      <p>Manage your venues, programs, members and revenue.</p>
+    </div>
+    <button class="close-portal" onclick="closePortals()">back to site</button>
+  </div>
+
+  <div class="admin-stats">
+    <div class="portal-stat"><span>my venues</span><strong id="gymStatVenues">-</strong></div>
+    <div class="portal-stat"><span>programs</span><strong id="gymStatPrograms">-</strong></div>
+    <div class="portal-stat"><span>active members</span><strong id="gymStatSubs">-</strong></div>
+    <div class="portal-stat"><span>revenue</span><strong id="gymStatRevenue">-</strong></div>
+  </div>
+
+  <div class="admin-layout">
+    <aside class="portal-sidebar">
+      <button class="admin-tab active" onclick="switchGymTab('overview', this)">overview</button>
+      <button class="admin-tab" onclick="switchGymTab('programs', this)">programs</button>
+      <button class="admin-tab" onclick="switchGymTab('members', this)">members</button>
+      <button class="admin-tab" onclick="switchGymTab('billing', this)">billing</button>
+    </aside>
+
+    <main class="portal-content">
+      <div id="gym-overview" class="admin-panel active">
+        <div class="panel-card"><div class="table-title"><h3>my venues</h3><button class="small-btn" onclick="addGymVenue()">+ add venue</button></div><div class="schedule-list" id="gymVenueList"></div></div>
+      </div>
+      <div id="gym-programs" class="admin-panel">
+        <div class="panel-card">
+          <div class="table-title"><h3>programs & timings</h3><button class="small-btn" onclick="addGymProgram()">+ add program</button></div>
+          <div class="portal-table" id="gymProgramsTable"></div>
+        </div>
+      </div>
+      <div id="gym-members" class="admin-panel">
+        <div class="panel-card"><h3>members</h3><div class="portal-table" id="gymMembersTable"></div></div>
+      </div>
+      <div id="gym-billing" class="admin-panel">
+        <div class="panel-card"><h3>invoices</h3><div class="portal-table" id="gymBillingTable"></div></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<script>
+/* SportSphere frontend - wired to the Node/Express API */
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')? 'http://localhost:5000': 'https://dbse-project.onrender.com';
+const GOOGLE_CLIENT_ID = '801493406484-2aat97r0n5i40k7vsv5tj9p0hp91bs8e.apps.googleusercontent.com'; // same client id as backend .env
+
+let jwt = localStorage.getItem('ss_jwt') || null;
+let currentUser = null;
+let sportsData = [], programsData = [], plansData = [], gymsData = [];
+let gymDashboardCache = null;
+let socket = null;
+
+/* ---------- helpers ---------- */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(window.toastTimer);
+  window.toastTimer = setTimeout(() => t.style.display = 'none', 2200);
+}
+function toast(msg) { showToast(msg); }
+const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN');
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+const shortId = id => String(id || '').slice(-6).toUpperCase();
+const badge = s => '<span class="badge ' + (s === 'active' || s === 'paid' ? 'success' : s === 'pending' ? 'pending' : '') + '">' + s + '</span>';
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(jwt ? { Authorization: 'Bearer ' + jwt } : {}), ...(opts.headers || {}) }
+  });
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) { const err = new Error(data.error || 'request failed'); err.status = res.status; throw err; }
+  return data;
+}
+const sportIdOf = p => (p.sportId && p.sportId._id) ? p.sportId._id : p.sportId;
+
+/* ---------- catalog ---------- */
+async function loadCatalog() {
+  [sportsData, programsData, plansData, gymsData] = await Promise.all([
+    api('/api/sports'), api('/api/programs'), api('/api/plans'), api('/api/gyms')
+  ]);
+  renderSports(); filterPrograms(); renderPlans(); buildFilter(); renderExplore();
+  loadSiteContent();
+  try {
+    const s = await api('/api/stats');
+    const counts = document.querySelectorAll('.metrics div b');
+    if (counts[0]) counts[0].textContent = s.athletes;
+    if (counts[1]) counts[1].textContent = s.sports;
+    if (counts[2]) counts[2].textContent = s.programs;
+    if (counts[3]) counts[3].textContent = s.activeSubscriptions;
+  } catch (e) { /* backend asleep: keep last numbers */ }
+}
+function renderSports() {
+  document.getElementById('sportGrid').innerHTML = sportsData.map((s, i) => {
+    const c = programsData.filter(p => sportIdOf(p) === s._id).length;
+    return '<div class="sport reveal" style="transition-delay:' + Math.min(i * 60, 540) + 'ms" onclick="selectSport(\'' + s._id + '\')"><div class="icon">' + (s.icon || '🏅') +
+      '</div><h3>' + s.name + '</h3><span>' + c + ' program' + (c === 1 ? '' : 's') + '</span></div>';
+  }).join('');
+}
+function renderPrograms(list) {
+  list = list || programsData;
+  document.getElementById('programGrid').innerHTML = list.map((p, i) => {
+    const sp = p.sportId || {};
+    const tag = sp.name ? ((sp.icon || '') + ' ' + sp.name) : 'General';
+    return '<article class="program reveal" style="transition-delay:' + Math.min(i * 45, 630) + 'ms" onclick="openProgram(\'' + p._id + '\')"><span class="tag">' + tag + '</span>' +
+      '<h3>' + p.name + '</h3><p>⌖ ' + (p.location || '') + '</p>' +
+      '<div class="schedule"><span>' + (p.day || '') + '</span><b>' + (p.startTime || '') + ' – ' + (p.endTime || '') + '</b></div>' +
+      '<div class="pprice">' + inr(p.priceInr) + '<small>' + (p.pricePer || '/month') + '</small></div>' +
+      '<div class="capacity">Capacity: ' + (p.capacity || '-') + ' athletes</div></article>';
+  }).join('');
+}
+let currentSportFilter = '';
+function buildFilter() {
+  const opts = [{ _id: 'gym', name: 'Gym' }, { _id: 'all', name: 'All sports' }].concat(sportsData);
+  document.getElementById('dropdownMenu').innerHTML = opts.map(s =>
+    '<button class="dropdown-item' + (s._id === currentSportFilter ? ' selected' : '') +
+    '" onclick="pickSport(\'' + s._id + '\',\'' + s.name.replace(/'/g, "\\'") + '\')">' + s.name + '</button>'
+  ).join('');
+}
+function toggleDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('sportDropdown').classList.toggle('open');
+}
+function pickSport(id, name) {
+  currentSportFilter = id;
+  document.getElementById('dropdownLabel').textContent = name;
+  document.getElementById('sportDropdown').classList.remove('open');
+  buildFilter();
+  filterPrograms();
+}
+function filterPrograms() {
+  if (!currentSportFilter) {
+    document.getElementById('programGrid').innerHTML = '<p class="program-hint">pick a sport or gym from the dropdown to see programs</p>';
+    return;
+  }
+  renderPrograms(currentSportFilter === 'all' ? programsData : currentSportFilter === 'gym' ? programsData.filter(p => !sportIdOf(p)) : programsData.filter(p => sportIdOf(p) === currentSportFilter));
+}
+function selectSport(id) {
+  const s = sportsData.find(x => x._id === id);
+  pickSport(id, s ? s.name : 'All sports');
+  document.getElementById('programs').scrollIntoView({ behavior: 'smooth' });
+}
+document.addEventListener('click', e => {
+  const dd = document.getElementById('sportDropdown');
+  if (dd && dd.classList.contains('open') && !dd.contains(e.target)) dd.classList.remove('open');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { const dd = document.getElementById('sportDropdown'); if (dd) dd.classList.remove('open'); }
+});
+function renderPlans() {
+  const grid = document.getElementById('planGrid');
+  if (!grid) return;
+  grid.innerHTML = (plansData || []).filter(p => (p.name || '').trim().toLowerCase() !== 'all-access').map(p =>
+    '<div class="member-card"><div class="member-info"><h3>' + p.name + '</h3>' +
+    '<p class="sec-sub">' + (p.description || '') + '</p></div>' +
+    '<div class="member-buy"><p class="member-price">\u20b9' + Number(p.priceInr || 0).toLocaleString('en-IN') +
+    '<span>/' + (p.billingCycle || 'month') + '</span></p>' +
+    '<button class="primary-btn" onclick="choosePlan(\'' + p._id + '\')">choose plan \u2192</button></div></div>'
+  ).join('');
+}
+function goSubscribe() {
+  const all = plansData.find(p => (p.name || '').trim().toLowerCase() === 'all-access') || plansData[0];
+  if (all) choosePlan(all._id);
+  else showToast('membership loading, try again in a moment');
+}
+
+/* ---------- google login ---------- */
+function showLogin() {
+  document.getElementById('loginModal').classList.add('show');
+  googleRetries = 0;
+  initGoogleBtn();
+}
+function hideLogin() { document.getElementById('loginModal').classList.remove('show'); }
+let googleInit = false;
+let googleRetries = 0;
+function initGoogleBtn() {
+  if (GOOGLE_CLIENT_ID === 'CHANGE_ME') {
+    const gb = document.getElementById('googleBtn');
+    if (gb) gb.innerHTML =
+      '<p style="font-size:12px;opacity:.7">google login is not configured on this deployment</p>';
+    return;
+  }
+  // the google script loads with defer; if the page loads before it
+  // finishes, wait for it instead of showing a dead fallback message
+  if (typeof google === 'undefined' || typeof google.accounts === 'undefined') {
+    if (googleRetries++ < 20) { setTimeout(initGoogleBtn, 250); return; }
+    const gb2 = document.getElementById('googleBtn');
+    if (gb2) gb2.innerHTML =
+      '<p style="font-size:12px;opacity:.7">could not load google sign in, check your connection and reopen</p>';
+    return;
+  }
+  if (!googleInit) {
+    googleInit = true;
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onGoogle });
+  }
+  const nav = document.getElementById('googleBtnNav');
+  if (nav && !nav.dataset.done) {
+    google.accounts.id.renderButton(nav, { theme: 'outline', size: 'medium' });
+    nav.dataset.done = '1';
+  }
+  const modal = document.getElementById('googleBtn');
+  if (modal && !modal.dataset.done) {
+    google.accounts.id.renderButton(modal, { theme: 'outline', size: 'large', width: 320 });
+    modal.dataset.done = '1';
+  }
+}
+async function onGoogle(resp) {
+  try {
+    const data = await api('/api/auth/google', { method: 'POST', body: JSON.stringify({ idToken: resp.credential }) });
+    if (data.mfaRequired) { hideLogin(); return verifyMfa(data.tempToken); }
+    jwt = data.token; currentUser = data.user;
+    localStorage.setItem('ss_jwt', jwt);
+    hideLogin();
+    updateNavState(currentUser.role);
+    greetUser(currentUser.fullName);
+    showToast('welcome, ' + currentUser.fullName.split(' ')[0]);
+  } catch (e) { showToast(e.message); }
+}
+async function restoreSession() {
+  if (!jwt) return;
+  try {
+    currentUser = await api('/api/auth/me');
+    updateNavState(currentUser.role);
+    greetUser(currentUser.fullName);
+  } catch (e) { if (e.status === 401 || e.status === 403) logout(true); }
+}
+function updateNavState(role) {
+  document.getElementById('authContainer').style.display = 'none';
+  document.getElementById('logoutContainer').style.display = 'flex';
+  document.getElementById('gymPortalBtn').style.display = role === 'gym' ? 'inline-block' : 'none';
+  document.getElementById('userPortalBtn').style.display = (role === 'athlete' || role === 'admin') ? 'inline-block' : 'none';
+}
+function logout(silent) {
+  jwt = null; currentUser = null;
+  localStorage.removeItem('ss_jwt');
+  if (socket) { socket.disconnect(); socket = null; }
+  document.getElementById('authContainer').style.display = 'flex';
+  document.getElementById('logoutContainer').style.display = 'none';
+  document.getElementById('gymPortalBtn').style.display = 'none';
+  document.getElementById('userPortalBtn').style.display = 'none';
+  closePortals();
+  if (!silent) showToast('logged out');
+}
+function greetUser(name) {
+  const first = (name || '').trim().split(' ')[0];
+  if (first) document.getElementById('userGreeting').textContent = 'welcome back, ' + first;
+}
+
+/* ---------- subscribe + pay ---------- */
+async function choosePlan(planId) {
+  if (!jwt) { showLogin(); showToast('login with google first'); return; }
+  try {
+    showToast('creating subscription...');
+    const { invoice } = await api('/api/subscriptions', { method: 'POST', body: JSON.stringify({ planId }) });
+    try {
+      const order = await api('/api/payments/order', { method: 'POST', body: JSON.stringify({ invoiceId: invoice._id }) });
+      openRazorpay(order, invoice._id);
+    } catch (e) {
+      showToast('razorpay keys missing on server, test checkout');
+      openMockPlanCheckout(invoice); // razorpay keys missing -> same mock popup as program bookings
+    }
+  } catch (e) { showToast(e.message); }
+}
+let coPlan = null;
+function openMockPlanCheckout(invoice) {
+  coProgId = null; coPlan = { name: 'All-Access' };
+  closeBook();
+  document.getElementById('coName').textContent = 'All-Access';
+  document.getElementById('coPlace').textContent = '⌖ every venue, every program';
+  document.getElementById('coRows').innerHTML =
+    '<div class="pm-row"><span>Plan</span><span>All-Access</span></div>' +
+    '<div class="pm-row"><span>Billing</span><span>monthly</span></div>';
+  document.getElementById('coTotal').textContent = inr(invoice.amountInr) + '/month';
+  const payBtn = document.getElementById('coPay');
+  payBtn.innerHTML = 'Pay ' + inr(invoice.amountInr) + ' →';
+  payBtn.setAttribute('onclick', 'mockPay()');
+  payBtn.disabled = false;
+  document.getElementById('coMain').style.display = '';
+  document.getElementById('coDone').style.display = 'none';
+  document.getElementById('checkoutModal').classList.add('show');
+}
+function openRazorpay(order, invoiceId, onSuccess) {
+  const rzp = new Razorpay({
+    key: order.keyId,
+    order_id: order.orderId,
+    currency: 'INR',
+    name: 'SportSphere',
+    description: 'subscription payment (test mode)',
+    handler: async function (resp) {
+      try {
+        await api('/api/payments/verify', {
+          method: 'POST',
+          body: JSON.stringify({
+            invoiceId,
+            orderId: resp.razorpay_order_id,
+            paymentId: resp.razorpay_payment_id,
+            signature: resp.razorpay_signature
+          })
+        });
+        if (onSuccess) onSuccess();
+        else { showToast('payment successful, plan activated'); refreshUserPortal(); }
+      } catch (e) { showToast(e.message); }
+    }
+  });
+  rzp.open();
+}
+
+/* ---------- user portal ---------- */
+async function refreshUserPortal() {
+  if (!currentUser || currentUser.role === 'admin') return;
+  try {
+    const [subs, invoices, bookings] = await Promise.all([api('/api/subscriptions/mine'), api('/api/invoices/mine'), api('/api/bookings/mine')]);
+    const active = subs.filter(s => s.status === 'active');
+    const pending = invoices.filter(i => i.status === 'pending' || i.status === 'overdue');
+
+    const stats = document.querySelectorAll('#user-overview .portal-stat strong');
+    if (stats[0]) stats[0].textContent = active.length;
+    if (stats[1]) stats[1].textContent = bookings.filter(b => b.status === 'confirmed').length;
+    if (stats[2]) stats[2].textContent = pending.length;
+
+    document.querySelector('#user-subscriptions .portal-table').innerHTML =
+      '<div class="table-row table-header"><span>plan</span><span>program</span><span>end</span><span>status</span><span>qr</span></div>' +
+      (window._subs = subs, subs.map((s, i) => {
+        const daysLeft = Math.max(0, Math.ceil((new Date(s.endDate) - Date.now()) / 86400000));
+        const paid = s.status === 'active';
+        return '<div class="table-row"><span>' + (s.planId ? s.planId.name : '-') + '</span><span>' +
+        (s.programId ? s.programId.name : 'any program') + '</span><span>' + daysLeft + ' days left</span>' + badge(s.status) +
+        '<span>' + (paid ? '<button class="qr-btn" onclick="showSubQr(' + i + ')">show qr</button>' : '') + '</span></div>';
+      }).join('') || '<div class="table-row"><span>no subscriptions yet</span><span></span><span></span><span></span><span></span></div>');
+
+    document.querySelector('#user-billing .portal-table').innerHTML =
+      '<div class="table-row table-header"><span>invoice</span><span>date</span><span>amount</span><span>status</span></div>' +
+      (invoices.map(i =>
+        '<div class="table-row"><span>#INV-' + shortId(i._id) + '</span><span>' + fmtDate(i.issuedAt) + '</span><span>' +
+        inr(i.amountInr) + '</span>' + badge(i.status) + '</div>'
+      ).join('') || '<div class="table-row"><span>no invoices yet</span><span></span><span></span><span></span></div>');
+
+    document.querySelector('#user-schedule .schedule-list').innerHTML =
+      (window._bookings = bookings.filter(b => b.status === 'confirmed'), window._bookings.map((b, i) => {
+        const periodDays = (b.programId && b.programId.pricePer === '/year') ? 365 : 30;
+        const daysLeft = Math.max(0, Math.ceil((new Date(b.createdAt).getTime() + periodDays * 86400000 - Date.now()) / 86400000));
+        return '<div><strong>' + (b.programId ? b.programId.name : 'program') + '</strong><span>' + (b.slot || '') +
+        ' · ref ' + b.bookingRef + ' · ' + daysLeft + ' days left</span>' +
+        ' <button class="qr-btn" onclick="showBookingQr(' + i + ')">show qr</button></div>';
+      }).join('') +
+      active.filter(s => s.programId).map(s => {
+        const daysLeft = Math.max(0, Math.ceil((new Date(s.endDate) - Date.now()) / 86400000));
+        return '<div><strong>' + s.programId.name + '</strong><span>' + (s.programId.day || '') + ' · ' +
+        (s.programId.startTime || '') + '–' + (s.programId.endTime || '') + ' · ' + (s.programId.location || '') +
+        ' · ' + daysLeft + ' days left</span></div>';
+      }).join('')) || '<div><strong>no sessions scheduled</strong><span>book a program or subscribe to a plan</span></div>';
+
+    fillProfile();
+  } catch (e) { console.warn('user portal refresh failed', e.message); }
+}
+function fillProfile() {
+  if (!currentUser) return;
+  const inputs = document.querySelectorAll('#user-profile input');
+  if (inputs[0]) inputs[0].value = currentUser.fullName || '';
+  if (inputs[1]) inputs[1].value = currentUser.email || '';
+  if (inputs[2]) inputs[2].value = currentUser.phone || '';
+  if (inputs[3]) inputs[3].value = currentUser.location || '';
+}
+async function saveProfile() {
+  const btn = document.querySelector('#user-profile .primary-btn');
+  const inputs = document.querySelectorAll('#user-profile input');
+  btn.disabled = true; btn.textContent = 'saving…';
+  try {
+    const updated = await api('/api/auth/me', { method: 'PATCH',
+      body: JSON.stringify({
+        fullName: inputs[0] ? inputs[0].value : '',
+        phone: inputs[2] ? inputs[2].value : '',
+        location: inputs[3] ? inputs[3].value : '' }) });
+    currentUser = updated; greetUser(currentUser.fullName); fillProfile();
+    showToast('profile saved');
+  } catch (e) { showToast(e.message); }
+  btn.disabled = false; btn.textContent = 'save changes';
+}
+
+/* ---------- admin portal ---------- */
+async function refreshAdmin() {
+  if (!currentUser || currentUser.role !== 'admin') return;
+  try {
+    const [stats, users, subs, invoices] = await Promise.all([
+      api('/api/admin/stats'), api('/api/admin/users'),
+      api('/api/admin/subscriptions'), api('/api/admin/invoices')
+    ]);
+    const boxes = document.querySelectorAll('#adminPortal .portal-stat strong');
+    const smalls = document.querySelectorAll('#adminPortal .portal-stat small');
+    if (boxes[0]) boxes[0].textContent = stats.users;
+    if (boxes[1]) boxes[1].textContent = sportsData.length;
+    if (smalls[1]) smalls[1].textContent = programsData.length + ' programs';
+    if (boxes[2]) boxes[2].textContent = stats.subscriptions;
+    if (boxes[3]) boxes[3].textContent = invoices.length;
+    if (smalls[3]) smalls[3].textContent = inr(stats.revenueInr) + ' revenue';
+
+    document.querySelector('#admin-users .portal-table').innerHTML =
+      '<div class="table-row table-header"><span>name</span><span>email</span><span>role</span><span>joined</span></div>' +
+      users.slice(0, 30).map(u =>
+        '<div class="table-row"><span>' + u.fullName + '</span><span>' + u.email + '</span><span>' + badge(u.role) +
+        '</span><span>' + fmtDate(u.createdAt) + '</span></div>').join('');
+
+    document.querySelector('#admin-subscriptions .portal-table').innerHTML =
+      '<div class="table-row cols5 table-header"><span>subscription</span><span>user</span><span>plan</span><span>program</span><span>status</span></div>' +
+      subs.slice(0, 30).map(s =>
+        '<div class="table-row cols5"><span>#SUB-' + shortId(s._id) + '</span><span>' + (s.userId ? s.userId.email : '-') +
+        '</span><span>' + (s.planId ? s.planId.name : '-') + '</span><span>' + (s.programId ? s.programId.name : '-') + '</span>' + badge(s.status) + '</div>').join('');
+
+    renderAdminInvoices(invoices);
+    renderAdminPrograms();
+    refreshMfaStatus();
+    refreshSiteContent();
+  } catch (e) { console.warn('admin refresh failed', e.message); }
+}
+/* ---------- admin mfa (totp: google authenticator / duo / proton auth) ---------- */
+/* ---------- mfa login modal (replaces the native prompt) ---------- */
+let mfaTempToken = null, mfaAttempts = 0, mfaMode = 'google'; // google = post-google step 2, direct = admin code-only
+function openMfaModal() {
+  document.getElementById('mfaError').textContent = '';
+  document.getElementById('mfaCodeInput').value = '';
+  document.getElementById('mfaModal').classList.add('show');
+  setTimeout(() => document.getElementById('mfaCodeInput').focus(), 60);
+}
+function verifyMfa(tempToken) {
+  mfaMode = 'google'; mfaTempToken = tempToken; mfaAttempts = 0;
+  document.getElementById('mfaEyebrow').textContent = 'TWO FACTOR';
+  document.getElementById('mfaTitle').textContent = 'check your app';
+  openMfaModal();
+}
+function closeMfaModal() {
+  document.getElementById('mfaModal').classList.remove('show');
+}
+function cancelMfa() { closeMfaModal(); showToast('admin login cancelled'); }
+async function submitMfa() {
+  const input = document.getElementById('mfaCodeInput');
+  const err = document.getElementById('mfaError');
+  const code = input.value.trim();
+  if (!/^\d{6}$/.test(code)) { err.textContent = 'enter the 6-digit code'; input.focus(); return; }
+  try {
+    const data = mfaMode === 'direct'
+      ? await api('/api/auth/admin-mfa', { method: 'POST', body: JSON.stringify({ code }) })
+      : await api('/api/auth/mfa', { method: 'POST', body: JSON.stringify({ tempToken: mfaTempToken, code }) });
+    closeMfaModal();
+    jwt = data.token;
+    currentUser = data.user;
+    localStorage.setItem('ss_jwt', jwt);
+    updateNavState(currentUser.role);
+    greetUser(currentUser.fullName);
+    showToast('welcome, ' + currentUser.fullName.split(' ')[0]);
+    if (mfaMode === 'direct') showPortal('admin');
+  } catch (e) {
+    mfaAttempts++;
+    if (mfaAttempts >= 3) { closeMfaModal(); showToast('too many wrong codes, try again'); }
+    else { err.textContent = e.message || 'wrong code, try again'; input.value = ''; input.focus(); }
+  }
+}
+/* ---------- generic form + confirm modals (no native dialogs) ---------- */
+let formResolve = null, formFields = [];
+function openFormModal(opts) {
+  return new Promise(resolve => {
+    formResolve = resolve; formFields = opts.fields || [];
+    document.getElementById('formEyebrow').textContent = opts.eyebrow || 'ADMIN';
+    document.getElementById('formTitle').textContent = opts.title || 'form';
+    document.getElementById('formSubmitBtn').textContent = opts.submitText || 'save';
+    document.getElementById('formError').textContent = '';
+    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    document.getElementById('formFields').innerHTML = formFields.map((f, i) => {
+      let input;
+      if (f.type === 'select') {
+        input = '<select id="ff' + i + '">' + (f.options || []).map(o =>
+          '<option value="' + esc(o.value) + '"' + (String(o.value) === String(f.value == null ? '' : f.value) ? ' selected' : '') + '>' + esc(o.label) + '</option>').join('') + '</select>';
+      } else if (f.type === 'textarea') {
+        input = '<textarea id="ff' + i + '" rows="3" placeholder="' + esc(f.placeholder) + '">' + esc(f.value) + '</textarea>';
+      } else {
+        input = '<input id="ff' + i + '" type="' + esc(f.type || 'text') + '" value="' + esc(f.value) + '" placeholder="' + esc(f.placeholder) + '"' + (f.inputmode ? ' inputmode="' + esc(f.inputmode) + '"' : '') + '>';
+      }
+      return '<div class="form-field"><label>' + esc(f.label) + '</label>' + input + '</div>';
+    }).join('');
+    document.getElementById('formModal').classList.add('show');
+    setTimeout(() => { const first = document.getElementById('ff0'); if (first) first.focus(); }, 60);
+  });
+}
+function closeFormModal(result) {
+  document.getElementById('formModal').classList.remove('show');
+  const r = formResolve; formResolve = null; formFields = [];
+  if (r) r(result);
+}
+function submitFormModal() {
+  const err = document.getElementById('formError');
+  const values = {};
+  for (let i = 0; i < formFields.length; i++) {
+    const f = formFields[i];
+    const el = document.getElementById('ff' + i);
+    const v = el.value.trim();
+    if (f.required && !v) { err.textContent = f.label + ' is required'; el.focus(); return; }
+    values[f.key] = v;
+  }
+  closeFormModal(values);
+}
+let confirmResolve = null;
+function askConfirm(title, msg, yesText) {
+  return new Promise(resolve => {
+    confirmResolve = resolve;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg || '';
+    document.getElementById('confirmYesBtn').textContent = yesText || 'delete';
+    document.getElementById('confirmModal').classList.add('show');
+  });
+}
+function closeConfirmModal(val) {
+  document.getElementById('confirmModal').classList.remove('show');
+  const r = confirmResolve; confirmResolve = null;
+  if (r) r(val);
+}
+async function refreshMfaStatus() {
+  const box = document.getElementById('mfaBox');
+  if (!box) return;
+  try {
+    const me = await api('/api/auth/me');
+    box.innerHTML = me.mfaEnabled
+      ? '<p>mfa is <b>on</b> for this admin account.</p><button class="small-btn" onclick="disableMfa()">disable mfa</button>'
+      : '<p>mfa is <b>off</b>. add a second step to admin login.</p><button class="small-btn" onclick="setupMfa()">set up authenticator</button>';
+  } catch (e) { box.innerHTML = '<p>could not load mfa status</p>'; }
+}
+async function setupMfa() {
+  const box = document.getElementById('mfaBox');
+  try {
+    const s = await api('/api/admin/mfa/setup', { method: 'POST' });
+    box.innerHTML = '<p>scan with your authenticator app, then enter the 6-digit code:</p>' +
+      '<img src="' + s.qrDataUrl + '" alt="mfa qr" style="width:180px;height:180px;background:#fff;padding:8px;border-radius:12px">' +
+      '<p style="margin-top:10px">or enter manually: <code>' + s.secret + '</code></p>' +
+      '<div style="display:flex;gap:8px;margin-top:10px"><input id="mfaCode" placeholder="123456" inputmode="numeric" autocomplete="one-time-code" style="width:140px">' +
+      '<button class="small-btn" onclick="enableMfa()">verify &amp; enable</button></div>';
+  } catch (e) { showToast(e.message); }
+}
+async function enableMfa() {
+  const code = document.getElementById('mfaCode').value.trim();
+  if (!code) return;
+  try {
+    await api('/api/admin/mfa/enable', { method: 'POST', body: JSON.stringify({ code }) });
+    showToast('mfa enabled'); refreshMfaStatus();
+  } catch (e) { showToast(e.message); }
+}
+async function disableMfa() {
+  const v = await openFormModal({ eyebrow: 'SECURITY', title: 'disable mfa', submitText: 'disable',
+    fields: [{ key: 'code', label: 'current 6-digit code', required: true, inputmode: 'numeric', placeholder: '123456' }] });
+  if (!v) return;
+  try {
+    await api('/api/admin/mfa/disable', { method: 'POST', body: JSON.stringify({ code: v.code }) });
+    showToast('mfa disabled'); refreshMfaStatus();
+  } catch (e) { showToast(e.message); }
+}
+
+/* ---------- admin programs (live from db) ---------- */
+function renderAdminPrograms() {
+  const el = document.querySelector('#admin-programs .portal-table');
+  const rows = (programsData || []).map(p =>
+    '<div class="table-row"><span>' + p.name + '</span><span>' + (p.location || '-') + '</span><span>' + (p.day || '-') + '</span><span>' +
+    ((p.startTime || '') + (p.endTime ? '\u2013' + p.endTime : '')) + '</span><span><button class="small-btn" onclick="editProgram(\'' + p._id + '\')">edit</button> ' +
+    '<button class="small-btn" onclick="delProgram(\'' + p._id + '\')">del</button></span></div>').join('');
+  el.innerHTML = '<div class="table-row table-header"><span>program</span><span>location</span><span>day</span><span>time</span><span>actions</span></div>' +
+    (rows || '<div class="table-row"><span>no programs yet</span></div>');
+}
+async function editProgram(id) {
+  const p = (programsData || []).find(x => String(x._id) === String(id));
+  if (!p) return;
+  const v = await openFormModal({ eyebrow: 'PROGRAMS', title: 'edit program', submitText: 'save',
+    fields: [{ key: 'name', label: 'program name', required: true, value: p.name }] });
+  if (!v) return;
+  try {
+    await api('/api/admin/programs/' + id, { method: 'PUT', body: JSON.stringify({ name: v.name }) });
+    programsData = await api('/api/programs');
+    filterPrograms(); renderAdminPrograms(); showToast('program updated');
+  } catch (e) { showToast(e.message); }
+}
+async function delProgram(id) {
+  if (!await askConfirm('delete program?', 'the program will be removed from the site. this cannot be undone.')) return;
+  try {
+    await api('/api/admin/programs/' + id, { method: 'DELETE' });
+    programsData = await api('/api/programs');
+    filterPrograms(); renderAdminPrograms(); showToast('program deleted');
+  } catch (e) { showToast(e.message); }
+}
+
+/* ---------- admin site cms: contact, plans, map embeds ---------- */
+async function loadSiteContent() {
+  try {
+    const sc = await api('/api/admin/site-content');
+    const c = [sc.contactPhone, sc.contactEmail, sc.contactAddress].filter(Boolean).join(' \u00b7 ');
+    if (c) document.getElementById('ftContact').textContent = c;
+  } catch (e) {}
+}
+async function refreshSiteContent() {
+  try {
+    renderAdminPlans();
+    if (activeSportId) openSport(activeSportId); else renderSportsVenues();
+  } catch (e) {}
+}
+function renderAdminPlans() {
+  const el = document.getElementById('adminPlansTable');
+  const rows = (plansData || []).map(p =>
+    '<div class="table-row"><span>' + p.name + '</span><span>\u20b9' + p.priceInr + '/' + (p.billingCycle || 'month') + '</span><span>' +
+    '<button class="small-btn" onclick="editPlan(\'' + p._id + '\')">edit</button> ' +
+    '<button class="small-btn" onclick="delPlan(\'' + p._id + '\')">del</button></span></div>').join('');
+  el.innerHTML = '<div class="table-row table-header"><span>plan</span><span>price</span><span>actions</span></div>' +
+    (rows || '<div class="table-row"><span>no plans yet</span></div>');
+}
+async function addPlan() {
+  const v = await openFormModal({ eyebrow: 'PLANS', title: 'new plan', submitText: 'add plan',
+    fields: [
+      { key: 'name', label: 'plan name', required: true, placeholder: 'e.g. Weekend Warrior' },
+      { key: 'priceInr', label: 'price (\u20b9)', required: true, type: 'number', inputmode: 'numeric', placeholder: 'e.g. 1500' },
+      { key: 'billingCycle', label: 'billing cycle', type: 'select',
+        options: [{ value: 'monthly', label: 'monthly' }, { value: 'quarterly', label: 'quarterly' }, { value: 'yearly', label: 'yearly' }] },
+      { key: 'description', label: 'short description', type: 'textarea', placeholder: 'what is included' }
+    ] });
+  if (!v) return;
+  if (isNaN(Number(v.priceInr))) { showToast('price must be a number'); return; }
+  try {
+    await api('/api/admin/plans', { method: 'POST', body: JSON.stringify({ name: v.name, priceInr: Number(v.priceInr), billingCycle: v.billingCycle, description: v.description }) });
+    plansData = await api('/api/plans'); renderPlans(); renderAdminPlans(); showToast('plan added');
+  } catch (e) { showToast(e.message); }
+}
+async function editPlan(id) {
+  const p = (plansData || []).find(x => String(x._id) === String(id));
+  if (!p) return;
+  const v = await openFormModal({ eyebrow: 'PLANS', title: 'edit plan', submitText: 'save',
+    fields: [
+      { key: 'name', label: 'plan name', required: true, value: p.name },
+      { key: 'priceInr', label: 'price (\u20b9)', required: true, type: 'number', inputmode: 'numeric', value: p.priceInr },
+      { key: 'billingCycle', label: 'billing cycle', type: 'select', value: p.billingCycle || 'month',
+        options: [{ value: 'monthly', label: 'monthly' }, { value: 'quarterly', label: 'quarterly' }, { value: 'yearly', label: 'yearly' }] },
+      { key: 'description', label: 'short description', type: 'textarea', value: p.description }
+    ] });
+  if (!v) return;
+  try {
+    await api('/api/admin/plans/' + id, { method: 'PUT', body: JSON.stringify({ name: v.name, priceInr: Number(v.priceInr), billingCycle: v.billingCycle, description: v.description }) });
+    plansData = await api('/api/plans'); renderPlans(); renderAdminPlans(); showToast('plan updated');
+  } catch (e) { showToast(e.message); }
+}
+
+/* ---------- site content: sports -> venues, full venue edit ---------- */
+let activeSportId = null;
+function sportIdStr(p) {
+  const s = p.sportId;
+  if (!s) return null;
+  return String(typeof s === 'object' ? s._id : s);
+}
+function progGymIdStr(p) {
+  const g = p.gymId;
+  if (!g) return null;
+  return String(typeof g === 'object' ? g._id : g);
+}
+function renderSportsVenues() {
+  activeSportId = null;
+  document.getElementById('backToSportsBtn').style.display = 'none';
+  document.getElementById('sportsVenuesTitle').textContent = 'sports & venues';
+  const rows = (sportsData || []).map(s => {
+    const sid = String(s._id);
+    const progs = (programsData || []).filter(p => sportIdStr(p) === sid);
+    const venueIds = [...new Set(progs.map(progGymIdStr).filter(Boolean))];
+    return '<div class="table-row"><span>' + s.name + '</span><span>' + venueIds.length + ' venues</span><span>' + progs.length + ' programs</span>' +
+      '<span><button class="small-btn" onclick="openSport(\'' + s._id + '\')">venues \u2192</button></span></div>';
+  }).join('');
+  document.getElementById('sportsVenuesBody').innerHTML =
+    '<div class="portal-table"><div class="table-row table-header"><span>sport</span><span>venues</span><span>programs</span><span></span></div>' +
+    (rows || '<div class="table-row"><span>no sports yet</span></div>') + '</div>';
+}
+function openSport(sportId) {
+  activeSportId = String(sportId);
+  const sport = (sportsData || []).find(s => String(s._id) === activeSportId);
+  document.getElementById('sportsVenuesTitle').textContent = sport ? sport.name + ' venues' : 'venues';
+  document.getElementById('backToSportsBtn').style.display = '';
+  const progs = (programsData || []).filter(p => sportIdStr(p) === activeSportId);
+  const venueIds = [...new Set(progs.map(progGymIdStr).filter(Boolean))];
+  const cards = venueIds.map(vid => {
+    const g = (gymsData || []).find(x => String(x._id) === vid);
+    if (!g) return '';
+    const gprogs = progs.filter(p => progGymIdStr(p) === vid);
+    const progList = gprogs.map(p => p.name + (p.priceInr ? ' \u00b7 \u20b9' + Number(p.priceInr).toLocaleString('en-IN') : '')).join('<br>');
+    const mapTag = g.mapEmbedUrl
+      ? '<span style="font-size:11px;color:var(--lime)">custom map</span>'
+      : '<span style="font-size:11px;color:var(--faint)">auto map</span>';
+    return '<div class="panel-card" style="margin-bottom:10px">' +
+      '<div class="table-title"><h3 style="font-size:15px">' + g.name + '</h3><span><button class="small-btn" onclick="editVenue(\'' + g._id + '\')">edit</button> <button class="small-btn" onclick="removeVenue(\'' + g._id + '\')">remove</button></span></div>' +
+      '<p style="font-size:13px;color:var(--faint)">' + [g.area, g.phone].filter(Boolean).join(' \u00b7 ') + ' ' + mapTag + '</p>' +
+      (progList ? '<p style="font-size:13px;margin-top:6px;line-height:1.7">' + progList + '</p>' : '') +
+      '</div>';
+  }).join('');
+  document.getElementById('sportsVenuesBody').innerHTML =
+    (cards || '<p style="font-size:13px;color:var(--faint)">no venues for this sport yet.</p>') +
+    '<button class="small-btn" onclick="addVenue()">+ add venue</button>';
+}
+async function editVenue(id) {
+  const g = (gymsData || []).find(x => String(x._id) === String(id));
+  if (!g) return;
+  const v = await openFormModal({ eyebrow: 'VENUES', title: 'edit venue', submitText: 'save',
+    fields: [
+      { key: 'name', label: 'venue name', required: true, value: g.name },
+      { key: 'area', label: 'area', value: g.area },
+      { key: 'address', label: 'full address', value: g.address },
+      { key: 'phone', label: 'phone', value: g.phone },
+      { key: 'email', label: 'email', value: g.email },
+      { key: 'lat', label: 'latitude', inputmode: 'decimal', value: g.lat },
+      { key: 'lng', label: 'longitude', inputmode: 'decimal', value: g.lng },
+      { key: 'mapEmbedUrl', label: 'google maps embed link', value: g.mapEmbedUrl, placeholder: 'empty = auto map' }
+    ] });
+  if (!v) return;
+  const body = Object.assign({}, v);
+  if (body.lat === '') delete body.lat; else body.lat = Number(body.lat);
+  if (body.lng === '') delete body.lng; else body.lng = Number(body.lng);
+  try {
+    await api('/api/admin/gyms/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    gymsData = await api('/api/gyms'); loadCatalog();
+    if (activeSportId) openSport(activeSportId); else renderSportsVenues();
+    showToast('venue updated');
+  } catch (e) { showToast(e.message); }
+}
+async function removeVenue(id) {
+  const g = (gymsData || []).find(x => String(x._id) === String(id));
+  if (!g) return;
+  const n = (programsData || []).filter(p => progGymIdStr(p) === String(id)).length;
+  if (!confirm('remove "' + g.name + '"' + (n ? ' and its ' + n + ' program' + (n > 1 ? 's' : '') : '') + '? this cannot be undone.')) return;
+  try {
+    await api('/api/admin/gyms/' + id, { method: 'DELETE' });
+    await loadCatalog();
+    if (activeSportId) openSport(activeSportId); else renderSportsVenues();
+    showToast('venue removed');
+  } catch (e) { showToast(e.message); }
+}
+async function addVenue() {
+  const sports = (sportsData || []).map(s => ({ value: String(s._id), label: s.name }));
+  const v = await openFormModal({ eyebrow: 'VENUES', title: 'new venue', submitText: 'add venue',
+    fields: [
+      ...(sports.length > 1 ? [{ key: '_sport', label: 'sport', type: 'select', options: sports, value: activeSportId || sports[0].value }] : []),
+      { key: 'name', label: 'venue name', required: true, placeholder: 'e.g. Skykings Arena' },
+      { key: 'area', label: 'place / area', placeholder: 'e.g. Kondapur' },
+      { key: 'address', label: 'full address', placeholder: 'street, area, city' },
+      { key: 'phone', label: 'contact phone', placeholder: '+91 ...' },
+      { key: 'email', label: 'contact email', placeholder: 'hello@...' },
+      { key: 'lat', label: 'latitude', inputmode: 'decimal', placeholder: 'e.g. 17.4231' },
+      { key: 'lng', label: 'longitude', inputmode: 'decimal', placeholder: 'e.g. 78.4342' },
+      { key: 'mapEmbedUrl', label: 'google maps embed link', placeholder: 'empty = auto map from lat/lng' }
+    ] });
+  if (!v) return;
+  delete v._sport;
+  if (v.lat === '') delete v.lat; else v.lat = Number(v.lat);
+  if (v.lng === '') delete v.lng; else v.lng = Number(v.lng);
+  try {
+    await api('/api/admin/gyms', { method: 'POST', body: JSON.stringify(v) });
+    gymsData = await api('/api/gyms'); loadCatalog();
+    if (activeSportId) openSport(activeSportId); else renderSportsVenues();
+    showToast('venue added. add programs for it in the programs tab.');
+  } catch (e) { showToast(e.message); }
+}
+async function delPlan(id) {
+  if (!await askConfirm('delete plan?', 'the plan will disappear from the membership section. this cannot be undone.')) return;
+  try {
+    await api('/api/admin/plans/' + id, { method: 'DELETE' });
+    plansData = await api('/api/plans'); renderPlans(); renderAdminPlans(); showToast('plan deleted');
+  } catch (e) { showToast(e.message); }
+}
+function renderAdminInvoices(invoices) {
+  document.querySelector('#admin-billing .portal-table').innerHTML =
+    '<div class="table-row table-header"><span>invoice</span><span>user</span><span>amount</span><span>status</span></div>' +
+    invoices.slice(0, 30).map(i =>
+      '<div class="table-row"><span>#INV-' + shortId(i._id) + '</span><span>' +
+      (i.subscriptionId && i.subscriptionId.userId ? i.subscriptionId.userId.email : '-') + '</span><span>' +
+      inr(i.amountInr) + '</span>' + badge(i.status) + '</div>').join('');
+}
+async function refreshAdminBilling() {
+  if (!currentUser || currentUser.role !== 'admin') return;
+  try { renderAdminInvoices(await api('/api/admin/invoices')); }
+  catch (e) { console.warn('billing refresh failed', e.message); }
+}
+function exportCSV() {
+  window.location = API + '/api/admin/export/transactions?token=' + encodeURIComponent(jwt);
+}
+async function addProgram() {
+  const sports = (sportsData || []).map(s => ({ value: s._id, label: s.name }));
+  if (!sports.length) { showToast('no sports found'); return; }
+  const v = await openFormModal({ eyebrow: 'PROGRAMS', title: 'new program', submitText: 'add program',
+    fields: [
+      { key: 'name', label: 'program name', required: true, placeholder: 'e.g. Football Training' },
+      { key: 'sportId', label: 'sport', type: 'select', options: sports, value: sports[0].value },
+      { key: 'location', label: 'location', placeholder: 'venue, area' },
+      { key: 'day', label: 'day', placeholder: 'e.g. Monday' },
+      { key: 'startTime', label: 'start time', placeholder: 'e.g. 18:00' },
+      { key: 'endTime', label: 'end time', placeholder: 'e.g. 20:00' },
+      { key: 'capacity', label: 'capacity', type: 'number', value: '20', inputmode: 'numeric' },
+      { key: 'coach', label: 'coach name', placeholder: 'coach name' },
+      { key: 'level', label: 'level', type: 'select', options: [{ value: 'beginner', label: 'beginner' }, { value: 'intermediate', label: 'intermediate' }, { value: 'advanced', label: 'advanced' }] }
+    ] });
+  if (!v) return;
+  const body = {
+    sportId: v.sportId, name: v.name, location: v.location, day: v.day,
+    startTime: v.startTime, endTime: v.endTime,
+    capacity: parseInt(v.capacity, 10) || 20, coach: v.coach, level: v.level || 'beginner'
+  };
+  try {
+    await api('/api/admin/programs', { method: 'POST', body: JSON.stringify(body) });
+    programsData = await api('/api/programs');
+    filterPrograms(); refreshAdmin();
+    showToast('program added');
+  } catch (e) { showToast(e.message); }
+}
+
+/* ---------- realtime (admin invoice sync) ---------- */
+function connectRealtime() {
+  if (socket || !jwt || !currentUser || currentUser.role !== 'admin' || typeof io === 'undefined') return;
+  socket = io(API, { auth: { token: jwt } });
+  socket.on('invoice:created', () => { showToast('new invoice created'); refreshAdminBilling(); });
+  socket.on('invoice:updated', () => { showToast('invoice updated'); refreshAdminBilling(); });
+}
+
+/* ---------- booking modal ---------- */
+let bookPrograms = [], bookSportSel = null, bookProgSel = null;
+function openBooking() {
+  if (!currentExplore.id && gymsData.length) currentExplore = { kind: 'gym', id: gymsData[0]._id };
+  const { kind, id } = currentExplore;
+  let placeName = '', contact = '';
+  if (kind === 'gym') {
+    const g = gymById(id); if (!g) return;
+    placeName = g.name;
+    contact = [g.phone, g.email].filter(Boolean).join(' · ');
+    bookPrograms = programsData.filter(p => String((p.gymId && p.gymId._id) || p.gymId) === String(id));
+  } else {
+    const s = sportsData.find(x => String(x._id) === String(id)); if (!s) return;
+    placeName = (s.icon || '') + ' ' + s.name;
+    const v = sportVenue(id);
+    if (v) contact = [v.phone, v.email].filter(Boolean).join(' · ');
+    bookPrograms = programsData.filter(p => sportIdOf(p) === String(id));
+  }
+  if (!bookPrograms.length) { toast('no programs listed here yet'); return; }
+  document.getElementById('bkPlace').textContent = placeName;
+  document.getElementById('bkContact').textContent = contact;
+  const sports = [...new Set(bookPrograms.map(p => sportNameOf(p)))];
+  bookSportSel = sports[0]; bookProgSel = null;
+  document.getElementById('bkSports').innerHTML = sports.length > 1
+    ? sports.map(s => '<button class="book-sport' + (s === bookSportSel ? ' active' : '') + '" onclick="pickBookSport(\'' + s.replace(/'/g, "\\'") + '\')">' + s + '</button>').join('')
+    : '<span style="font-size:13px;color:var(--faint)">' + sports[0] + '</span>';
+  renderBookPrograms();
+  document.getElementById('bookModal').classList.add('show');
+}
+function pickBookSport(s) {
+  bookSportSel = s; bookProgSel = null;
+  document.querySelectorAll('.book-sport').forEach(b => b.classList.toggle('active', b.textContent === s));
+  renderBookPrograms();
+}
+function renderBookPrograms() {
+  const list = bookPrograms.filter(p => sportNameOf(p) === bookSportSel);
+  if (!bookProgSel || !list.find(p => String(p._id) === String(bookProgSel))) bookProgSel = list.length ? list[0]._id : null;
+  document.getElementById('bkPrograms').innerHTML = list.map(p =>
+    '<button class="book-prog' + (String(p._id) === String(bookProgSel) ? ' active' : '') + '" onclick="pickBookProg(\'' + p._id + '\')">' +
+    '<span style="text-align:left"><strong>' + p.name + '</strong><span>' + venueNameOf(p) + ' · ' + (p.day || '') + ' ' + (p.startTime || '') + '–' + (p.endTime || '') + '</span></span>' +
+    '<b>' + inr(p.priceInr) + '<small>' + (p.pricePer || '/month') + '</small></b></button>').join('');
+  updateBookTotal();
+}
+function pickBookProg(id) {
+  bookProgSel = id;
+  document.querySelectorAll('.book-prog').forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes("'" + id + "'")));
+  updateBookTotal();
+}
+function updateBookTotal() {
+  const p = bookPrograms.find(x => String(x._id) === String(bookProgSel));
+  document.getElementById('bkTotalLabel').textContent = p ? p.name + ' · ' + sportNameOf(p) : 'Select a program';
+  document.getElementById('bkPrice').textContent = p ? inr(p.priceInr) + (p.pricePer || '/month') : '';
+  document.getElementById('bkGo').disabled = !p;
+}
+function closeBook() { document.getElementById('bookModal').classList.remove('show'); }
+async function payForProgram() {
+  if (!jwt) { showLogin(); showToast('login with google first'); return; }
+  const btn = document.getElementById('coPay');
+  btn.disabled = true; btn.textContent = 'processing…';
+  try {
+    const p = bookPrograms.find(x => String(x._id) === String(coProgId));
+    const slot = p ? ((p.day || '') + ' ' + (p.startTime || '') + ' – ' + (p.endTime || '')) : '';
+    const { booking, invoice } = await api('/api/bookings', { method: 'POST',
+      body: JSON.stringify({ programId: coProgId, slot }) });
+    const label = p ? p.name + ' · ' + venueNameOf(p) : 'program';
+    const showDone = (ref) => {
+      document.getElementById('coDoneText').textContent = label + ' — booking ref ' + ref + ' (test mode)';
+      lastQr = { title: 'booking pass',
+        payload: 'SPORTSPHERE BOOKING\nProgram: ' + (p ? p.name : 'program') + '\nSlot: ' + slot + '\nRef: ' + ref,
+        caption: label + ' — booking ref ' + ref };
+      document.getElementById('coMain').style.display = 'none';
+      document.getElementById('coDone').style.display = '';
+    };
+    try {
+      const order = await api('/api/payments/order', { method: 'POST', body: JSON.stringify({ invoiceId: invoice._id }) });
+      openRazorpay(order, invoice._id, () => showDone(booking.bookingRef));
+    } catch (e) {
+      showToast('razorpay keys missing on server, test checkout');
+      const done = await api('/api/bookings/' + booking._id + '/confirm', { method: 'POST' });
+      showDone(done.bookingRef);
+    }
+  } catch (e) {
+    btn.disabled = false; btn.innerHTML = 'try again →';
+    showToast(e.message);
+  }
+}
+
+/* ---------- mock checkout (razorpay plugs in here later) ---------- */
+let coProgId = null;
+function bookContinue() {
+  const p = bookPrograms.find(x => String(x._id) === String(bookProgSel)); if (!p) return;
+  closeBook();
+  coProgId = p._id; coPlan = null;
+  const per = p.pricePer || '/month';
+  const amt = per === '/year' ? p.priceInr : p.priceInr;
+  document.getElementById('coName').textContent = p.name;
+  document.getElementById('coPlace').textContent = '⌖ ' + venueNameOf(p);
+  document.getElementById('coRows').innerHTML =
+    '<div class="pm-row"><span>Program</span><span>' + p.name + '</span></div>' +
+    '<div class="pm-row"><span>Schedule</span><span>' + (p.day || '') + ' ' + (p.startTime || '') + ' – ' + (p.endTime || '') + '</span></div>' +
+    '<div class="pm-row"><span>Billing</span><span>' + (per === '/year' ? 'annual' : 'monthly') + '</span></div>';
+  document.getElementById('coTotal').textContent = inr(amt) + per;
+  const payBtn = document.getElementById('coPay');
+  payBtn.innerHTML = 'Pay ' + inr(amt) + ' →';
+  payBtn.setAttribute('onclick', 'payForProgram()');
+  payBtn.disabled = false;
+  document.getElementById('coMain').style.display = '';
+  document.getElementById('coDone').style.display = 'none';
+  document.getElementById('checkoutModal').classList.add('show');
+}
+function closeCheckout() { document.getElementById('checkoutModal').classList.remove('show'); }
+/* ---------- qr pass ---------- */
+let lastQr = null; // { title, payload, caption }
+function showQr(title, payload, caption) {
+  lastQr = { title, payload, caption };
+  document.getElementById('qrTitle').textContent = title;
+  document.getElementById('qrCaption').textContent = caption || '';
+  const box = document.getElementById('qrBox');
+  box.innerHTML = '';
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(payload);
+    qr.make();
+    box.innerHTML = qr.createImgTag(6, 8);
+  } catch (e) {
+    box.innerHTML = '<p style="color:#000">qr failed to render</p>';
+  }
+  closeCheckout();
+  document.getElementById('qrModal').classList.add('show');
+}
+function closeQr() { document.getElementById('qrModal').classList.remove('show'); }
+function showLastQr() { if (lastQr) { const q = lastQr; lastQr = null; showQr(q.title, q.payload, q.caption); } }
+function showBookingQr(i) {
+  const b = (window._bookings || [])[i]; if (!b) return;
+  const progName = b.programId ? b.programId.name : 'program';
+  showQr('booking pass',
+    'SPORTSPHERE BOOKING\nProgram: ' + progName + '\nSlot: ' + (b.slot || '') + '\nRef: ' + b.bookingRef + '\nAmount: Rs.' + b.amountInr,
+    progName + ' — booking ref ' + b.bookingRef);
+}
+function showSubQr(i) {
+  const s = (window._subs || [])[i]; if (!s) return;
+  const planName = s.planId ? s.planId.name : 'plan';
+  const daysLeft = Math.max(0, Math.ceil((new Date(s.endDate) - Date.now()) / 86400000));
+  showQr('membership pass',
+    'SPORTSPHERE SUBSCRIPTION\nPlan: ' + planName + '\nID: ' + String(s._id).slice(-8).toUpperCase() + '\nStatus: ' + s.status + '\nValid: ' + daysLeft + ' days left',
+    planName + ' · ' + daysLeft + ' days left');
+}
+// ===== RAZORPAY INTEGRATION POINT =====
+// mockPay() is a stand-in until razorpay test keys are configured.
+// to go live, replace the setTimeout body below with:
+//   const { invoice } = await api('/api/subscriptions', { method: 'POST', body: JSON.stringify({ programId: coProgId }) });
+//   const order = await api('/api/payments/order', { method: 'POST', body: JSON.stringify({ invoiceId: invoice._id }) });
+//   openRazorpay(order, invoice._id);
+function mockPay() { // plan fallback only (razorpay keys missing): subscription + invoice already in db
+  if (!jwt) { showLogin(); showToast('login with google first'); return; }
+  const btn = document.getElementById('coPay');
+  btn.disabled = true; btn.textContent = 'processing…';
+  setTimeout(() => {
+    const ref = 'SS' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 90 + 10);
+    document.getElementById('coDoneText').textContent =
+      coPlan.name + ' — booking ref ' + ref + ' (test mode)';
+    lastQr = { title: 'membership pass',
+      payload: 'SPORTSPHERE SUBSCRIPTION\nPlan: ' + coPlan.name + '\nRef: ' + ref + '\nValid: 30 days',
+      caption: coPlan.name + ' — booking ref ' + ref };
+    document.getElementById('coMain').style.display = 'none';
+    document.getElementById('coDone').style.display = '';
+  }, 1200);
+}
+
+/* ---------- program detail modal ---------- */
+let pmProgId = null;
+function priceSplit(p) {
+  const per = p.pricePer || '/month';
+  if (per === '/year') return { m: Math.round(p.priceInr / 12), mApprox: true, a: p.priceInr, aApprox: false };
+  return { m: p.priceInr, mApprox: false, a: p.priceInr * 12, aApprox: true };
+}
+function venueNameOf(p) { const g = gymOfProgram(p); return g ? g.name : (p.location || ''); }
+function openProgram(id) {
+  const p = programsData.find(x => String(x._id) === String(id)); if (!p) return;
+  pmProgId = id;
+  const sp = p.sportId || {};
+  const tag = sp.name ? ((sp.icon || '') + ' ' + sp.name) : 'General';
+  const g = gymOfProgram(p);
+  const pr = priceSplit(p);
+  document.getElementById('pmTag').textContent = tag.toUpperCase();
+  document.getElementById('pmName').textContent = p.name;
+  document.getElementById('pmPlace').textContent = '⌖ ' + venueNameOf(p) + (g && g.area ? ', ' + g.area : '');
+  const contact = g ? [g.phone, g.email].filter(Boolean).join(' · ') : '';
+  document.getElementById('pmContact').textContent = contact;
+  document.getElementById('pmContact').style.display = contact ? '' : 'none';
+  const rows = [
+    ['Schedule', (p.day || '') + ' ' + (p.startTime || '') + ' – ' + (p.endTime || '')],
+    ['Monthly', '<b>' + inr(pr.m) + '<small>/month' + (pr.mApprox ? ' · approx' : '') + '</small></b>'],
+    ['Annual', '<b>' + inr(pr.a) + '<small>/year' + (pr.aApprox ? ' · approx' : '') + '</small></b>'],
+    ['Capacity', (p.capacity || '-') + ' athletes']
+  ];
+  document.getElementById('pmRows').innerHTML = rows.map(r =>
+    '<div class="pm-row"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>').join('');
+  document.getElementById('programModal').classList.add('show');
+}
+function closeProgram() { document.getElementById('programModal').classList.remove('show'); }
+function bookProgramDirect() {
+  const p = programsData.find(x => String(x._id) === String(pmProgId)); if (!p) return;
+  closeProgram();
+  const sid = sportIdOf(p);
+  if (sid) currentExplore = { kind: 'sport', id: String(sid) };
+  else { const g = gymOfProgram(p); if (!g) return; currentExplore = { kind: 'gym', id: String(g._id) }; }
+  openBooking();
+  pickBookProg(pmProgId);
+}
+
+/* ---------- venues explore (updated) ---------- */
+const sportNameOf = p => { const s = sportsData.find(x => String(x._id) === String(sportIdOf(p))); return s ? s.name : 'General training'; };
+let currentExplore = { kind: 'gym', id: null };
+let exploreSportId = null;
+function gymById(id) { return gymsData.find(g => String(g._id) === String(id)); }
+function isFitnessGym(g) { if (!g) return false; if (g.kind === 'gym') return true; if (g.kind === 'venue') return false;
+  return /gold's gym|f45|cultfit|snap fitness|anytime fitness|crossfit|fitness first/i.test(g.name || ''); }
+function sportsVenues() { return (gymsData || []).filter(g => !isFitnessGym(g)); }
+function fitnessGyms() { return (gymsData || []).filter(isFitnessGym); }
+function sportIdOfGym(g) { const s = g.sportId; return s ? String(typeof s === 'object' ? s._id : s) : null; }
+function venuesOfSport(sportId) { return (gymsData || []).filter(g => !isFitnessGym(g) && sportIdOfGym(g) === String(sportId)); }
+function gymOfProgram(p) { const gid = (p.gymId && p.gymId._id) ? p.gymId._id : p.gymId; return gymById(gid); }
+function sportVenue(sportId) { const p = programsData.find(p => sportIdOf(p) === sportId); return p ? gymOfProgram(p) : null; }
+function exploreItem(kind, key, name, sub, i) {
+  return '<button class="explore-item reveal" data-key="' + key + '" style="transition-delay:' + Math.min(i * 35, 420) + 'ms"' +
+    ' onmouseenter="previewPlace(\'' + kind + '\',\'' + key + '\')" onclick="previewPlace(\'' + kind + '\',\'' + key + '\')">' +
+    '<h4>' + name + '</h4><span>' + sub + '</span></button>';
+}
+function exploreSportItem(s, i) {
+  const n = venuesOfSport(s._id).length;
+  return '<button class="explore-item reveal" data-key="' + s._id + '" style="transition-delay:' + Math.min(i * 35, 420) + 'ms"' +
+    ' onmouseenter="previewPlace(\'sport\',\'' + s._id + '\')" onclick="exploreSport(\'' + s._id + '\')">' +
+    '<h4>' + (s.icon || '') + ' ' + s.name + '</h4><span>' + n + ' venues</span></button>';
+}
+function exploreGymsItem(i) {
+  const gyms = fitnessGyms();
+  return '<button class="explore-item reveal" data-key="__gyms" style="transition-delay:' + Math.min(i * 35, 420) + 'ms"' +
+    ' onmouseenter="previewPlace(\'gyms\',\'__gyms\')" onclick="exploreGyms()">' +
+    '<h4>\u{1F4AA} Fitness Gyms</h4><span>' + gyms.length + ' gyms</span></button>';
+}
+function renderExplore() {
+  document.getElementById('sportList').innerHTML = exploreGymsItem(0) + sportsData.map((s, i) => exploreSportItem(s, i + 1)).join('');
+  exploreSportId = null;
+  document.getElementById('gymListLabel').textContent = 'Venues';
+  document.getElementById('gymList').innerHTML = '<div class="explore-hint">pick a category below to browse its venues</div>';
+  const gyms = fitnessGyms();
+  if (gyms[0]) previewPlace('gym', gyms[0]._id);
+}
+function exploreGyms() {
+  exploreSportId = null;
+  const gyms = fitnessGyms();
+  document.getElementById('gymListLabel').innerHTML = '\u{1F4AA} Fitness Gyms' +
+    ' <a href="javascript:void(0)" onclick="renderExplore()" style="float:right;letter-spacing:0;text-transform:none;font-size:12px">\u2190 all</a>';
+  document.getElementById('gymList').innerHTML = gyms.map((g, i) => exploreItem('gym', g._id, g.name, g.area || '', i)).join('') ||
+    '<div><strong>no gyms yet</strong></div>';
+  if (gyms[0]) previewPlace('gym', gyms[0]._id);
+}
+function exploreSport(sportId) {
+  exploreSportId = String(sportId);
+  const s = sportsData.find(x => String(x._id) === exploreSportId);
+  const venues = venuesOfSport(exploreSportId);
+  document.getElementById('gymListLabel').innerHTML = ((s ? (s.icon || '') + ' ' + s.name : '') + ' venues') +
+    ' <a href="javascript:void(0)" onclick="renderExplore()" style="float:right;letter-spacing:0;text-transform:none;font-size:12px">\u2190 all</a>';
+  document.getElementById('gymList').innerHTML = venues.map((g, i) => exploreItem('gym', g._id, g.name, g.area || '', i)).join('') ||
+    '<div><strong>no venues yet</strong></div>';
+  if (venues[0]) previewPlace('gym', venues[0]._id);
+}
+function programRows(ps) {
+  return ps.map(p => '<div class="ex-prow"><strong>' + p.name + '</strong><span>' + (p.day || '') + ' · ' + (p.startTime || '') + '–' + (p.endTime || '') + '</span></div>').join('');
+}
+function previewPlace(kind, id) {
+  currentExplore = { kind, id };
+  document.querySelectorAll('.explore-item').forEach(el => el.classList.toggle('active', el.dataset.key === String(id)));
+  let name = '', sub = '', lat = null, lng = null, detail = '', phone = '', email = '', areaName = '';
+  if (kind === 'gym') {
+    const g = gymById(id); if (!g) return;
+    name = g.name; sub = [g.area, g.address].filter(Boolean).join(' · '); areaName = g.area || '';
+    lat = g.lat; lng = g.lng; phone = g.phone || ''; email = g.email || '';
+    const ps = programsData.filter(p => { const gid = (p.gymId && p.gymId._id) ? p.gymId._id : p.gymId; return String(gid) === String(id); });
+    detail = programRows(ps) || '<p style="opacity:.6;font-size:13px">no programs listed yet</p>';
+  } else if (kind === 'gyms') {
+    const gs = fitnessGyms();
+    name = '💪 Fitness Gyms'; sub = gs.length + ' gyms pinned'; areaName = '';
+    const gids = gs.map(g => String(g._id));
+    detail = programRows(programsData.filter(p => { const gid = (p.gymId && p.gymId._id) ? p.gymId._id : p.gymId; return gids.includes(String(gid)); }));
+  } else {
+    const s = sportsData.find(x => String(x._id) === String(id)); if (!s) return;
+    const sVenues = venuesOfSport(String(id));
+    const v = sportVenue(id);
+    name = (s.icon || '') + ' ' + s.name; sub = sVenues.length + ' venues pinned'; areaName = '';
+    if (v) { lat = v.lat; lng = v.lng; }
+    detail = programRows(programsData.filter(p => sportIdOf(p) === String(id)));
+  }
+  document.getElementById('exName').textContent = name;
+  document.getElementById('exSub').textContent = sub;
+  document.getElementById('exArea').textContent = areaName;
+  document.getElementById('exArea').style.display = areaName ? '' : 'none';
+  const contact = [phone, email].filter(Boolean).join(' · ');
+  document.getElementById('exDetail').innerHTML = (contact ? '<p class="ex-contact">' + contact + '</p>' : '') + detail;
+  const q = (lat && lng) ? (lat + ',' + lng) : encodeURIComponent(name + ' Hyderabad');
+  const customEmbed = (kind === 'gym' && gymById(id).mapEmbedUrl) ? gymById(id).mapEmbedUrl : '';
+  let mapSrc;
+  if (kind === 'sport' || kind === 'gyms') {
+    const list = kind === 'gyms' ? fitnessGyms() : venuesOfSport(String(id));
+    const pins = list.filter(g => g.lat && g.lng)
+      .map(g => g.lat + ',' + g.lng + ',' + encodeURIComponent(g.name || 'venue')).join('|');
+    mapSrc = pins ? 'venues-map.html?pins=' + pins : 'https://maps.google.com/maps?q=' + q + '&z=17&t=k&output=embed';
+  } else {
+    mapSrc = customEmbed || ('https://maps.google.com/maps?q=' + q + '&z=17&t=k&output=embed');
+  }
+  document.getElementById('exMap').src = mapSrc;
+  document.getElementById('exDir').href = 'https://www.google.com/maps/dir/?api=1&destination=' + ((lat && lng) ? (lat + ',' + lng) : encodeURIComponent(name + ' Hyderabad'));
+}
+
+/* ---------- gym portal ---------- */
+async function refreshGym() {
+  if (!currentUser || (currentUser.role !== 'gym' && currentUser.role !== 'admin')) return;
+  try {
+    const d = await api('/api/gym/dashboard');
+    gymDashboardCache = d;
+    document.getElementById('gymStatVenues').textContent = d.stats.gyms;
+    document.getElementById('gymStatPrograms').textContent = d.stats.programs;
+    document.getElementById('gymStatSubs').textContent = d.stats.activeSubscriptions;
+    document.getElementById('gymStatRevenue').textContent = inr(d.stats.revenueInr);
+    document.getElementById('gymVenueList').innerHTML = d.gyms.map(g =>
+      '<div><strong>' + g.name + '</strong><span>' + (g.address || '') + (g.phone ? ' · ' + g.phone : '') + '</span></div>'
+    ).join('') || '<div><strong>no venues assigned</strong></div>';
+    document.getElementById('gymProgramsTable').innerHTML =
+      '<div class="table-row table-header"><span>program</span><span>day</span><span>time</span><span>coach</span></div>' +
+      (d.programs.map(p => '<div class="table-row"><span>' + p.name + '</span><span>' + (p.day || '') + '</span><span>' +
+        (p.startTime || '') + '–' + (p.endTime || '') + '</span><span>' + (p.coach || '-') + '</span></div>').join('') ||
+        '<div class="table-row"><span>no programs yet</span><span></span><span></span><span></span></div>');
+    document.getElementById('gymMembersTable').innerHTML =
+      '<div class="table-row table-header"><span>member</span><span>program</span><span>plan</span><span>status</span></div>' +
+      (d.subscriptions.map(s => '<div class="table-row"><span>' + (s.userId ? s.userId.fullName : '-') + '</span><span>' +
+        (s.programId ? s.programId.name : '-') + '</span><span>' + (s.planId ? s.planId.name : '-') + '</span>' + badge(s.status) + '</div>').join('') ||
+        '<div class="table-row"><span>no members yet</span><span></span><span></span><span></span></div>');
+    document.getElementById('gymBillingTable').innerHTML =
+      '<div class="table-row table-header"><span>invoice</span><span>date</span><span>amount</span><span>status</span></div>' +
+      (d.invoices.map(i => '<div class="table-row"><span>#INV-' + shortId(i._id) + '</span><span>' + fmtDate(i.issuedAt) + '</span><span>' +
+        inr(i.amountInr) + '</span>' + badge(i.status) + '</div>').join('') ||
+        '<div class="table-row"><span>no invoices yet</span><span></span><span></span><span></span></div>');
+  } catch (e) { showToast(e.message); }
+}
+function switchGymTab(tab, btn) {
+  document.querySelectorAll('#gymPortal .admin-panel').forEach(x => x.classList.remove('active'));
+  document.getElementById('gym-' + tab).classList.add('active');
+  document.querySelectorAll('#gymPortal .admin-tab').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+}
+async function addGymVenue() {
+  const v = await openFormModal({ eyebrow: 'VENUES', title: 'new venue', submitText: 'add venue',
+    fields: [
+      { key: 'name', label: 'venue name', required: true, placeholder: 'e.g. Skykings Arena' },
+      { key: 'area', label: 'area', placeholder: 'e.g. Kondapur' },
+      { key: 'address', label: 'full address', placeholder: 'street, area, city' },
+      { key: 'phone', label: 'phone', placeholder: '+91 ...' },
+      { key: 'lat', label: 'latitude (optional)', inputmode: 'decimal', placeholder: 'e.g. 17.44' },
+      { key: 'lng', label: 'longitude (optional)', inputmode: 'decimal', placeholder: 'e.g. 78.35' }
+    ] });
+  if (!v) return;
+  try {
+    await api('/api/gym/venues', { method: 'POST', body: JSON.stringify(v) });
+    showToast('venue added'); refreshGym(); loadCatalog();
+  } catch (e) { showToast(e.message); }
+}
+async function addGymProgram() {
+  const d = gymDashboardCache;
+  if (!d || !d.gyms.length) { showToast('no venues assigned'); return; }
+  const sports = (sportsData || []).map(s => ({ value: s._id, label: s.name }));
+  if (!sports.length) { showToast('no sports found'); return; }
+  const fields = [];
+  if (d.gyms.length > 1) fields.push({ key: 'gymId', label: 'venue', type: 'select',
+    options: d.gyms.map(g => ({ value: g._id, label: g.name })), value: d.gyms[0]._id });
+  fields.push(
+    { key: 'name', label: 'program name', required: true, placeholder: 'e.g. Morning Batch' },
+    { key: 'sportId', label: 'sport', type: 'select', options: sports, value: sports[0].value },
+    { key: 'day', label: 'day', placeholder: 'e.g. Monday' },
+    { key: 'startTime', label: 'start time', placeholder: 'e.g. 18:00' },
+    { key: 'endTime', label: 'end time', placeholder: 'e.g. 20:00' },
+    { key: 'capacity', label: 'capacity', type: 'number', value: '20', inputmode: 'numeric' },
+    { key: 'coach', label: 'coach name', placeholder: 'coach name' },
+    { key: 'level', label: 'level', type: 'select', options: [{ value: 'beginner', label: 'beginner' }, { value: 'intermediate', label: 'intermediate' }, { value: 'advanced', label: 'advanced' }] }
+  );
+  const v = await openFormModal({ eyebrow: 'PROGRAMS', title: 'new program', submitText: 'add program', fields });
+  if (!v) return;
+  const gymId = v.gymId || d.gyms[0]._id;
+  const gym = d.gyms.find(g => String(g._id) === String(gymId));
+  const body = {
+    sportId: v.sportId, gymId, name: v.name,
+    location: gym.name + ', ' + (gym.area || ''),
+    day: v.day, startTime: v.startTime, endTime: v.endTime,
+    capacity: parseInt(v.capacity, 10) || 20, coach: v.coach, level: v.level || 'beginner'
+  };
+  try {
+    await api('/api/gym/programs', { method: 'POST', body: JSON.stringify(body) });
+    showToast('program added'); refreshGym(); loadCatalog();
+  } catch (e) { showToast(e.message); }
+}
+
+/* ---------- custom cursor ---------- */
+(function () {
+  if (!window.matchMedia('(pointer:fine)').matches) return;
+  const dot = document.createElement('div'); dot.id = 'cursor-dot';
+  const ring = document.createElement('div'); ring.id = 'cursor-ring';
+  document.body.appendChild(dot); document.body.appendChild(ring);
+  let mx = -100, my = -100, rx = -100, ry = -100;
+  addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+  });
+  (function loop() {
+    rx += (mx - rx) * 0.16; ry += (my - ry) * 0.16;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    requestAnimationFrame(loop);
+  })();
+  const sel = 'a,button,select,input,.sport,.venue-card,.program,.portal-tab,.admin-tab';
+  document.addEventListener('mouseover', e => { if (e.target.closest(sel)) ring.classList.add('grow'); });
+  document.addEventListener('mouseout', e => { if (e.target.closest(sel)) ring.classList.remove('grow'); });
+})();
+
+/* ---------- scroll reveals ---------- */
+(function () {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+    document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
+    return;
+  }
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
+  const watch = root => {
+    if (root.classList && root.classList.contains('reveal') && !root.classList.contains('visible')) io.observe(root);
+    if (root.querySelectorAll) root.querySelectorAll('.reveal:not(.visible)').forEach(el => io.observe(el));
+  };
+  watch(document);
+  new MutationObserver(muts => {
+    muts.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) watch(n); }));
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+
+/* ---------- portals & tabs ---------- */
+function toggleMenu() { document.body.classList.toggle('menu-open'); }
+function showPortal(type) {
+  if (type === 'admin') { showToast('admins log in at the admin portal'); return; }
+  if (!currentUser) { showLogin(); showToast('login first'); return; }
+  document.body.classList.remove('menu-open');
+  document.querySelectorAll('.portal-section').forEach(x => x.classList.remove('active'));
+  document.querySelector('main').style.display = 'none';
+  document.querySelector('footer').style.display = 'none';
+  const target = document.getElementById(type === 'gym' ? 'gymPortal' : 'userPortal');
+  target.classList.add('active');
+  if (type === 'user') {
+    refreshUserPortal();
+    switchUserTab('overview', document.querySelector('#userPortal .portal-tab'));
+  } else {
+    refreshGym();
+    switchGymTab('overview', document.querySelector('#gymPortal .admin-tab'));
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function closePortals() {
+  document.body.classList.remove('menu-open');
+  document.querySelectorAll('.portal-section').forEach(x => x.classList.remove('active'));
+  document.querySelector('main').style.display = '';
+  document.querySelector('footer').style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function switchUserTab(tab, btn) {
+  document.querySelectorAll('#userPortal .portal-panel').forEach(x => x.classList.remove('active'));
+  document.getElementById('user-' + tab).classList.add('active');
+  document.querySelectorAll('#userPortal .portal-tab').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+}
+/* ---------- ai widget (answers from live catalog) ---------- */
+function toggleChat() {
+  const chat = document.getElementById('aiChatWindow');
+  chat.classList.toggle('show');
+  if (chat.classList.contains('show')) document.getElementById('aiInput').focus();
+}
+async function sendAiMessage() {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const box = document.getElementById('aiMessages');
+  const um = document.createElement('div');
+  um.className = 'msg user'; um.textContent = text;
+  box.appendChild(um);
+  input.value = '';
+  box.scrollTop = box.scrollHeight;
+  let reply = null;
+  try {
+    const r = await api('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message: text }) });
+    reply = r.reply;
+  } catch (e) {}
+  setTimeout(() => {
+    const bm = document.createElement('div');
+    bm.className = 'msg bot'; bm.textContent = reply || aiAnswer(text);
+    box.appendChild(bm);
+    box.scrollTop = box.scrollHeight;
+  }, 500);
+}
+function aiAnswer(text) {
+  const t = text.toLowerCase();
+  const sport = sportsData.find(s => t.includes(s.name.toLowerCase()));
+  if (sport) {
+    const ps = programsData.filter(p => sportIdOf(p) === sport._id);
+    if (!ps.length) return 'no ' + sport.name + ' programs right now.';
+    return sport.name + ': ' + ps.map(p =>
+      p.name + ' on ' + (p.day || '') + 's ' + (p.startTime || '') + '-' + (p.endTime || '') + ' at ' + (p.location || '')
+    ).join('; ') + '.';
+  }
+  if (t.includes('venue') || t.includes('where') || t.includes('location') || t.includes('map')) {
+    if (!gymsData.length) return 'venues are loading, one sec.';
+    return 'we have ' + gymsData.length + ' venues across hyderabad: ' +
+      gymsData.slice(0, 8).map(g => g.name + ' (' + (g.area || '') + ')').join(', ') +
+      (gymsData.length > 8 ? ', and more. scroll the venues section for the full list with maps.' : '.');
+  }
+  if (t.includes('coach')) {
+    const q = t.replace('coach', '').trim();
+    const ps = programsData.filter(p => (p.coach || '').toLowerCase().includes(q));
+    if (!ps.length) return 'couldnt find that coach. try a name like arjun or ananya.';
+    return ps.map(p => p.coach + ' coaches ' + p.name + ' on ' + (p.day || '') + 's at ' + (p.location || '')).join('; ') + '.';
+  }
+  if (t.includes('plan') || t.includes('price') || t.includes('cost')) {
+    return 'plans: ' + plansData.map(p => p.name + ' ' + inr(p.priceInr) + ' ' + (p.billingCycle || '')).join(', ') + '.';
+  }
+  if (t.includes('invoice') || t.includes('bill') || t.includes('pay')) {
+    return 'pick a plan and we create an invoice for you. pay it with upi or card in test mode and it flips to paid instantly.';
+  }
+  return 'ask me about a sport, plans, or billing. try "football" or "plans".';
+}
+
+/* ---------- boot ---------- */
+document.getElementById('loginModal').addEventListener('click', e => {
+  if (e.target.id === 'loginModal') hideLogin();
+});
+document.getElementById('loginModal').addEventListener('keydown', e => {
+  if (e.key === 'Escape') hideLogin();
+});
+function catalogFailed() {
+  const msg = '<p style="opacity:.6;font-size:14px">could not reach the server. start the backend, then refresh.</p>';
+  ['sportGrid', 'programGrid', 'plansGrid', 'gymList'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.innerHTML.trim()) el.innerHTML = msg;
+  });
+}
+document.getElementById('themeToggle').addEventListener('click',(e)=>{
+  const root=document.documentElement;
+  const next=root.dataset.theme==='light'?'dark':'light';
+  const x=e.clientX||window.innerWidth-80, y=e.clientY||40;
+  const maxD=Math.hypot(Math.max(x,window.innerWidth-x),Math.max(y,window.innerHeight-y))||1;
+  const els=root.querySelectorAll('body *');
+  els.forEach(el=>{
+    const r=el.getBoundingClientRect();
+    if(!r.width&&!r.height)return;
+    const d=Math.hypot(r.left+r.width/2-x,r.top+r.height/2-y)/maxD;
+    el.style.setProperty('--td',(d*400).toFixed(0)+'ms');
+  });
+  root.classList.add('theme-anim');
+  root.dataset.theme=next;
+  try{localStorage.setItem('ss-theme',next)}catch(err){}
+  setTimeout(()=>{
+    root.classList.remove('theme-anim');
+    els.forEach(el=>el.style.removeProperty('--td'));
+  },1150);
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  try { await loadCatalog(); }
+  catch (e) { console.warn('api not reachable yet:', e.message); catalogFailed(); }
+  await restoreSession();
+  initGoogleBtn();
+});
+
+</script>
+
+<noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
+</body>
+</html>
