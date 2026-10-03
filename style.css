@@ -220,8 +220,20 @@ body.link-hover .cursor-ring { width: 48px; height: 48px; opacity: .85; }
 .np-bar { height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .np-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
 .dc-ava { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); border: 1px solid var(--line); color: var(--accent); font-weight: 700; font-size: 19px; background-size: cover; }
-.dc-name { font-weight: 600; font-size: 14.5px; margin-bottom: 3px; }
+.dc-name { font-weight: 600; font-size: 14.5px; margin-bottom: 3px; display: flex; align-items: center; gap: 7px; }
 .dc-status { font-size: 11.5px; color: var(--dim); }
+.copy-ico {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 4px; margin: -4px; border-radius: 6px;
+  color: var(--dim); cursor: pointer;
+  transition: color .15s ease, background .15s ease, transform .3s cubic-bezier(.34, 1.56, .64, 1);
+}
+.copy-ico:hover { color: var(--ink); background: var(--hover); }
+.copy-ico:active { transform: scale(.88); }
+.copy-ico .ico-check { display: none; }
+.copy-ico.ok { color: var(--grn); }
+.copy-ico.ok .ico-copy { display: none; }
+.copy-ico.ok .ico-check { display: block; }
 
 /* ---------- quote card ---------- */
 .quote-card { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 30px 28px 24px; margin-top: 12px; box-shadow: var(--shadow); overflow: hidden; }
