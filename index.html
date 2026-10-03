@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-motion="on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yoshik — developer</title>
+<meta name="description" content="yoshik builds full-stack apps, android tools and ml models.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot" aria-hidden="true">
+  <div class="boot-box">
+    <p class="boot-line" data-t="100">&gt; hello_</p>
+    <p class="boot-line" data-t="380">&gt; loading portfolio .... <span class="ok">ok</span></p>
+    <p class="boot-line" data-t="640">&gt; signal locked ......... <span class="ok">ok</span></p>
+  </div>
+</div>
+
+<!-- CURSOR -->
+<div class="cursor-dot" aria-hidden="true"></div>
+<div class="cursor-ring" aria-hidden="true"></div>
+
+<!-- SCROLL PROGRESS -->
+<div class="progress" aria-hidden="true"><i id="progressFill"></i></div>
+
+<!-- ACCURACY HUD -->
+<div class="acc-badge" id="accBadge" data-hover title="click to reset">acc -- <span>0/0</span></div>
+
+<!-- NAV -->
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand magnetic" href="#top" data-hover>yk<span class="brand-dot">.</span></a>
+    <nav class="nav">
+      <a href="#work" data-hover>work</a>
+      <a href="#about" data-hover>about</a>
+      <a href="#stack" data-hover>stack</a>
+      <a href="#contact" data-hover>contact</a>
+    </nav>
+    <div class="controls">
+      <button id="themeBtn" class="ctl magnetic" data-hover title="toggle theme">◐</button>
+      <button id="motionBtn" class="ctl magnetic" data-hover title="toggle motion">≋</button>
+    </div>
+  </div>
+</header>
+
+<main id="top" class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-id" data-reveal>
+      <div class="avatar" aria-hidden="true">
+        <svg viewBox="0 0 96 96">
+          <circle cx="48" cy="48" r="48" fill="#90c5ff"/>
+          <g fill="#1d2a44">
+            <rect x="30" y="28" width="8" height="8"/><rect x="58" y="28" width="8" height="8"/>
+            <rect x="38" y="36" width="8" height="8"/><rect x="50" y="36" width="8" height="8"/>
+            <rect x="44" y="44" width="8" height="8"/>
+            <rect x="44" y="52" width="8" height="8"/>
+            <rect x="44" y="60" width="8" height="8"/>
+            <rect x="36" y="68" width="24" height="8"/>
+          </g>
+        </svg>
+      </div>
+      <div class="hero-id-text">
+        <h1>yoshik</h1>
+        <p class="subline">developer · hyderabad
+          <button class="copy-mail" id="mailCopy" data-hover title="copy email">yoshik08@yoshik.xyz ⧉</button>
+        </p>
+      </div>
+    </div>
+    <p class="tagline" data-reveal style="--d:.08s">
+      <span class="prompt">&gt;</span><span id="typed"></span><span class="caret" aria-hidden="true"></span>
+    </p>
+    <p class="hero-note" data-reveal style="--d:.14s">i build full-stack apps, android tools and ml models — then i ship them, break them, and ship them again.</p>
+    <div class="sp-line" data-reveal style="--d:.2s">
+      <svg class="sp-glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.6 14.4a.7.7 0 0 1-1 .3c-2.7-1.7-6.1-2-10.1-1.1a.7.7 0 1 1-.3-1.4c4.4-1 8.2-.6 11.3 1.3.3.2.4.6.1.9zm1.2-2.8a.9.9 0 0 1-1.2.3c-3.1-1.9-7.8-2.4-11.4-1.3a.9.9 0 1 1-.5-1.7c4.1-1.2 9.3-.6 12.9 1.5.4.3.5.8.2 1.2zm.1-2.9C14.3 8.5 8.2 8.3 4.9 9.3a1.1 1.1 0 1 1-.6-2.1c3.8-1.2 10.5-1 14.6 1.5a1.1 1.1 0 0 1-1 2z"/></svg>
+      <span class="sp-label">last played —</span>
+      <span class="sp-track" id="spHeroTrack">quiet rn</span>
+    </div>
+    <div class="socials" data-reveal style="--d:.26s">
+      <a href="https://github.com/yoshik08" target="_blank" rel="noopener" data-hover title="github" aria-label="github">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.2-.4-1.3.1-2.6 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.4.1 2.6.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>
+      </a>
+      <a href="https://x.com/yoshik08" target="_blank" rel="noopener" data-hover title="x" aria-label="x">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.7 3H21l-7.3 8.3L22.2 21h-6.7l-5.2-6.2L4.4 21H1l7.8-8.9L1.8 3h6.9l4.7 5.7L17.7 3zm-1.2 16h1.9L6.6 4.9H4.6L16.5 19z"/></svg>
+      </a>
+      <a href="https://instagram.com/yoshik08" target="_blank" rel="noopener" data-hover title="instagram" aria-label="instagram">
+        <svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 8.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8z"/><rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.2" fill="currentColor"/></svg>
+      </a>
+      <a href="https://linkedin.com/in/yoshik08" target="_blank" rel="noopener" data-hover title="linkedin" aria-label="linkedin">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.9 8.6H3.6V21h3.3V8.6zM5.2 3.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM21 13.4c0-3.2-1.7-4.7-4-4.7-1.8 0-2.7 1-3.1 1.7V8.6h-3.3V21h3.3v-6.6c0-1.6.8-2.5 2.1-2.5 1.2 0 1.9.8 1.9 2.5V21H21v-7.6z"/></svg>
+      </a>
+      <a href="mailto:yoshik08@yoshik.xyz" data-hover title="email" aria-label="email">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- WORK -->
+  <section id="work" class="section">
+    <h2 data-reveal>work</h2>
+    <div class="rows" data-reveal style="--d:.06s">
+
+      <article class="row">
+        <button class="row-top" data-hover aria-expanded="true">
+          <span class="row-main">
+            <span class="row-name">sportsphere <span class="pill live"><span class="pdot"></span>live</span></span>
+            <span class="row-desc">sports venue + program booking platform</span>
+          </span>
+          <span class="chev">⌄</span>
+        </button>
+        <div class="row-detail open">
+          <div class="row-detail-in">
+            <p>book venues, programs and coaches. google login, razorpay payments, admin panel with live invoice sync. node/express backend on mongodb atlas.</p>
+            <div class="chips"><span>node.js</span><span>express</span><span>mongodb</span><span>razorpay</span></div>
+            <div class="row-links">
+              <a href="https://sportsphere-app.vercel.app" target="_blank" rel="noopener" data-hover>open app ↗</a>
+              <a href="https://github.com/yoshik08/DBSE-PROJECT" target="_blank" rel="noopener" data-hover>repo ↗</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="row">
+        <button class="row-top" data-hover aria-expanded="false">
+          <span class="row-main">
+            <span class="row-name">attenly <span class="pill live"><span class="pdot"></span>live</span></span>
+            <span class="row-desc">attendance, automated from the college erp</span>
+          </span>
+          <span class="chev">⌄</span>
+        </button>
+        <div class="row-detail">
+          <div class="row-detail-in">
+            <p>pulls attendance by itself. auto captcha solving, background sync every 5 minutes, safe-bunk calculator. one login and it just works.</p>
+            <div class="chips"><span>web app</span><span>google oauth</span><span>mongodb</span><span>render</span></div>
+            <div class="row-links">
+              <a href="https://attenly-pi.vercel.app" target="_blank" rel="noopener" data-hover>open app ↗</a>
+              <a href="https://github.com/yoshik08/attenly" target="_blank" rel="noopener" data-hover>repo ↗</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="row">
+        <button class="row-top" data-hover aria-expanded="false">
+          <span class="row-main">
+            <span class="row-name">spotlight launcher <span class="pill ship">apk shipped</span></span>
+            <span class="row-desc">android launcher, opens straight into search</span>
+          </span>
+          <span class="chev">⌄</span>
+        </button>
+        <div class="row-detail">
+          <div class="row-detail-in">
+            <p>native android launcher. opens straight into search in under a second, filters installed apps as you type, one tap to launch. zero bloat.</p>
+            <div class="chips"><span>kotlin</span><span>android sdk</span><span>native</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="row">
+        <button class="row-top" data-hover aria-expanded="false">
+          <span class="row-main">
+            <span class="row-name">audience classifier <span class="pill lab">notebook</span></span>
+            <span class="row-desc">ml model predicting engagement tiers</span>
+          </span>
+          <span class="chev">⌄</span>
+        </button>
+        <div class="row-detail">
+          <div class="row-detail-in">
+            <p>predicts audience engagement tiers from post features. 1,525 posts, leakage columns stripped, clean train/eval pipeline in colab.</p>
+            <div class="chips"><span>python</span><span>pandas</span><span>scikit-learn</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="row">
+        <button class="row-top" data-hover aria-expanded="false">
+          <span class="row-main">
+            <span class="row-name">markethub <span class="pill wip">in progress</span></span>
+            <span class="row-desc">multi-vendor ecommerce marketplace</span>
+          </span>
+          <span class="chev">⌄</span>
+        </button>
+        <div class="row-detail">
+          <div class="row-detail-in">
+            <p>customer, vendor and admin portals, auto tracking ids, delivery dates, inventory. frontend live, flask backend deploying.</p>
+            <div class="chips"><span>flask</span><span>tidb / mysql</span><span>vanilla js</span></div>
+            <div class="row-links">
+              <a href="https://github.com/yoshik08/markethub-fixed" target="_blank" rel="noopener" data-hover>repo ↗</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="section">
+    <h2 data-reveal>about</h2>
+    <div class="prose" data-reveal style="--d:.06s">
+      <p>i'm yoshik, 18, from hyderabad. i like building things that actually run — apps people tap, models that predict, tools that save me five minutes every day.</p>
+      <p>right now that means keeping <b>sportsphere</b> alive, making <b>attenly</b> sync like clockwork, and learning whatever the next build demands. my stack is whatever gets it shipped: node, python, kotlin, sql — pick the right tool, skip the ceremony.</p>
+      <p class="dim">when i'm not building: valorant, running, and arguing about which framework is overrated this week.</p>
+    </div>
+  </section>
+
+  <!-- STACK -->
+  <section id="stack" class="section">
+    <h2 data-reveal>stack</h2>
+    <div class="cards" data-reveal style="--d:.06s">
+      <div class="card tilt" data-hover>
+        <div class="glare" aria-hidden="true"></div>
+        <p class="card-title">backend</p>
+        <ul class="meters">
+          <li><span>node.js / express</span><div class="bar"><i style="--v:92%"></i></div></li>
+          <li><span>rest apis</span><div class="bar"><i style="--v:90%"></i></div></li>
+          <li><span>mongodb / mongoose</span><div class="bar"><i style="--v:85%"></i></div></li>
+          <li><span>flask</span><div class="bar"><i style="--v:75%"></i></div></li>
+          <li><span>sql / tidb</span><div class="bar"><i style="--v:78%"></i></div></li>
+        </ul>
+        <span class="card-arrow">↗</span>
+      </div>
+      <div class="card tilt" data-hover>
+        <div class="glare" aria-hidden="true"></div>
+        <p class="card-title">frontend</p>
+        <ul class="meters">
+          <li><span>html / css</span><div class="bar"><i style="--v:90%"></i></div></li>
+          <li><span>javascript</span><div class="bar"><i style="--v:88%"></i></div></li>
+          <li><span>responsive ui</span><div class="bar"><i style="--v:86%"></i></div></li>
+        </ul>
+        <span class="card-arrow">↗</span>
+      </div>
+      <div class="card tilt" data-hover>
+        <div class="glare" aria-hidden="true"></div>
+        <p class="card-title">mobile + ml</p>
+        <ul class="meters">
+          <li><span>kotlin / android</span><div class="bar"><i style="--v:80%"></i></div></li>
+          <li><span>python</span><div class="bar"><i style="--v:85%"></i></div></li>
+          <li><span>pandas / sklearn</span><div class="bar"><i style="--v:78%"></i></div></li>
+        </ul>
+        <span class="card-arrow">↗</span>
+      </div>
+      <div class="card tilt" data-hover>
+        <div class="glare" aria-hidden="true"></div>
+        <p class="card-title">ops</p>
+        <ul class="meters">
+          <li><span>git / github</span><div class="bar"><i style="--v:88%"></i></div></li>
+          <li><span>vercel / render</span><div class="bar"><i style="--v:84%"></i></div></li>
+          <li><span>razorpay</span><div class="bar"><i style="--v:75%"></i></div></li>
+          <li><span>postman</span><div class="bar"><i style="--v:82%"></i></div></li>
+        </ul>
+        <span class="card-arrow">↗</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE -->
+  <section id="live" class="section">
+    <h2 data-reveal>right now</h2>
+    <div class="cards" data-reveal style="--d:.06s">
+      <div class="card" data-hover>
+        <p class="card-title">♪ now playing <span class="live-dot" id="spDot"></span></p>
+        <div class="np-body">
+          <div class="np-art" id="spArt">♪</div>
+          <div class="np-meta">
+            <p class="np-track" id="spTrack">connect spotify to go live</p>
+            <p class="np-artist" id="spArtist">add keys in vercel → redeploy</p>
+          </div>
+        </div>
+        <div class="np-bar"><i id="spProg"></i></div>
+      </div>
+      <div class="card" data-hover>
+        <p class="card-title">◉ discord <span class="live-dot" id="dcDot"></span></p>
+        <div class="dc-body">
+          <div class="dc-ava" id="dcAva">y</div>
+          <div class="dc-meta">
+            <p class="dc-name" id="dcName">yoshik08</p>
+            <p class="dc-status" id="dcStatus">set your discord id in script.js</p>
+          </div>
+        </div>
+        <button class="pill-btn" id="dcCopy" data-hover>copy discord</button>
+      </div>
+    </div>
+    <div class="quote-card" data-reveal>
+      <p class="q-marks" aria-hidden="true">“</p>
+      <p class="q-text"><em>ship it, break it, ship it again.</em></p>
+      <p class="q-attr">— me, most days</p>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" class="section">
+    <h2 data-reveal>contact</h2>
+    <div data-reveal style="--d:.06s">
+      <p class="contact-big">have an idea? let's talk.</p>
+      <p class="dim contact-sub">projects, collabs, or arguing about frameworks — my inbox is open.</p>
+      <div class="contact-cta">
+        <a href="mailto:yoshik08@yoshik.xyz" class="pill-btn solid magnetic" data-hover>yoshik08@yoshik.xyz</a>
+        <a href="https://github.com/yoshik08" target="_blank" rel="noopener" class="pill-btn magnetic" data-hover>github ↗</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap foot-grid">
+    <div class="foot-col">
+      <p class="foot-label">navigate</p>
+      <a href="#top" data-hover>home</a>
+      <a href="#work" data-hover>work</a>
+      <a href="#about" data-hover>about</a>
+      <a href="#stack" data-hover>stack</a>
+      <a href="#contact" data-hover>contact</a>
+    </div>
+    <div class="foot-col">
+      <p class="foot-label">connect</p>
+      <div class="foot-socials">
+        <a href="https://github.com/yoshik08" target="_blank" rel="noopener" data-hover title="github">gh</a>
+        <a href="https://x.com/yoshik08" target="_blank" rel="noopener" data-hover title="x">x</a>
+        <a href="https://instagram.com/yoshik08" target="_blank" rel="noopener" data-hover title="instagram">ig</a>
+        <a href="https://linkedin.com/in/yoshik08" target="_blank" rel="noopener" data-hover title="linkedin">in</a>
+      </div>
+    </div>
+  </div>
+  <div class="wrap foot-base">
+    <p>© 2026 yoshik — built from scratch, no templates.</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
