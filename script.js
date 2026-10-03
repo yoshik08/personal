@@ -409,16 +409,19 @@
       return getComputedStyle(root).getPropertyValue("--accent").trim() || "#3b5bfd";
     }
 
-    /* floating pokeballs */
-    var pokeImg = new Image();
-    var pokeReady = false;
-    pokeImg.onload = function () { pokeReady = true; };
-    pokeImg.src = "assets/pokeball.png";
+    /* floating pokemon: 100 cute ones, starters first */
+    var pokeIds = [1,4,7,152,155,158,252,255,258,387,390,393,495,498,501,650,653,656,722,725,728,810,813,816,906,909,912,25,35,37,39,52,54,58,77,100,113,133,151,172,173,174,175,183,196,197,209,216,220,231,251,270,280,298,300,309,325,333,351,358,360,403,406,417,420,425,427,439,440,447,492,546,572,587,607,610,613,633,636,677,684,686,700,702,704,719,742,744,775,777,778,789,800,808,831,835,872,915,921,926];
+    var pokeImgs = pokeIds.map(function (id) {
+      var im = new Image();
+      im.src = "assets/pokemon/" + id + ".png";
+      return im;
+    });
 
     var balls = [];
-    for (var i = 0; i < 14; i++) {
-      var r = 13 + Math.random() * 22;
+    for (var i = 0; i < pokeImgs.length; i++) {
+      var r = 10 + Math.random() * 14;
       balls.push({
+        img: pokeImgs[i],
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
         r: r,
@@ -441,8 +444,8 @@
       c.globalAlpha = root.getAttribute("data-theme") === "light" ? 0.25 : b.alpha;
       c.translate(b.x, b.y);
       c.rotate(b.rot);
-      if (pokeReady) {
-        c.drawImage(pokeImg, -rr, -rr, rr * 2, rr * 2);
+      if (b.img.complete && b.img.naturalWidth) {
+        c.drawImage(b.img, -rr, -rr, rr * 2, rr * 2);
       } else {
         /* vector fallback while the image loads */
         c.beginPath(); c.arc(0, 0, rr, 0, Math.PI); c.fillStyle = "#ececec"; c.fill();
