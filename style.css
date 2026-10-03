@@ -125,11 +125,11 @@ body.link-hover .cursor-ring { width: 48px; height: 48px; opacity: .85; }
 .caret { display: inline-block; width: 8px; height: 1.1em; background: var(--accent); vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 .hero-note { color: var(--dim); font-size: 14px; max-width: 520px; margin-bottom: 16px; }
-.sp-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); margin-bottom: 18px; }
+.sp-line { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--dim); margin-bottom: 18px; }
 .sp-glyph { width: 17px; height: 17px; color: var(--grn); flex-shrink: 0; }
-.sp-glyph-link { display: inline-flex; flex-shrink: 0; border-radius: 50%; transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); }
-.sp-glyph-link .sp-glyph { width: 26px; height: 26px; }
-.sp-glyph-link:hover { transform: scale(1.15); }
+.sp-glyph-link { display: inline-flex; align-items: center; flex-shrink: 0; border-radius: 50%; line-height: 0; transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); }
+.sp-glyph-link .sp-glyph { width: 30px; height: 30px; display: block; }
+.sp-glyph-link:hover { transform: scale(1.12); }
 .sp-label { color: var(--faint); }
 .sp-track { color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .sp-line { min-width: 0; }
