@@ -32,6 +32,7 @@ export default async function handler(req, res) {
       image: t.album && t.album.images && t.album.images.length
         ? (t.album.images[1] || t.album.images[0]).url
         : null,
+      url: t.external_urls ? t.external_urls.spotify : null,
     });
 
     const now = await fetch(
