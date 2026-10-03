@@ -409,8 +409,9 @@
       return getComputedStyle(root).getPropertyValue("--accent").trim() || "#3b5bfd";
     }
 
-    /* floating pokemon: 100 cute ones, starters first */
-    var pokeIds = [1,4,7,152,155,158,252,255,258,387,390,393,495,498,501,650,653,656,722,725,728,810,813,816,906,909,912,25,35,37,39,52,54,58,77,100,113,133,151,172,173,174,175,183,196,197,209,216,220,231,251,270,280,298,300,309,325,333,351,358,360,403,406,417,420,425,427,439,440,447,492,546,572,587,607,610,613,633,636,677,684,686,700,702,704,719,742,744,775,777,778,789,800,808,831,835,872,915,921,926];
+    /* floating pokemon: the full 1025 */
+    var pokeIds = [];
+    for (var pid = 1; pid <= 1025; pid++) pokeIds.push(pid);
     var pokeImgs = pokeIds.map(function (id) {
       var im = new Image();
       im.src = "assets/pokemon/" + id + ".png";
@@ -419,7 +420,7 @@
 
     var balls = [];
     for (var i = 0; i < pokeImgs.length; i++) {
-      var r = 10 + Math.random() * 14;
+      var r = 8 + Math.random() * 10;
       balls.push({
         img: pokeImgs[i],
         x: Math.random() * window.innerWidth,
