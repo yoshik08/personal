@@ -265,22 +265,31 @@
       spArt = document.getElementById("spArt"),
       spProg = document.getElementById("spProg"),
       spDot = document.getElementById("spDot"),
-      spHero = document.getElementById("spHeroTrack"),
+      spHeroLink = document.getElementById("spHeroLink"),
+      spHeroArtists = document.getElementById("spHeroArtists"),
       spTimer = null;
+  function shortArtists(a) {
+    var parts = (a || "").split(", ");
+    return parts.length > 2 ? parts.slice(0, 2).join(", ") + ", …" : a;
+  }
   function renderSpotify(d) {
     var title = d && d.title ? d.title : null;
     var artist = d && d.artist ? d.artist : "";
     if (!d || d.playing === false) {
       spTrack.textContent = "nothing playing rn";
       spArtist.textContent = d && d.recent ? "last: " + d.recent : "quiet mode";
-      spHero.textContent = d && d.recent ? d.recent : "quiet rn";
+      spHeroLink.textContent = "quiet rn";
+      spHeroLink.removeAttribute("href");
+      spHeroArtists.textContent = "";
       spDot.classList.remove("on");
       if (spTimer) { clearInterval(spTimer); spTimer = null; }
       return;
     }
     spTrack.textContent = title || "unknown track";
     spArtist.textContent = artist;
-    spHero.textContent = title + (artist ? " — " + artist : "");
+    spHeroLink.textContent = title || "unknown track";
+    if (d.url) spHeroLink.setAttribute("href", d.url); else spHeroLink.removeAttribute("href");
+    spHeroArtists.textContent = artist ? " — " + shortArtists(artist) : "";
     spDot.classList.add("on");
     if (d.image) { spArt.style.backgroundImage = "url(" + d.image + ")"; spArt.textContent = ""; }
     if (spTimer) clearInterval(spTimer);
