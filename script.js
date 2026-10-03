@@ -329,15 +329,18 @@
   }
   pollDiscord();
   setInterval(pollDiscord, 30000);
-  document.getElementById("dcCopy").addEventListener("click", function () {
-    var b = this, handle = dcName.textContent || DISCORD_USERNAME;
-    var done = function (ok) {
-      b.textContent = ok ? "copied ✓" : "copy discord";
-      setTimeout(function () { b.textContent = "copy discord"; }, 1500);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(handle).then(function () { done(true); }, function () { done(false); });
-    } else { done(false); }
+  /* profile link: desktop opens in a new tab, mobile deep-links into the app */
+  document.getElementById("dcOpen").addEventListener("click", function (e) {
+    if (/android|iphone|ipad|ipod/i.test(navigator.userAgent || "")) {
+      e.preventDefault();
+      var t = Date.now();
+      window.location.href = "discord://discord.com/users/" + DISCORD_ID;
+      setTimeout(function () {
+        if (Date.now() - t < 1800) {
+          window.open("https://discord.com/users/" + DISCORD_ID, "_blank");
+        }
+      }, 1100);
+    }
   });
 
   /* ---------- 13. pokeballs + osu trail ---------- */
