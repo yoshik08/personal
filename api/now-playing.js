@@ -29,6 +29,9 @@ export default async function handler(req, res) {
     const pick = (t) => ({
       title: t.name,
       artist: (t.artists || []).map((a) => a.name).join(", "),
+      image: t.album && t.album.images && t.album.images.length
+        ? (t.album.images[1] || t.album.images[0]).url
+        : null,
     });
 
     const now = await fetch(
