@@ -243,17 +243,17 @@
   });
   /* pikachu zoom easter egg on theme toggle: 1px -> full size + fade, 0.5s */
   var pikaZoomImg = new Image();
-  pikaZoomImg.src = "assets/pikachu.png";
+  pikaZoomImg.src = "assets/pikachu-zoom.png";
   function pikaZoom() {
     var img = document.createElement("img");
-    img.src = "assets/pikachu.png";
+    img.src = "assets/pikachu-zoom.png";
     img.alt = "";
     img.style.cssText = "position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);z-index:9999;pointer-events:none;opacity:1;";
     document.body.appendChild(img);
     void img.offsetWidth;
     img.style.transition = "width .5s ease-out,height .5s ease-out,opacity .5s ease-out";
-    img.style.width = "274px";
-    img.style.height = "280px";
+    img.style.width = "300px";
+    img.style.height = "290px";
     img.style.opacity = "0";
     setTimeout(function () { img.remove(); }, 550);
   }
