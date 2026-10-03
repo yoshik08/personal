@@ -314,7 +314,7 @@
       .catch(function () {});
   }
   pollSpotify();
-  setInterval(pollSpotify, 15000);
+  setInterval(pollSpotify, 5000);
 
   /* ---------- 12. discord ---------- */
   var dcStatus = document.getElementById("dcStatus"),
