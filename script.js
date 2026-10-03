@@ -298,7 +298,10 @@
       var draw = function () {
         p += 1000;
         spProg.style.width = Math.min(100, (p / d.durationMs) * 100) + "%";
-        if (p >= d.durationMs && spTimer) { clearInterval(spTimer); spTimer = null; }
+        if (p >= d.durationMs) {
+          if (spTimer) { clearInterval(spTimer); spTimer = null; }
+          pollSpotify(); /* track ended — grab the next one right away */
+        }
       };
       draw();
       spTimer = setInterval(draw, 1000);
@@ -311,7 +314,7 @@
       .catch(function () {});
   }
   pollSpotify();
-  setInterval(pollSpotify, 30000);
+  setInterval(pollSpotify, 15000);
 
   /* ---------- 12. discord ---------- */
   var dcStatus = document.getElementById("dcStatus"),
