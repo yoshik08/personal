@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>venues map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #0a0a0b; }
+  #map { height: 100%; width: 100%; }
+  .leaflet-popup-content-wrapper { background: #101013; color: #f4f2ed; border-radius: 10px; }
+  .leaflet-popup-content { font: 13px 'DM Sans', -apple-system, sans-serif; margin: 10px 14px; }
+  .leaflet-popup-tip { background: #101013; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  var pins = (new URLSearchParams(location.search).get('pins') || '').split('|').filter(Boolean).map(function (s) {
+    var i1 = s.indexOf(','), i2 = s.indexOf(',', i1 + 1);
+    if (i1 < 0 || i2 < 0) return null;
+    return { lat: parseFloat(s.slice(0, i1)), lng: parseFloat(s.slice(i1 + 1, i2)), name: decodeURIComponent(s.slice(i2 + 1)) };
+  }).filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lng); });
+  var map = L.map('map', { scrollWheelZoom: false }).setView([17.385, 78.4867], 11);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19, attribution: '&copy; Esri World Imagery'
+  }).addTo(map);
+  var pts = [];
+  pins.forEach(function (p) {
+    L.circleMarker([p.lat, p.lng], {
+      radius: 7, color: '#0a0a0b', weight: 2, fillColor: '#d8ff3f', fillOpacity: 1
+    }).addTo(map).bindPopup(p.name);
+    pts.push([p.lat, p.lng]);
+  });
+  if (pts.length > 1) map.fitBounds(pts, { padding: [40, 40] });
+  else if (pts.length === 1) map.setView(pts[0], 15);
+})();
+</script>
+</body>
+</html>
