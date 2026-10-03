@@ -329,7 +329,17 @@
   }
   pollDiscord();
   setInterval(pollDiscord, 30000);
-  /* profile link: desktop opens in a new tab, mobile deep-links into the app */
+  /* copy the hardcoded 4L username */
+  document.getElementById("dcCopyName").addEventListener("click", function () {
+    var b = this;
+    var done = function (ok) {
+      if (ok) b.classList.add("ok");
+      setTimeout(function () { b.classList.remove("ok"); }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText("x04_").then(function () { done(true); }, function () { done(false); });
+    } else { done(false); }
+  });
   document.getElementById("dcOpen").addEventListener("click", function (e) {
     if (/android|iphone|ipad|ipod/i.test(navigator.userAgent || "")) {
       e.preventDefault();
