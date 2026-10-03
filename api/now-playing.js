@@ -26,13 +26,15 @@ export default async function handler(req, res) {
     if (!access_token) return res.status(200).json({});
     const auth = { Authorization: `Bearer ${access_token}` };
 
-    const pick = (t) => ({
+    const pick = (t, outer) => ({
       title: t.name,
       artist: (t.artists || []).map((a) => a.name).join(", "),
       image: t.album && t.album.images && t.album.images.length
         ? (t.album.images[1] || t.album.images[0]).url
         : null,
       url: t.external_urls ? t.external_urls.spotify : null,
+      progressMs: outer ? outer.progress_ms : null,
+      durationMs: t.duration_ms || null,
     });
 
     const now = await fetch(
@@ -41,7 +43,7 @@ export default async function handler(req, res) {
     );
     if (now.status === 200) {
       const d = await now.json();
-      if (d && d.item) return res.status(200).json({ playing: d.is_playing, ...pick(d.item) });
+      if (d && d.item) return res.status(200).json({ playing: d.is_playing, ...pick(d.item, d) });
     }
     // nothing playing right now: fall back to last played
     const recent = await fetch(
