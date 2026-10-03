@@ -451,7 +451,13 @@
     var blastCount = 0;
     var pikachus = [];
 
-    /* theme toggle: 100 pokeballs burst from the button */
+    /* theme toggle: 100 pokemon burst from the button */
+    var pokeIds = [1,4,7,152,155,158,252,255,258,387,390,393,495,498,501,650,653,656,722,725,728,810,813,816,906,909,912,25,35,37,39,52,54,58,77,100,113,133,151,172,173,174,175,183,196,197,209,216,220,231,251,270,280,298,300,309,325,333,351,358,360,403,406,417,420,425,427,439,440,447,492,546,572,587,607,610,613,633,636,677,684,686,700,702,704,719,742,744,775,777,778,789,800,808,831,835,872,915,921,926];
+    var pokeImgs = pokeIds.map(function (id) {
+      var im = new Image();
+      im.src = "assets/pokemon/" + id + ".png";
+      return im;
+    });
     var popBalls = [];
     window.ykThemePop = function () {
       if (!motionOK()) return;
@@ -460,15 +466,16 @@
       var r = btn.getBoundingClientRect();
       var x = r.left + r.width / 2, y = r.top + r.height / 2;
       blast(x, y);
-      for (var i = 0; i < 100; i++) {
+      for (var i = 0; i < pokeImgs.length; i++) {
         var a = Math.random() * Math.PI * 2;
         var sp = 1.5 + Math.random() * 4.5;
         popBalls.push({
+          img: pokeImgs[i],
           x: x, y: y,
           vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2.5,
           rot: Math.random() * Math.PI * 2,
           vrot: (Math.random() - 0.5) * 0.25,
-          sz: 12 + Math.random() * 16,
+          sz: 16 + Math.random() * 18,
           life: 1
         });
       }
@@ -682,7 +689,7 @@
         fgx.globalAlpha = Math.min(1, qb.life * 2);
         fgx.translate(qb.x, qb.y);
         fgx.rotate(qb.rot);
-        if (pokeReady) fgx.drawImage(pokeImg, -qb.sz / 2, -qb.sz / 2, qb.sz, qb.sz);
+        if (qb.img.complete && qb.img.naturalWidth) fgx.drawImage(qb.img, -qb.sz / 2, -qb.sz / 2, qb.sz, qb.sz);
         fgx.restore();
       }
 
