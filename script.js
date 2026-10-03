@@ -7,7 +7,7 @@
   "use strict";
 
   /* ---------- config ---------- */
-  var DISCORD_ID = "YOUR_DISCORD_USER_ID"; // discord settings > advanced > developer mode > right-click yourself > copy user id
+  var DISCORD_ID = "746561388612157460"; // discord settings > advanced > developer mode > right-click yourself > copy user id
   var DISCORD_USERNAME = "yoshik08";
   var EMAIL = "yoshik08@yoshik.xyz";
 
