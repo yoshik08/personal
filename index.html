@@ -325,20 +325,20 @@
 <!-- synced lyrics overlay -->
 <div class="lyrics-overlay" id="lyricsOverlay" aria-hidden="true">
   <div class="lyrics-bg" id="lyricsBg"></div>
-  <div class="lyrics-top">
-    <div class="lyrics-track">
+  <button class="lyrics-close" id="lyricsClose" data-hover aria-label="close lyrics">✕</button>
+  <div class="lyrics-body">
+    <div class="lyrics-side">
       <img id="lyricsArt" alt="">
-      <div class="lyrics-track-meta">
+      <div class="lyrics-side-text">
         <p class="lyrics-title" id="lyricsTitle"></p>
         <p class="lyrics-artist" id="lyricsArtist"></p>
       </div>
     </div>
-    <button class="lyrics-close" id="lyricsClose" data-hover aria-label="close lyrics">✕</button>
+    <div class="lyrics-lines" id="lyricsLines"></div>
   </div>
-  <div class="lyrics-lines" id="lyricsLines"></div>
   <p class="lyrics-hint" id="lyricsHint"></p>
 </div>
 
-<script src="script.js?v=lyrics3"></script>
+<script src="script.js?v=lyrics4"></script>
 </body>
 </html>
