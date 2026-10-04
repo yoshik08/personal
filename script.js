@@ -388,15 +388,30 @@
     lyricsHint.textContent = "";
     lyricsLines.innerHTML = "";
     var frag = document.createDocumentFragment();
-    lines.forEach(function (ln) {
+    lines.forEach(function (ln, i) {
+      var next = i + 1 < lines.length ? lines[i + 1].time : (durationMs || ln.time + 8000);
+      var span = Math.max(1500, Math.min(next - ln.time, 12000));
+      var words = ln.text.split(/\s+/).filter(Boolean);
+      var total = words.join("").length || 1, acc = 0;
+      ln.words = words.map(function (w) {
+        var t = ln.time + span * (acc / total);
+        acc += w.length;
+        return t;
+      });
       var div = document.createElement("div");
       div.className = "lyr-line";
-      div.textContent = ln.text;
+      words.forEach(function (w, j) {
+        var s = document.createElement("span");
+        s.className = "w";
+        s.textContent = w;
+        div.appendChild(s);
+        if (j < words.length - 1) div.appendChild(document.createTextNode(" "));
+      });
       frag.appendChild(div);
     });
     lyricsLines.appendChild(frag);
+    setLyricsPadding();
     lyrActiveIdx = -1;
-    lyrCenterLine(lyricsLines.children[0]); /* first lyric starts at middle */
     lyrTick();
   }
   function showPlain(plain) {
@@ -413,7 +428,7 @@
       frag.appendChild(div);
     });
     lyricsLines.appendChild(frag);
-    lyrCenterLine(lyricsLines.children[0]);
+    setLyricsPadding();
   }
   function noLyrics() {
     lyrCache.lines = null;
@@ -497,13 +512,11 @@
     var pos = Math.min(lyrPos(), spState.durationMs);
     lyricsProg.style.width = (pos / spState.durationMs * 100) + "%";
   }
-  /* center a line in the view instantly (used on load) */
-  function lyrCenterLine(el) {
-    if (!el) return;
-    var cRect = lyricsLines.getBoundingClientRect();
-    var lRect = el.getBoundingClientRect();
-    lyricsLines.scrollTop = Math.max(0,
-      lyricsLines.scrollTop + (lRect.top + lRect.height / 2) - (cRect.top + cRect.height / 2));
+  /* pad the lyric list so the first/last lines rest at the exact middle */
+  function setLyricsPadding() {
+    var h = lyricsLines.clientHeight / 2;
+    lyricsLines.style.paddingTop = h + "px";
+    lyricsLines.style.paddingBottom = h + "px";
   }
   function lyrTick() {
     if (!lyricsOverlay.classList.contains("open")) return;
@@ -533,6 +546,12 @@
       }
       lyrActiveIdx = idx;
     }
+    /* word-by-word lighting on the active line */
+    if (idx >= 0 && lyricsLines.children[idx]) {
+      var words = lyricsLines.children[idx].querySelectorAll(".w");
+      var wt = lines[idx].words || [];
+      for (i = 0; i < words.length; i++) words[i].classList.toggle("lit", pos >= (wt[i] || 0));
+    }
   }
   function openLyrics() {
     if (!spState.title) return;
@@ -558,6 +577,9 @@
   });
   lyricsLines.addEventListener("wheel", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
   lyricsLines.addEventListener("touchmove", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
+  window.addEventListener("resize", function () {
+    if (lyricsOverlay.classList.contains("open") && lyrCache.lines) setLyricsPadding();
+  });
 
   /* ---------- 12. discord ---------- */
   var dcStatus = document.getElementById("dcStatus"),
