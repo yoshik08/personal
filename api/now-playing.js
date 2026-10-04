@@ -27,6 +27,7 @@ export default async function handler(req, res) {
     const auth = { Authorization: `Bearer ${access_token}` };
 
     const pick = (t, outer) => ({
+      trackId: t.id || null,
       title: t.name,
       artist: (t.artists || []).map((a) => a.name).join(", "),
       artists: (t.artists || []).map((a) => ({
@@ -47,7 +48,9 @@ export default async function handler(req, res) {
     );
     if (now.status === 200) {
       const d = await now.json();
-      if (d && d.item) return res.status(200).json({ playing: d.is_playing, ...pick(d.item, d) });
+      /* timestamp anchors progressMs: the client adds (now - timestamp) so the
+         local clock accounts for transit time between Spotify and the browser */
+      if (d && d.item) return res.status(200).json({ playing: d.is_playing, timestamp: Date.now(), ...pick(d.item, d) });
     }
     // nothing playing right now: fall back to last played
     const recent = await fetch(
@@ -56,7 +59,7 @@ export default async function handler(req, res) {
     );
     const r = await recent.json();
     if (r.items && r.items.length)
-      return res.status(200).json({ playing: false, ...pick(r.items[0].track) });
+      return res.status(200).json({ playing: false, timestamp: Date.now(), ...pick(r.items[0].track) });
     return res.status(200).json({});
   } catch {
     return res.status(200).json({});

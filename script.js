@@ -260,6 +260,97 @@
     } else { done(false); }
   });
 
+  /* ---------- 10b. playback clock ----------
+     Local high-resolution estimate of Spotify playback position.
+     The server polls Spotify ~every 5s; each response is an anchor
+     { progressMs, timestamp, isPlaying }. Between anchors the browser
+     advances a monotonic performance.now() clock. Each new anchor only
+     corrects drift: tiny drift is ignored, moderate drift is absorbed
+     gradually over ~5s (no visible jump), large drift/seek hard-resets. */
+  function createPlaybackClock() {
+    var baseMs = 0;      /* estimated progress at basePerf */
+    var basePerf = 0;    /* performance.now() corresponding to baseMs */
+    var playing = false;
+    var corrMs = 0;      /* drift currently being absorbed gradually */
+    var corrStart = 0;   /* performance.now() when gradual correction began */
+    var CORR_WINDOW = 5000;
+    var IGNORE_MS = 120; /* below this: drift is noise, ignore */
+    var RESET_MS = 2500; /* above this: treat as seek, hard reset */
+
+    function corrApplied() {
+      if (!corrMs) return 0;
+      var t = (performance.now() - corrStart) / CORR_WINDOW;
+      if (t < 0) t = 0; else if (t > 1) t = 1;
+      return corrMs * t;
+    }
+    /* fold a finished gradual correction into the base values */
+    function fold() {
+      if (!corrMs) return;
+      var now = performance.now();
+      if (now - corrStart >= CORR_WINDOW) {
+        baseMs = baseMs + (playing ? now - basePerf : 0) + corrMs;
+        basePerf = now;
+        corrMs = 0;
+      }
+    }
+    function getProgressMs() {
+      fold();
+      var pos = baseMs;
+      if (playing) pos += performance.now() - basePerf;
+      pos += corrApplied();
+      return pos;
+    }
+    return {
+      getProgressMs: getProgressMs,
+      isPlaying: function () { return playing; },
+      /* hard anchor: trust this position completely (track change, seek, resume) */
+      setAnchor: function (p) {
+        baseMs = p; basePerf = performance.now(); corrMs = 0;
+      },
+      setPlaying: function (p) {
+        p = !!p;
+        if (playing && !p) { /* pausing: snapshot so the clock freezes */
+          baseMs = getProgressMs(); corrMs = 0; basePerf = performance.now();
+        } else if (!playing && p) {
+          basePerf = performance.now();
+        }
+        playing = p;
+      },
+      /* reconcile a fresh server anchor with the local estimate */
+      correctDrift: function (serverMs) {
+        var drift = serverMs - getProgressMs();
+        var ad = Math.abs(drift);
+        if (ad < IGNORE_MS) return "ignored";
+        if (ad > RESET_MS) { this.setAnchor(serverMs); return "reset"; }
+        /* absorb gradually: rebase on the current smooth estimate, then
+           run the clock slightly fast/slow until the drift is gone */
+        var now = getProgressMs();
+        baseMs = now; basePerf = performance.now();
+        corrMs = drift * 0.5; corrStart = performance.now();
+        return "nudged";
+      }
+    };
+  }
+
+  /* lyric index lookup: advance forward from the hint when playing normally
+     (O(1) amortized), binary search when seeking backward */
+  function findLyricIndex(lines, pos, hint) {
+    var n = lines.length, i;
+    if (!n) return -1;
+    i = hint < 0 ? 0 : hint >= n ? n - 1 : hint;
+    if (pos >= lines[i].time) {
+      while (i + 1 < n && lines[i + 1].time <= pos) i++;
+      return i;
+    }
+    var lo = 0, hi = n - 1, ans = -1;
+    while (lo <= hi) {
+      var mid = (lo + hi) >> 1;
+      if (lines[mid].time <= pos) { ans = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    return ans;
+  }
+
   /* ---------- 11. spotify ---------- */
   var spTrack = document.getElementById("spTrack"),
       spArtist = document.getElementById("spArtist"),
@@ -271,7 +362,16 @@
       spLabel = document.getElementById("spLabel"),
       lyricsBtn = document.getElementById("lyricsBtn"),
       spTimer = null;
-  var spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null, lastUpdate: 0 };
+  var spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null };
+  var playbackClock = createPlaybackClock();
+  /* server timestamp -> browser position: account for the time playback
+     kept running between Spotify's snapshot and this browser receiving it */
+  function spotifyAnchorMs(d) {
+    var ts = d.timestamp || Date.now();
+    var transit = Date.now() - ts;
+    if (transit < 0) transit = 0;
+    return Math.max(0, (d.progressMs || 0) + transit);
+  }
   function renderHeroArtists(list) {
     spHeroArtists.textContent = "";
     if (!list || !list.length) return;
@@ -302,7 +402,8 @@
       spLabel.textContent = "last played —";
       spDot.classList.remove("on");
       lyricsBtn.style.display = "none";
-      spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null, lastUpdate: 0 };
+      spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null };
+      playbackClock.setPlaying(false);
       if (spTimer) { clearInterval(spTimer); spTimer = null; }
       return;
     }
@@ -315,7 +416,6 @@
     spDot.classList.toggle("on", live);
     if (d.image) { spArt.style.backgroundImage = "url(" + d.image + ")"; spArt.textContent = ""; }
     lyricsBtn.style.display = "";
-    spState.key = title + " :: " + artist;
     spState.title = title;
     spState.artist = artist;
     spState.artists = d.artists || [];
@@ -324,14 +424,28 @@
     spState.playing = live;
     spState.progressMs = d.progressMs;
     spState.durationMs = d.durationMs;
-    spState.lastUpdate = Date.now();
+    /* reconcile the local clock with the fresh server anchor (track change
+       and resume hard-reset; pause freezes; otherwise drift is absorbed) */
+    (function () {
+      var key = d.trackId || (title + " :: " + artist);
+      var isNewTrack = spState.key !== null && key !== spState.key;
+      var wasPlaying = playbackClock.isPlaying();
+      spState.key = key;
+      if (!live) {
+        playbackClock.setPlaying(false);
+        playbackClock.setAnchor(d.progressMs || 0);
+      } else if (isNewTrack || !wasPlaying) {
+        playbackClock.setAnchor(spotifyAnchorMs(d));
+        playbackClock.setPlaying(true);
+      } else {
+        playbackClock.setPlaying(true);
+        playbackClock.correctDrift(spotifyAnchorMs(d));
+      }
+    })();
     if (spTimer) { clearInterval(spTimer); spTimer = null; }
     if (live && d.progressMs != null && d.durationMs) {
-      var p = d.progressMs;
       var draw = function () {
-        p += 1000;
-        spState.progressMs = p;
-        spState.lastUpdate = Date.now();
+        var p = playbackClock.getProgressMs();
         spProg.style.width = Math.min(100, (p / d.durationMs) * 100) + "%";
         if (p >= d.durationMs) {
           if (spTimer) { clearInterval(spTimer); spTimer = null; }
@@ -363,15 +477,18 @@
       lyricsArtist = document.getElementById("lyricsArtist"),
       lyricsArt = document.getElementById("lyricsArt"),
       lyricsProg = document.getElementById("lyricsProg");
-  var lyrCache = { id: null, lines: null, loading: false };
-  var lyrTimer = null, lyrActiveIdx = -1, lyrUserScrollAt = 0;
-  function lyrPos() {
-    var p = spState.progressMs || 0;
-    if (spState.playing) p += Date.now() - spState.lastUpdate;
-    return p;
+  /* L1 lyric cache: track key -> { lines } | { plain } | { empty }.
+     L2 is the 24h edge cache on /api/lyrics, so each track hits the
+     network at most once per day per browser. */
+  var lyrStore = new Map();
+  var lyrInflight = {}; /* key -> true while a fetch is in flight */
+  var lyrRaf = 0, lyrActiveIdx = -1, lyrLitCount = -1, lyrUserScrollAt = 0, lyrRenderedKey = null;
+  function lyrPos() { return playbackClock.getProgressMs(); }
+  function lyrPut(key, val) {
+    lyrStore.set(key, val);
+    if (lyrStore.size > 24) lyrStore.delete(lyrStore.keys().next().value);
   }
-  function showSynced(lines, durationMs) {
-    lyrCache.lines = lines;
+  function renderSynced(lines, durationMs) {
     lyricsHint.textContent = "";
     lyricsLines.innerHTML = "";
     var frag = document.createDocumentFragment();
@@ -402,11 +519,8 @@
     });
     lyricsLines.appendChild(frag);
     setLyricsPadding();
-    lyrActiveIdx = -1;
-    lyrTick();
   }
-  function showPlain(plain) {
-    lyrCache.lines = null;
+  function renderPlain(plain) {
     lyricsHint.textContent = "unsynced lyrics";
     lyricsLines.innerHTML = "";
     var frag = document.createDocumentFragment();
@@ -421,18 +535,27 @@
     lyricsLines.appendChild(frag);
     setLyricsPadding();
   }
-  function noLyrics() {
-    lyrCache.lines = null;
+  function renderNoLyrics() {
     lyricsLines.innerHTML = "";
     lyricsHint.textContent = "no lyrics found for this one";
   }
+  /* render whatever the cache holds for key (called when entry is fresh) */
+  function renderLyrEntry(key, durationMs) {
+    var entry = lyrStore.get(key);
+    if (!entry) return;
+    lyrActiveIdx = -1; lyrLitCount = -1;
+    if (entry.lines) renderSynced(entry.lines, durationMs);
+    else if (entry.plain) renderPlain(entry.plain);
+    else renderNoLyrics();
+  }
   var lyrLastQuery = null;
   function fetchLyrics(title, artist, durationMs, force) {
-    var key = title + " :: " + artist;
-    if (!force && (lyrCache.id === key || lyrCache.loading)) return;
-    lyrCache = { id: key, lines: null, loading: true };
+    var key = spState.key;
+    if (!key) return;
+    if (!force && (lyrStore.has(key) || lyrInflight[key])) return;
+    lyrInflight[key] = true;
     lyrLastQuery = { title: title, artist: artist, durationMs: durationMs, retried: false };
-    lyrActiveIdx = -1;
+    lyrActiveIdx = -1; lyrLitCount = -1; lyrRenderedKey = null;
     lyricsLines.innerHTML = "";
     lyricsHint.textContent = "finding lyrics…";
     lyricsHint.style.cursor = "";
@@ -447,20 +570,23 @@
         return r.json();
       })
       .then(function (data) {
-        lyrCache.loading = false;
-        if (data && data.lines && data.lines.length) { showSynced(data.lines, durationMs); return; }
-        if (data && data.plain) { showPlain(data.plain); return; }
-        noLyrics();
+        delete lyrInflight[key];
+        /* always cache the result, even if the user moved on mid-fetch */
+        if (data && data.lines && data.lines.length) lyrPut(key, { lines: data.lines });
+        else if (data && data.plain) lyrPut(key, { plain: data.plain });
+        else lyrPut(key, { empty: true });
+        if (spState.key === key && lyricsOverlay.classList.contains("open"))
+          renderLyrEntry(key, durationMs);
       })
       .catch(function (err) {
-        lyrCache.loading = false;
+        delete lyrInflight[key];
         var lq = lyrLastQuery;
         if (!err.rate && lq && !lq.retried && lyricsOverlay.classList.contains("open")) {
           /* transient blip — one automatic retry */
           lq.retried = true;
           lyricsHint.textContent = "retrying…";
           setTimeout(function () {
-            if (lyricsOverlay.classList.contains("open") && lyrCache.id === key && !lyrCache.lines)
+            if (lyricsOverlay.classList.contains("open") && spState.key === key && !lyrStore.has(key))
               fetchLyrics(title, artist, durationMs, true);
           }, 2500);
           return;
@@ -506,18 +632,30 @@
   function lyrTick() {
     if (!lyricsOverlay.classList.contains("open")) return;
     lyrProgress();
-    /* track changed while open — swap lyrics */
-    if (spState.key && spState.key !== lyrCache.id && !lyrCache.loading) {
-      setLyricsHeader();
-      fetchLyrics(spState.title, spState.artist, spState.durationMs);
+    var key = spState.key;
+    if (!key) return;
+    /* track changed while open — fetch (or pull from cache) for the new track */
+    if (!lyrStore.has(key)) {
+      if (!lyrInflight[key]) {
+        setLyricsHeader();
+        fetchLyrics(spState.title, spState.artist, spState.durationMs);
+      }
       return;
     }
-    var lines = lyrCache.lines;
-    if (!lines || !lines.length) return;
-    var pos = lyrPos(), idx = -1, i;
-    for (i = 0; i < lines.length; i++) if (lines[i].time <= pos) idx = i;
+    /* render once per track; the rAF loop only moves the highlight after that */
+    if (lyrRenderedKey !== key) {
+      setLyricsHeader();
+      renderLyrEntry(key, spState.durationMs);
+      lyrRenderedKey = key;
+      return;
+    }
+    var entry = lyrStore.get(key);
+    if (!entry.lines) return; /* plain/unsynced: nothing to advance */
+    var lines = entry.lines;
+    var pos = lyrPos();
+    var idx = findLyricIndex(lines, pos, lyrActiveIdx);
     if (idx !== lyrActiveIdx) {
-      var kids = lyricsLines.children;
+      var kids = lyricsLines.children, i;
       if (lyrActiveIdx >= 0 && kids[lyrActiveIdx]) kids[lyrActiveIdx].className = "lyr-line past";
       if (idx >= 0 && kids[idx]) {
         kids[idx].className = "lyr-line active";
@@ -530,13 +668,28 @@
         }
       }
       lyrActiveIdx = idx;
+      lyrLitCount = -1;
     }
-    /* word-by-word lighting on the active line */
+    /* word-by-word lighting on the active line — only touch the DOM when the lit count changes */
     if (idx >= 0 && lyricsLines.children[idx]) {
       var words = lyricsLines.children[idx].querySelectorAll(".w");
       var wt = lines[idx].words || [];
-      for (i = 0; i < words.length; i++) words[i].classList.toggle("lit", pos >= (wt[i] || 0));
+      var lit = 0, j;
+      for (j = 0; j < words.length; j++) if (pos >= (wt[j] || 0)) lit++;
+      if (lit !== lyrLitCount) {
+        lyrLitCount = lit;
+        for (j = 0; j < words.length; j++) words[j].classList.toggle("lit", j < lit);
+      }
     }
+  }
+  /* rAF loop: pure local sync, zero network. the browser suspends rAF in
+     background tabs, so nothing burns while hidden; the 5s poll re-anchors
+     on return via visibilitychange. */
+  function lyrLoop() {
+    lyrRaf = 0;
+    if (!lyricsOverlay.classList.contains("open")) return;
+    lyrTick();
+    lyrRaf = requestAnimationFrame(lyrLoop);
   }
   function openLyrics() {
     if (!spState.title) return;
@@ -544,16 +697,14 @@
     lyricsOverlay.classList.add("open");
     lyricsOverlay.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
-    if (lyrCache.id !== spState.key) fetchLyrics(spState.title, spState.artist, spState.durationMs);
-    else { lyrActiveIdx = -1; lyrTick(); }
-    if (lyrTimer) clearInterval(lyrTimer);
-    lyrTimer = setInterval(lyrTick, 200);
+    lyrRenderedKey = null; /* force (re)render of the current track on next frame */
+    if (!lyrRaf) lyrRaf = requestAnimationFrame(lyrLoop);
   }
   function closeLyrics() {
     lyricsOverlay.classList.remove("open");
     lyricsOverlay.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
-    if (lyrTimer) { clearInterval(lyrTimer); lyrTimer = null; }
+    if (lyrRaf) { cancelAnimationFrame(lyrRaf); lyrRaf = 0; }
   }
   lyricsBtn.addEventListener("click", openLyrics);
   document.getElementById("lyricsClose").addEventListener("click", closeLyrics);
@@ -563,7 +714,7 @@
   lyricsLines.addEventListener("wheel", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
   lyricsLines.addEventListener("touchmove", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
   window.addEventListener("resize", function () {
-    if (lyricsOverlay.classList.contains("open") && lyrCache.lines) setLyricsPadding();
+    if (lyricsOverlay.classList.contains("open") && spState.key && lyrStore.get(spState.key) && lyrStore.get(spState.key).lines) setLyricsPadding();
   });
 
   /* ---------- 12. discord ---------- */
