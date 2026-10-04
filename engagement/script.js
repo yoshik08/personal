@@ -7,8 +7,8 @@
   var nameToIdx = {};
   function loadAll(cb) {
     Promise.all([
-      fetch("model/model.json").then(r => r.json()),
-      fetch("model/metrics.json").then(r => r.json())
+      fetch("/engagement/model/model.json").then(r => r.json()),
+      fetch("/engagement/model/metrics.json").then(r => r.json())
     ]).then(function (res) {
       MODEL = res[0]; METRICS = res[1];
       MODEL.features.forEach(function (n, i) { nameToIdx[n] = i; });
@@ -133,7 +133,7 @@
     if (ev.target.files.length) readFile(ev.target.files[0]);
   });
   document.getElementById("sample").addEventListener("click", function () {
-    fetch("model/sample.csv").then(function (r) { return r.text(); })
+    fetch("/engagement/model/sample.csv").then(function (r) { return r.text(); })
       .then(ingest).catch(function () { alert("could not load sample csv"); });
   });
   function readFile(f) {
