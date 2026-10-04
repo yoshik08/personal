@@ -9,7 +9,7 @@ const player = {
   queue: [],
   queueIndex: -1,
   isPlaying: false,
-  downloading: false,   /* first-play fetch from /api/getmp3 */
+  downloading: false,   /* first-play fetch from /api/audio/:trackId */
   downloadInfo: null,   /* {title, startedAt, gotBytes, totalBytes} */
   loading: false,
   error: null,
@@ -131,7 +131,6 @@ const player = {
     this.emit("state");
     this.playStartAt = Date.now();
 
-    const q = encodeURIComponent(track.artist + " " + track.title);
     let blob = await cache.get(track.id);
     if (!blob) {
       /* first play: download can take 1-3 min on throttled connections */
@@ -140,7 +139,7 @@ const player = {
       this.emit("state");
       this.emit("download");
       try {
-        blob = await api.fetchBlob("/api/getmp3?q=" + q, (got, total) => {
+        blob = await api.fetchBlob("/api/audio/" + encodeURIComponent(track.id), (got, total) => {
           this.downloadInfo.gotBytes = got;
           this.downloadInfo.totalBytes = total;
           this.emit("download");
