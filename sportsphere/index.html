@@ -1829,7 +1829,7 @@ function previewPlace(kind, id) {
     const list = kind === 'gyms' ? fitnessGyms() : venuesOfSport(String(id));
     const pins = list.filter(g => g.lat && g.lng)
       .map(g => g.lat + ',' + g.lng + ',' + encodeURIComponent(g.name || 'venue')).join('|');
-    mapSrc = pins ? 'venues-map.html?pins=' + pins : 'https://maps.google.com/maps?q=' + q + '&z=17&t=k&output=embed';
+    mapSrc = pins ? '/sportsphere/venues-map.html?pins=' + pins : 'https://maps.google.com/maps?q=' + q + '&z=17&t=k&output=embed';
   } else {
     mapSrc = customEmbed || ('https://maps.google.com/maps?q=' + q + '&z=17&t=k&output=embed');
   }
