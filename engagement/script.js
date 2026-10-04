@@ -220,10 +220,10 @@
   }
 
   /* ---------- charts ---------- */
-  Chart.defaults.color = "#9a9aa5";
-  Chart.defaults.borderColor = "#232329";
+  Chart.defaults.color = "#52525b";
+  Chart.defaults.borderColor = "#1d1d23";
   Chart.defaults.font.family = "'JetBrains Mono', monospace";
-  var CLS = { Low: "#ff6b6b", Medium: "#ffb020", High: "#3ddc84" };
+  var CLS = { Low: "#f87171", Medium: "#fbbf24", High: "#4ade80" };
   var ORDER = ["Low", "Medium", "High"];
   var drawn = false;
 
@@ -239,21 +239,21 @@
     new Chart(document.getElementById("ch-depth"), {
       type: "line",
       data: { labels: m.dt.depth_curve.depths, datasets: [
-        { label: "train", data: m.dt.depth_curve.train, borderColor: "#9a9aa5", tension: .2 },
-        { label: "test", data: m.dt.depth_curve.test, borderColor: "#ffb020", tension: .2 } ] },
+        { label: "train", data: m.dt.depth_curve.train, borderColor: "#52525b", tension: .2 },
+        { label: "test", data: m.dt.depth_curve.test, borderColor: "#a3e635", tension: .2 } ] },
       options: { plugins: { legend: { position: "bottom" } }, scales: { y: { min: .4, max: 1 } } }
     });
     new Chart(document.getElementById("ch-acc"), {
       type: "bar",
       data: { labels: ["decision tree", "random forest"],
-        datasets: [{ data: [m.dt.accuracy, m.rf.accuracy], backgroundColor: ["#9a9aa5", "#3ddc84"] }] },
+        datasets: [{ data: [m.dt.accuracy, m.rf.accuracy], backgroundColor: ["#52525b", "#a3e635"] }] },
       options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 1 } } }
     });
     var imp = m.rf.importances.slice().reverse();
     new Chart(document.getElementById("ch-imp"), {
       type: "bar",
       data: { labels: imp.map(function (x) { return x[0]; }),
-        datasets: [{ data: imp.map(function (x) { return x[1]; }), backgroundColor: "#ffb020" }] },
+        datasets: [{ data: imp.map(function (x) { return x[1]; }), backgroundColor: "#a3e635" }] },
       options: { indexAxis: "y", plugins: { legend: { display: false } } }
     });
     cmTable(document.getElementById("cm-dt"), m.dt.confusion);
@@ -373,7 +373,7 @@
     });
     updatePlay();
   }
-  var SUBS = { Low: "this one's gonna flop 📉", Medium: "mid. it'll do okay.", High: "this one's gonna pop off 🚀" };
+  var SUBS = { Low: "likely to flop", Medium: "mid. it'll do okay.", High: "likely to pop off" };
   function updatePlay() {
     var p = predict(encodeRow(state));
     var v = document.getElementById("verdict");
@@ -388,7 +388,7 @@
     bars.innerHTML = order.map(function (k) {
       var i = MODEL.classes.indexOf(k), pct = Math.round(p.proba[i] * 100);
       return '<div class="prow"><span>' + k + '</span><div class="pbar"><i style="width:' + pct +
-        '%;background:' + ({ High: "#3ddc84", Medium: "#ffb020", Low: "#ff6b6b" })[k] + '"></i></div><span>' + pct + "%</span></div>";
+        '%;background:' + ({ High: "#4ade80", Medium: "#fbbf24", Low: "#f87171" })[k] + '"></i></div><span>' + pct + "%</span></div>";
     }).join("");
   }
 

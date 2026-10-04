@@ -6,7 +6,7 @@
 <title>engagement predictor — yoshik.xyz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -14,64 +14,66 @@
 <header class="top">
   <a class="back" href="/">← yoshik.xyz</a>
   <h1>engagement predictor</h1>
-  <p class="sub">audience engagement classification — decision trees &amp; random forest, running entirely in your browser. drop a csv, watch the pipeline run, predict.</p>
+  <p class="sub">random forest on 1500 posts. runs entirely in your browser — drop a csv, watch the pipeline, predict.</p>
 </header>
 
 <main>
-  <!-- 1. csv -->
-  <section class="card" id="sec-upload">
-    <h2><span class="step">1</span> give csv</h2>
+  <!-- 1. data -->
+  <section id="sec-upload">
+    <div class="shead"><span class="snum">01</span><h2>data</h2></div>
     <div class="drop" id="drop">
-      <p class="drop-big">drop your csv here</p>
+      <p class="drop-big">drop a csv here</p>
       <p class="drop-small">or</p>
       <div class="drop-btns">
         <label class="btn" for="file">choose file</label>
         <input type="file" id="file" accept=".csv" hidden>
         <button class="btn ghost" id="sample">use sample data</button>
       </div>
-      <p class="drop-note">needs the pre-publish columns: platform, content_type, post_hour, day_of_week, follower_count, hashtag_count, caption_length, video_duration_sec, has_cta</p>
+      <p class="drop-note">platform · content_type · post_hour · day_of_week · follower_count · hashtag_count · caption_length · video_duration_sec · has_cta</p>
     </div>
-    <div class="cleanstats" id="cleanstats" hidden></div>
+    <div class="stats" id="cleanstats" hidden></div>
     <div class="tablewrap" id="previewwrap" hidden>
       <table class="datatable" id="preview"></table>
     </div>
   </section>
 
   <!-- 2. pipeline -->
-  <section class="card" id="sec-pipe">
-    <h2><span class="step">2</span> watch the code run</h2>
-    <p class="secnote">the notebook's pipeline, executed live. cleaning runs on your csv in this tab — the model itself was trained on the full 1500-row dataset and ships with the page.</p>
-    <button class="btn" id="runpipe" disabled>run pipeline</button>
-    <div class="pipelog" id="pipelog"><p class="dim">drop a csv above to unlock this.</p></div>
+  <section id="sec-pipe">
+    <div class="shead"><span class="snum">02</span><h2>pipeline</h2>
+      <button class="btn sm" id="runpipe" disabled>run</button>
+    </div>
+    <div class="pipelog" id="pipelog"><p class="dim">drop a csv above to unlock.</p></div>
     <div class="charts" id="charts" hidden>
-      <div class="chartbox"><h3>target class balance</h3><canvas id="ch-balance"></canvas></div>
-      <div class="chartbox"><h3>decision tree: depth vs accuracy</h3><canvas id="ch-depth"></canvas></div>
-      <div class="chartbox"><h3>test accuracy: dt vs rf</h3><canvas id="ch-acc"></canvas></div>
-      <div class="chartbox"><h3>top 10 important features</h3><canvas id="ch-imp"></canvas></div>
-      <div class="chartbox"><h3>decision tree — confusion matrix</h3><div class="cmtable" id="cm-dt"></div></div>
-      <div class="chartbox"><h3>random forest — confusion matrix</h3><div class="cmtable" id="cm-rf"></div></div>
+      <div class="chartbox"><h3>class balance</h3><canvas id="ch-balance"></canvas></div>
+      <div class="chartbox"><h3>tree depth vs accuracy</h3><canvas id="ch-depth"></canvas></div>
+      <div class="chartbox"><h3>dt vs random forest</h3><canvas id="ch-acc"></canvas></div>
+      <div class="chartbox"><h3>top features</h3><canvas id="ch-imp"></canvas></div>
+      <div class="chartbox"><h3>confusion — decision tree</h3><div class="cmtable" id="cm-dt"></div></div>
+      <div class="chartbox"><h3>confusion — random forest</h3><div class="cmtable" id="cm-rf"></div></div>
     </div>
   </section>
 
   <!-- 3. predict -->
-  <section class="card" id="sec-predict">
-    <h2><span class="step">3</span> predict</h2>
-    <div class="tabs">
-      <button class="tab active" data-tab="batch">batch — whole csv</button>
-      <button class="tab" data-tab="play">playground — sliders</button>
+  <section id="sec-predict">
+    <div class="shead"><span class="snum">03</span><h2>predict</h2>
+      <div class="tabs">
+        <button class="tab active" data-tab="batch">batch</button>
+        <button class="tab" data-tab="play">playground</button>
+      </div>
     </div>
 
     <div class="tabpane" id="pane-batch">
-      <p class="secnote">every row of your csv, classified by the forest. needs a csv from step 1.</p>
-      <button class="btn" id="predictbtn" disabled>predict data</button>
-      <div class="predsummary" id="predsummary" hidden></div>
+      <div class="rowline">
+        <p class="secnote">every row of your csv, classified by the forest.</p>
+        <button class="btn sm" id="predictbtn" disabled>predict</button>
+      </div>
+      <div class="stats" id="predsummary" hidden></div>
       <div class="tablewrap" id="predwrap" hidden>
         <table class="datatable" id="predtable"></table>
       </div>
     </div>
 
     <div class="tabpane" id="pane-play" hidden>
-      <p class="secnote">tweak the features, watch the prediction move live.</p>
       <div class="playgrid">
         <div class="controls" id="playcontrols"></div>
         <div class="playout">
@@ -85,7 +87,7 @@
   </section>
 </main>
 
-<footer><p>random forest · 200 trees · trained on 1500 posts · runs 100% client-side</p></footer>
+<footer><p>200 trees · 72% test accuracy · 100% client-side</p></footer>
 <script src="script.js"></script>
 </body>
 </html>
