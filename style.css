@@ -375,8 +375,9 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   transition: color .3s ease;
 }
 .lyr-line.active { color: #fff; font-size: clamp(30px, 4vw, 48px); }
-.lyr-line.active .w { color: rgba(255,255,255,.35); transition: color .15s ease; }
-.lyr-line.active .w.lit { color: #fff; }
+.lyr-line.active .w { color: rgba(255,255,255,.35); }
+.lyr-line.active .w .ch { transition: color .45s ease; }
+.lyr-line.active .w .ch.lit { color: #fff; }
 .lyr-line.past { color: rgba(255,255,255,.45); }
 .lyrics-hint { position: relative; z-index: 2; text-align: center; color: rgba(255,255,255,.4); font-size: 12px; padding: 0 20px 26px; margin: 0; min-height: 18px; }
 .lyrics-side-text { min-width: 0; }

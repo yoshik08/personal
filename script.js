@@ -486,7 +486,7 @@
      network at most once per day per browser. */
   var lyrStore = new Map();
   var lyrInflight = {}; /* key -> true while a fetch is in flight */
-  var lyrRaf = 0, lyrActiveIdx = -1, lyrLitCount = -1, lyrUserScrollAt = 0, lyrRenderedKey = null;
+  var lyrRaf = 0, lyrActiveIdx = -1, lyrUserScrollAt = 0, lyrRenderedKey = null;
   function lyrPos() { return playbackClock.getProgressMs(); }
   function lyrPut(key, val) {
     lyrStore.set(key, val);
@@ -498,27 +498,27 @@
     var frag = document.createDocumentFragment();
     lines.forEach(function (ln, i) {
       var words = ln.text.split(/\s+/).filter(Boolean);
-      if (!(ln.words && ln.words.length === words.length)) {
-        /* no real word data — interpolate across the line's window */
-        var next = i + 1 < lines.length ? lines[i + 1].time : (durationMs || ln.time + 8000);
-        var span = Math.max(1500, Math.min(next - ln.time, 12000));
-        var total = words.join("").length || 1, acc = 0;
-        ln.words = words.map(function (w) {
-          var t = ln.time + span * (acc / total);
-          acc += w.length;
-          return t;
-        });
-        ln.guessed = true;
-      }
+      /* real word timing only — line-level data gets no faked word motion */
+      var hasWords = !!(ln.words && ln.words.length === words.length);
+      ln.hasWords = hasWords;
       var div = document.createElement("div");
       div.className = "lyr-line";
-      words.forEach(function (w, j) {
-        var s = document.createElement("span");
-        s.className = "w";
-        s.textContent = w;
-        div.appendChild(s);
-        if (j < words.length - 1) div.appendChild(document.createTextNode(" "));
-      });
+      if (hasWords) {
+        words.forEach(function (w, j) {
+          var ws = document.createElement("span");
+          ws.className = "w";
+          for (var k = 0; k < w.length; k++) {
+            var ls = document.createElement("span");
+            ls.className = "ch";
+            ls.textContent = w[k];
+            ws.appendChild(ls);
+          }
+          div.appendChild(ws);
+          if (j < words.length - 1) div.appendChild(document.createTextNode(" "));
+        });
+      } else {
+        div.textContent = ln.text;
+      }
       frag.appendChild(div);
     });
     lyricsLines.appendChild(frag);
@@ -547,7 +547,7 @@
   function renderLyrEntry(key, durationMs) {
     var entry = lyrStore.get(key);
     if (!entry) return;
-    lyrActiveIdx = -1; lyrLitCount = -1;
+    lyrActiveIdx = -1;
     if (entry.lines) renderSynced(entry.lines, durationMs);
     else if (entry.plain) renderPlain(entry.plain);
     else renderNoLyrics();
@@ -559,7 +559,7 @@
     if (!force && (lyrStore.has(key) || lyrInflight[key])) return;
     lyrInflight[key] = true;
     lyrLastQuery = { title: title, artist: artist, durationMs: durationMs, retried: false };
-    lyrActiveIdx = -1; lyrLitCount = -1; lyrRenderedKey = null;
+    lyrActiveIdx = -1; lyrRenderedKey = null;
     lyricsLines.innerHTML = "";
     lyricsHint.textContent = "finding lyrics…";
     lyricsHint.style.cursor = "";
@@ -673,17 +673,29 @@
           lyricsLines.scrollTo({ top: Math.max(0, scrollTarget), behavior: "smooth" });
       }
       lyrActiveIdx = idx;
-      lyrLitCount = -1;
     }
-    /* word-by-word lighting on the active line — only touch the DOM when the lit count changes */
+    /* apple-style letter fade — only for lines with real word timing.
+       line-level data gets the line highlight only, no faked motion. */
     if (idx >= 0 && lyricsLines.children[idx]) {
-      var words = lyricsLines.children[idx].querySelectorAll(".w");
-      var wt = lines[idx].words || [];
-      var lit = 0, j;
-      for (j = 0; j < words.length; j++) if (pos >= (wt[j] || 0)) lit++;
-      if (lit !== lyrLitCount) {
-        lyrLitCount = lit;
-        for (j = 0; j < words.length; j++) words[j].classList.toggle("lit", j < lit);
+      var line = lines[idx];
+      if (line.hasWords) {
+        var wordEls = lyricsLines.children[idx].querySelectorAll(".w");
+        var wt = line.words || [];
+        var _nl = lines[idx + 1];
+        var _lineEnd = _nl ? _nl.time : (line.time + 8000);
+        for (var j = 0; j < wordEls.length; j++) {
+          var wStart = wt[j] || 0;
+          var wEnd = j + 1 < wt.length ? wt[j + 1] : _lineEnd;
+          if (!(wEnd > wStart)) wEnd = wStart + 1;
+          var chEls = wordEls[j].querySelectorAll(".ch");
+          var _n = chEls.length;
+          for (var k = 0; k < _n; k++) {
+            /* each letter owns an equal slice of its word's window */
+            var _on = pos >= wStart + (wEnd - wStart) * (k / _n);
+            var _el = chEls[k];
+            if (_el.classList.contains("lit") !== _on) _el.classList.toggle("lit", _on);
+          }
+        }
       }
     }
   }
