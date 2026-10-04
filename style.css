@@ -285,7 +285,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .foot-socials a:hover { color: var(--ink); border-color: var(--faint); background: var(--hover); transform: scale(1.1); }
 .foot-socials a:active { transform: scale(.9); }
 .foot-socials a svg { width: 17px; height: 17px; display: block; }
-/* lyrics button + synced lyrics overlay */
+/* lyrics button + synced lyrics overlay - apple music inspired */
 .lyrics-btn {
   margin-left: auto; background: none; border: 1px solid var(--line); border-radius: 999px;
   color: var(--dim); font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: .12em;
