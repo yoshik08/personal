@@ -37,24 +37,6 @@ export default async function handler(req, res) {
   try {
     const c = await col();
 
-    /* TEMPORARY one-time dupe purge — remove this branch after cleanup */
-    if (req.method === "DELETE" && req.query.token === "tmp-dedupe-4x8k2n") {
-      const all = await c
-        .find({}, { projection: { _id: 1, name: 1, wpm: 1 } })
-        .sort({ wpm: -1 })
-        .toArray();
-      const seen = new Set();
-      const dupIds = [];
-      for (const d of all) {
-        if (seen.has(d.name)) dupIds.push(d._id);
-        else seen.add(d.name);
-      }
-      const r = dupIds.length
-        ? await c.deleteMany({ _id: { $in: dupIds } })
-        : { deletedCount: 0 };
-      return res.status(200).json({ removed: r.deletedCount });
-    }
-
     if (req.method === "POST") {
       const body = req.body || {};
       const name = cleanName(body.name);
