@@ -351,7 +351,8 @@
         dcStatus.textContent = statusWord[s] || s || "offline";
         dcDot.classList.toggle("on", s === "online" || s === "idle" || s === "dnd");
         if (u.avatar) {
-          dcAva.style.backgroundImage = "url(https://cdn.discordapp.com/avatars/" + DISCORD_ID + "/" + u.avatar + ".png?size=128)";
+          var ext = u.avatar.indexOf("a_") === 0 ? "gif" : "png";
+          dcAva.style.backgroundImage = "url(https://cdn.discordapp.com/avatars/" + DISCORD_ID + "/" + u.avatar + "." + ext + "?size=128)";
           dcAva.textContent = "";
         }
       })
