@@ -314,13 +314,17 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   position: relative; z-index: 1; flex: 1; min-height: 0;
   display: flex; align-items: center; gap: 5vw; padding: 20px 7vw;
 }
-.lyrics-side { flex: 0 0 auto; width: min(28vw, 340px); }
+.lyrics-side { flex: 0 0 auto; width: min(34vw, 430px); }
 .lyrics-side img {
   width: 100%; aspect-ratio: 1; border-radius: 18px; object-fit: cover; background: #1a1a1e;
   box-shadow: 0 24px 70px rgba(0,0,0,.55); display: block;
 }
 .lyrics-title { color: #fff; font-family: "Sora", sans-serif; font-weight: 600; font-size: 17px; margin: 18px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lyrics-title a { color: inherit; text-decoration: none; }
+.lyrics-title a[href]:hover { text-decoration: underline; }
 .lyrics-artist { color: rgba(255,255,255,.55); font-size: 14px; margin: 5px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lyrics-artist a { color: inherit; text-decoration: none; }
+.lyrics-artist a[href]:hover { text-decoration: underline; color: #fff; }
 .lyrics-lines {
   flex: 1; min-width: 0; height: 100%; overflow-y: auto;
   scrollbar-width: none; -ms-overflow-style: none;
@@ -331,9 +335,9 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .lyr-line {
   color: rgba(255,255,255,.32); font-family: "Sora", sans-serif; font-weight: 700;
   font-size: clamp(20px, 2.6vw, 30px); line-height: 1.45; margin: 0 0 16px;
-  transition: color .3s ease, transform .3s ease; transform-origin: left center; max-width: 640px;
+  transition: color .3s ease, font-size .3s ease; max-width: 640px;
 }
-.lyr-line.active { color: #fff; transform: scale(1.045); }
+.lyr-line.active { color: #fff; font-size: clamp(27px, 3.6vw, 42px); }
 .lyr-line.past { color: rgba(255,255,255,.45); }
 .lyrics-hint { position: relative; z-index: 2; text-align: center; color: rgba(255,255,255,.4); font-size: 12px; padding: 0 20px 26px; margin: 0; min-height: 18px; }
 .lyrics-side-text { min-width: 0; }
