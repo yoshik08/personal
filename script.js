@@ -358,7 +358,10 @@
       lyricsHint = document.getElementById("lyricsHint"),
       lyricsTitle = document.getElementById("lyricsTitle"),
       lyricsArtist = document.getElementById("lyricsArtist"),
-      lyricsArt = document.getElementById("lyricsArt");
+      lyricsArt = document.getElementById("lyricsArt"),
+      lyricsProg = document.getElementById("lyricsProg"),
+      lyricsElapsed = document.getElementById("lyricsElapsed"),
+      lyricsDuration = document.getElementById("lyricsDuration");
   var lyrCache = { id: null, lines: null, loading: false };
   var lyrTimer = null, lyrActiveIdx = -1, lyrUserScrollAt = 0;
   function lyrPos() {
@@ -461,8 +464,20 @@
       lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
     }
   }
+  function fmtTime(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000));
+    return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2);
+  }
+  function lyrProgress() {
+    if (!spState.durationMs) return;
+    var pos = Math.min(lyrPos(), spState.durationMs);
+    lyricsProg.style.width = (pos / spState.durationMs * 100) + "%";
+    lyricsElapsed.textContent = fmtTime(pos);
+    lyricsDuration.textContent = fmtTime(spState.durationMs);
+  }
   function lyrTick() {
     if (!lyricsOverlay.classList.contains("open")) return;
+    lyrProgress();
     /* track changed while open — swap lyrics */
     if (spState.key && spState.key !== lyrCache.id && !lyrCache.loading) {
       setLyricsHeader();
