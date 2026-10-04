@@ -479,7 +479,11 @@
       if (idx >= 0 && kids[idx]) {
         kids[idx].className = "lyr-line active";
         if (Date.now() - lyrUserScrollAt > 3000) {
-          kids[idx].scrollIntoView({ block: "center", behavior: "smooth" });
+          /* pin the active line to the exact vertical middle */
+          var cRect = lyricsLines.getBoundingClientRect();
+          var lRect = kids[idx].getBoundingClientRect();
+          var target = lyricsLines.scrollTop + (lRect.top + lRect.height / 2) - (cRect.top + cRect.height / 2);
+          lyricsLines.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
         }
       }
       lyrActiveIdx = idx;
