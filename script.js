@@ -385,25 +385,10 @@
     lyricsHint.textContent = "";
     lyricsLines.innerHTML = "";
     var frag = document.createDocumentFragment();
-    lines.forEach(function (ln, i) {
-      var next = i + 1 < lines.length ? lines[i + 1].time : (durationMs || ln.time + 8000);
-      var span = Math.max(1500, Math.min(next - ln.time, 12000));
-      var words = ln.text.split(/\s+/).filter(Boolean);
-      var total = words.join("").length || 1, acc = 0;
-      ln.words = words.map(function (w) {
-        var t = ln.time + span * (acc / total);
-        acc += w.length;
-        return t;
-      });
+    lines.forEach(function (ln) {
       var div = document.createElement("div");
       div.className = "lyr-line";
-      words.forEach(function (w, j) {
-        var s = document.createElement("span");
-        s.className = "w";
-        s.textContent = w;
-        div.appendChild(s);
-        if (j < words.length - 1) div.appendChild(document.createTextNode(" "));
-      });
+      div.textContent = ln.text;
       frag.appendChild(div);
     });
     lyricsLines.appendChild(frag);
@@ -484,11 +469,6 @@
         }
       }
       lyrActiveIdx = idx;
-    }
-    if (idx >= 0 && lyricsLines.children[idx]) {
-      var words = lyricsLines.children[idx].querySelectorAll(".w");
-      var wt = lines[idx].words || [];
-      for (i = 0; i < words.length; i++) words[i].classList.toggle("lit", pos >= (wt[i] || 0));
     }
   }
   function openLyrics() {
