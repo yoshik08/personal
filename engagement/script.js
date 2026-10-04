@@ -124,6 +124,11 @@
   drop.addEventListener("drop", function (ev) {
     if (ev.dataTransfer.files.length) readFile(ev.dataTransfer.files[0]);
   });
+  /* clicking anywhere on the dropzone opens the picker */
+  drop.addEventListener("click", function (ev) {
+    if (ev.target.closest("button")) return;
+    document.getElementById("file").click();
+  });
   document.getElementById("file").addEventListener("change", function (ev) {
     if (ev.target.files.length) readFile(ev.target.files[0]);
   });
