@@ -2027,7 +2027,29 @@ async function sendAiMessage() {
   }, 500);
 }
 function aiAnswer(text) {
-  const t = text.toLowerCase();
+  const t = text.toLowerCase().trim();
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  /* small talk with personality */
+  if (/^(hi|hey|hello|yo|sup|hii+|hey+|hello+|helo|hola|namaste)[!.\s]*$/.test(t)) {
+    return pick([
+      'hey! what are we training today?',
+      'yo! hunting for a sport, a venue, or just checking plans?',
+      'hey hey. ask me about sports, venues, plans or billing and ill point you the right way.'
+    ]);
+  }
+  if (/how are you|hows it going|whats up/.test(t)) {
+    return pick([
+      'living the dream, one booking at a time. what about you — training today?',
+      'all good! courts are open, coaches are ready. what do you need?'
+    ]);
+  }
+  if (t.includes('thank')) return pick(['anytime!', 'no worries. now go crush it.', 'you got it.']);
+  if (/^(bye|see you|see ya|goodbye|good night|gn)[!.\s]*$/.test(t)) {
+    return pick(['later! go get that workout in.', 'bye! come back when its training time.']);
+  }
+  if (t.includes('who are you') || t.includes('your name')) {
+    return 'im the sportsphere helper — i know every sport, venue, plan and coach on this site. ask away.';
+  }
   const sport = sportsData.find(s => t.includes(s.name.toLowerCase()));
   if (sport) {
     const ps = programsData.filter(p => sportIdOf(p) === sport._id);
