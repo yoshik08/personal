@@ -99,6 +99,22 @@ body.link-hover .cursor-ring { width: 48px; height: 48px; opacity: .85; }
 .nav a { display: inline-block; font-size: 14px; font-weight: 500; color: var(--dim); transition: color .15s ease, transform .32s cubic-bezier(.34, 1.56, .64, 1); }
 .nav a:hover { color: var(--ink); transform: scale(1.1); }
 .nav a:active { transform: scale(.94); }
+.nav-drop { position: relative; }
+.nav-drop::after { content: ""; position: absolute; top: 100%; left: -12px; right: -12px; height: 14px; }
+.nav-menu {
+  position: absolute; top: calc(100% + 10px); left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  min-width: 196px; padding: 6px; z-index: 120;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.28);
+  opacity: 0; visibility: hidden;
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
+}
+.nav-drop:hover .nav-menu, .nav-drop:focus-within .nav-menu {
+  opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+}
+.nav-menu a { display: block; padding: 9px 12px; border-radius: 8px; font-size: 14px; }
+.nav-menu a:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--ink); transform: none; }
 .controls { display: flex; gap: 8px; }
 .ctl {
   font-size: 15px; color: var(--dim); width: 34px; height: 34px;
