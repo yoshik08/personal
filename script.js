@@ -271,7 +271,7 @@
       spLabel = document.getElementById("spLabel"),
       lyricsBtn = document.getElementById("lyricsBtn"),
       spTimer = null;
-  var spState = { key: null, title: null, artist: "", image: null, playing: false, progressMs: null, durationMs: null, lastUpdate: 0 };
+  var spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null, lastUpdate: 0 };
   function renderHeroArtists(list) {
     spHeroArtists.textContent = "";
     if (!list || !list.length) return;
@@ -302,7 +302,7 @@
       spLabel.textContent = "last played —";
       spDot.classList.remove("on");
       lyricsBtn.style.display = "none";
-      spState = { key: null, title: null, artist: "", image: null, playing: false, progressMs: null, durationMs: null, lastUpdate: 0 };
+      spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null, lastUpdate: 0 };
       if (spTimer) { clearInterval(spTimer); spTimer = null; }
       return;
     }
@@ -318,6 +318,8 @@
     spState.key = title + " :: " + artist;
     spState.title = title;
     spState.artist = artist;
+    spState.artists = d.artists || [];
+    spState.trackUrl = d.url || null;
     spState.image = d.image || null;
     spState.playing = live;
     spState.progressMs = d.progressMs;
@@ -442,16 +444,28 @@
       })
       .catch(function () { lyrCache.loading = false; noLyrics(); });
   }
+  function setLyricsHeader() {
+    lyricsTitle.textContent = spState.title || "";
+    if (spState.trackUrl) lyricsTitle.setAttribute("href", spState.trackUrl);
+    else lyricsTitle.removeAttribute("href");
+    lyricsArtist.textContent = "";
+    (spState.artists || []).forEach(function (a, i) {
+      if (i > 0) lyricsArtist.appendChild(document.createTextNode(", "));
+      var link = document.createElement("a");
+      link.textContent = a.name;
+      if (a.url) { link.href = a.url; link.target = "_blank"; link.rel = "noopener"; }
+      lyricsArtist.appendChild(link);
+    });
+    if (spState.image) {
+      lyricsArt.src = spState.image;
+      lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
+    }
+  }
   function lyrTick() {
     if (!lyricsOverlay.classList.contains("open")) return;
     /* track changed while open — swap lyrics */
     if (spState.key && spState.key !== lyrCache.id && !lyrCache.loading) {
-      lyricsTitle.textContent = spState.title;
-      lyricsArtist.textContent = spState.artist;
-      if (spState.image) {
-        lyricsArt.src = spState.image;
-        lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
-      }
+      setLyricsHeader();
       fetchLyrics(spState.title, spState.artist, spState.durationMs);
       return;
     }
@@ -473,12 +487,7 @@
   }
   function openLyrics() {
     if (!spState.title) return;
-    lyricsTitle.textContent = spState.title;
-    lyricsArtist.textContent = spState.artist;
-    if (spState.image) {
-      lyricsArt.src = spState.image;
-      lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
-    }
+    setLyricsHeader();
     lyricsOverlay.classList.add("open");
     lyricsOverlay.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
