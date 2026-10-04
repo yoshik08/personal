@@ -337,7 +337,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-weight: 700; letter-spacing: -0.015em;
   font-size: clamp(20px, 2.6vw, 30px); line-height: 1.4; margin: 0; padding: 15px 0;
-  transition: color .3s ease, font-size .3s ease; max-width: 680px;
+  transition: color .3s ease; max-width: 680px;
 }
 .lyr-line.active { color: #fff; font-size: clamp(28px, 3.6vw, 44px); }
 .lyr-line.past { color: rgba(255,255,255,.45); }
