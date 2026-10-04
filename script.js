@@ -270,9 +270,22 @@
       spHeroArtists = document.getElementById("spHeroArtists"),
       spLabel = document.getElementById("spLabel"),
       spTimer = null;
-  function shortArtists(a) {
-    var parts = (a || "").split(", ");
-    return parts.length > 2 ? parts.slice(0, 2).join(", ") + ", …" : a;
+  function renderHeroArtists(list) {
+    spHeroArtists.textContent = "";
+    if (!list || !list.length) return;
+    spHeroArtists.appendChild(document.createTextNode(" — "));
+    list.slice(0, 2).forEach(function (a, i) {
+      if (i > 0) spHeroArtists.appendChild(document.createTextNode(", "));
+      var link = document.createElement("a");
+      link.textContent = a.name;
+      if (a.url) {
+        link.href = a.url;
+        link.target = "_blank";
+        link.rel = "noopener";
+      }
+      spHeroArtists.appendChild(link);
+    });
+    if (list.length > 2) spHeroArtists.appendChild(document.createTextNode(", …"));
   }
   function renderSpotify(d) {
     var title = d && d.title ? d.title : null;
@@ -293,7 +306,7 @@
     spArtist.textContent = (live ? "" : "last: ") + artist;
     spHeroLink.textContent = title;
     if (d.url) spHeroLink.setAttribute("href", d.url); else spHeroLink.removeAttribute("href");
-    spHeroArtists.textContent = artist ? " — " + shortArtists(artist) : "";
+    renderHeroArtists(d.artists);
     spLabel.textContent = live ? "now playing —" : "last played —";
     spDot.classList.toggle("on", live);
     if (d.image) { spArt.style.backgroundImage = "url(" + d.image + ")"; spArt.textContent = ""; }
