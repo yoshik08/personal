@@ -284,6 +284,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 }
 .foot-socials a:hover { color: var(--ink); border-color: var(--faint); background: var(--hover); transform: scale(1.1); }
 .foot-socials a:active { transform: scale(.9); }
+.foot-socials a svg { width: 17px; height: 17px; display: block; }
 .foot-base { color: var(--faint); font-size: 11.5px; }
 
 /* ---------- reveal ---------- */
