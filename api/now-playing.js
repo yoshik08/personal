@@ -29,6 +29,10 @@ export default async function handler(req, res) {
     const pick = (t, outer) => ({
       title: t.name,
       artist: (t.artists || []).map((a) => a.name).join(", "),
+      artists: (t.artists || []).map((a) => ({
+        name: a.name,
+        url: a.external_urls ? a.external_urls.spotify : null,
+      })),
       image: t.album && t.album.images && t.album.images.length
         ? (t.album.images[1] || t.album.images[0]).url
         : null,
