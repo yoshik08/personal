@@ -20,6 +20,10 @@
     var t = localStorage.getItem("yk-theme");
     if (t === "light" || t === "dark") root.setAttribute("data-theme", t);
     if (localStorage.getItem("yk-motion") === "off") root.setAttribute("data-motion", "off");
+    /* respect the os: default motion off when the user asked for reduced motion */
+    else if (!localStorage.getItem("yk-motion") &&
+             window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      root.setAttribute("data-motion", "off");
   } catch (e) {}
 
   /* ---------- rAF loop watchdog ----------
@@ -725,17 +729,16 @@
   var statusWord = { online: "online", idle: "idle", dnd: "do not disturb", offline: "offline" };
   function pollDiscord() {
     if (!DISCORD_ID || DISCORD_ID.indexOf("YOUR_") === 0) return;
-    fetch("https://api.lanyard.rest/v1/users/" + DISCORD_ID, { cache: "no-store" })
+    /* first-party proxy — no third-party cookies, edge-cached 25s */
+    fetch("/api/discord", { cache: "no-store" })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) {
-        if (!j || !j.success) return;
-        var u = j.data.discord_user, s = j.data.discord_status;
-        dcName.textContent = (u.global_name || u.username || DISCORD_USERNAME);
-        dcStatus.textContent = statusWord[s] || s || "offline";
-        dcDot.classList.toggle("on", s === "online" || s === "idle" || s === "dnd");
-        if (u.avatar) {
-          var ext = u.avatar.indexOf("a_") === 0 ? "gif" : "png";
-          dcAva.style.backgroundImage = "url(https://cdn.discordapp.com/avatars/" + DISCORD_ID + "/" + u.avatar + "." + ext + "?size=128)";
+      .then(function (d) {
+        if (!d || !d.username) return;
+        dcName.textContent = d.username;
+        dcStatus.textContent = statusWord[d.status] || d.status || "offline";
+        dcDot.classList.toggle("on", d.status === "online" || d.status === "idle" || d.status === "dnd");
+        if (d.avatar) {
+          dcAva.style.backgroundImage = "url(" + d.avatar + ")";
           dcAva.textContent = "";
         }
       })
@@ -779,7 +782,8 @@
     var fgx = fgC.getContext("2d");
     var W = 0, H = 0;
     function size() {
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      /* mobile gpus: cap dpr lower, fewer pixels to push */
+      var dpr = Math.min(window.devicePixelRatio || 1, finePointer ? 2 : 1.5);
       W = window.innerWidth; H = window.innerHeight;
       [bgC, fgC].forEach(function (c) {
         c.width = W * dpr; c.height = H * dpr;
@@ -801,7 +805,9 @@
     pokeImg.src = "assets/pokeball.png";
 
     var balls = [];
-    for (var i = 0; i < 14; i++) {
+    /* fewer floating balls on touch devices — cheaper on mobile gpus */
+    var BALL_COUNT = finePointer ? 14 : 6;
+    for (var i = 0; i < BALL_COUNT; i++) {
       var r = 13 + Math.random() * 22;
       balls.push({
         x: Math.random() * window.innerWidth,
