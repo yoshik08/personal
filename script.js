@@ -420,16 +420,23 @@
     lyricsLines.innerHTML = "";
     lyricsHint.textContent = "no lyrics found for this one";
   }
-  function fetchLyrics(title, artist, durationMs) {
+  var lyrLastQuery = null;
+  function fetchLyrics(title, artist, durationMs, force) {
     var key = title + " :: " + artist;
-    if (lyrCache.id === key || lyrCache.loading) return;
+    if (!force && (lyrCache.id === key || lyrCache.loading)) return;
     lyrCache = { id: key, lines: null, loading: true };
+    lyrLastQuery = { title: title, artist: artist, durationMs: durationMs, retried: false };
     lyrActiveIdx = -1;
     lyricsLines.innerHTML = "";
     lyricsHint.textContent = "finding lyrics…";
+    lyricsHint.style.cursor = "";
+    lyricsHint.onclick = null;
     var q = encodeURIComponent(title + " " + (artist || "").split(",")[0]);
     fetch("https://lrclib.net/api/search?q=" + q)
-      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (r) {
+        if (r.status === 429) { var e = new Error("rate-limited"); e.rate = true; throw e; }
+        return r.ok ? r.json() : [];
+      })
       .then(function (res) {
         lyrCache.loading = false;
         if (!res || !res.length) { noLyrics(); return; }
@@ -445,7 +452,28 @@
         if (best && best.plainLyrics) { showPlain(best.plainLyrics); return; }
         noLyrics();
       })
-      .catch(function () { lyrCache.loading = false; noLyrics(); });
+      .catch(function (err) {
+        lyrCache.loading = false;
+        var lq = lyrLastQuery;
+        if (!err.rate && lq && !lq.retried && lyricsOverlay.classList.contains("open")) {
+          /* transient blip — one automatic retry */
+          lq.retried = true;
+          lyricsHint.textContent = "retrying…";
+          setTimeout(function () {
+            if (lyricsOverlay.classList.contains("open") && lyrCache.id === key && !lyrCache.lines)
+              fetchLyrics(title, artist, durationMs, true);
+          }, 2500);
+          return;
+        }
+        lyricsLines.innerHTML = "";
+        lyricsHint.textContent = err.rate ? "too many requests — tap to retry" : "couldn't load lyrics — tap to retry";
+        lyricsHint.style.cursor = "pointer";
+        lyricsHint.onclick = function () {
+          lyricsHint.style.cursor = "";
+          lyricsHint.onclick = null;
+          fetchLyrics(title, artist, durationMs, true);
+        };
+      });
   }
   function setLyricsHeader() {
     lyricsTitle.textContent = spState.title || "";
