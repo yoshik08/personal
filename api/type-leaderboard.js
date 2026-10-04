@@ -26,12 +26,6 @@ async function col() {
 export default async function handler(req, res) {
   try {
     const c = await col();
-    /* TEMPORARY: one-time cleanup of the verifybot test doc — remove this branch after */
-    if (req.method === "DELETE") {
-      if (req.query.token !== "tmp-cleanup-9f3k7q2m") return res.status(403).json({ error: "no" });
-      const r = await c.deleteMany({ name: "verifybot" });
-      return res.status(200).json({ deleted: r.deletedCount });
-    }
     if (req.method === "POST") {
       const body = req.body || {};
       const name = String(body.name || "")
