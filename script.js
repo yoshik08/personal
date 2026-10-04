@@ -349,7 +349,7 @@
       .catch(function () {});
   }
   pollSpotify();
-  setInterval(pollSpotify, 5000);
+  setInterval(pollSpotify, 1000);
 
   /* ---------- 11b. synced lyrics overlay (verci-style) ---------- */
   var lyricsOverlay = document.getElementById("lyricsOverlay"),
