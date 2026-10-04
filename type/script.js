@@ -299,9 +299,16 @@
     lb.push({ name: playerName || "anon", wpm: wpm, acc: acc, ts: Date.now() });
     lb.sort(function (a, b) { return b.wpm - a.wpm; });
     try { localStorage.setItem(LB_KEY, JSON.stringify(lb.slice(0, 50))); } catch (e) {}
+    /* persist to the global leaderboard — fire and forget */
+    try {
+      fetch("/api/type-leaderboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: playerName || "anon", wpm: wpm, acc: acc })
+      }).catch(function () {});
+    } catch (e) {}
   }
-  function renderLB() {
-    var lb = getLB().slice(0, 10);
+  function paintLB(lb) {
     if (!lb.length) {
       lbRows.innerHTML = '<p class="lb-empty">no scores yet. go type.</p>';
       return;
@@ -313,6 +320,16 @@
         '<span class="lb-wpm">' + s.wpm + "</span>" +
         '<span class="lb-acc">' + s.acc + "%</span></div>";
     }).join("");
+  }
+  function renderLB() {
+    lbRows.innerHTML = '<p class="lb-empty">loading…</p>';
+    fetch("/api/type-leaderboard", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        /* global board; fall back to this browser's scores if unreachable */
+        paintLB(((d && d.scores && d.scores.length) ? d.scores : getLB()).slice(0, 10));
+      })
+      .catch(function () { paintLB(getLB().slice(0, 10)); });
   }
   document.getElementById("lbBtn").addEventListener("click", function (e) {
     e.stopPropagation();
