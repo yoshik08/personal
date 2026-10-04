@@ -333,11 +333,13 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 }
 .lyrics-lines::-webkit-scrollbar { display: none; }
 .lyr-line {
-  color: rgba(255,255,255,.32); font-family: "Sora", sans-serif; font-weight: 700;
-  font-size: clamp(20px, 2.6vw, 30px); line-height: 1.45; margin: 0 0 16px;
-  transition: color .3s ease, font-size .3s ease; max-width: 640px;
+  color: rgba(255,255,255,.32);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700; letter-spacing: -0.015em;
+  font-size: clamp(20px, 2.6vw, 30px); line-height: 1.4; margin: 0; padding: 15px 0;
+  transition: color .3s ease, font-size .3s ease; max-width: 680px;
 }
-.lyr-line.active { color: #fff; font-size: clamp(27px, 3.6vw, 42px); }
+.lyr-line.active { color: #fff; font-size: clamp(28px, 3.6vw, 44px); }
 .lyr-line.past { color: rgba(255,255,255,.45); }
 .lyrics-hint { position: relative; z-index: 2; text-align: center; color: rgba(255,255,255,.4); font-size: 12px; padding: 0 20px 26px; margin: 0; min-height: 18px; }
 .lyrics-side-text { min-width: 0; }
@@ -349,7 +351,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   .lyrics-title { margin: 0; font-size: 15px; }
   .lyrics-artist { font-size: 12.5px; margin-top: 3px; }
   .lyrics-side-text { flex: 1; min-width: 0; }
-  .lyr-line { margin-bottom: 14px; }
+  .lyr-line { padding: 12px 0; }
 }
 .foot-base { color: var(--faint); font-size: 11.5px; }
 
