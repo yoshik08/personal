@@ -55,9 +55,51 @@ const auth = {
       localStorage.setItem("play_user", JSON.stringify(d.user));
       toast("signed in as " + d.user.name);
       document.dispatchEvent(new CustomEvent("auth", { detail: this.user }));
+      // check drive status
+      this.checkDrive();
     } catch (e) {
       toast("sign-in failed: " + e.message);
     }
+  },
+
+  async checkDrive() {
+    if (!this.user) return false;
+    try {
+      const d = await api.get("/api/drive/status");
+      this.driveConnected = d.connected;
+      document.dispatchEvent(new CustomEvent("drive", { detail: d.connected }));
+      return d.connected;
+    } catch (e) { return false; }
+  },
+
+  connectDrive() {
+    return new Promise((resolve, reject) => {
+      if (!window.google || !google.accounts || !google.accounts.oauth2) {
+        reject(new Error("google auth not loaded"));
+        return;
+      }
+      const client = google.accounts.oauth2.initCodeClient({
+        client_id: window.GOOGLE_CLIENT_ID,
+        scope: "https://www.googleapis.com/auth/drive.file",
+        ux_mode: "popup",
+        callback: async (resp) => {
+          if (resp.error) { reject(new Error(resp.error)); return; }
+          try {
+            await api.post("/api/auth/google/drive", {
+              code: resp.code,
+              redirectUri: location.origin,
+            });
+            this.driveConnected = true;
+            document.dispatchEvent(new CustomEvent("drive", { detail: true }));
+            toast("google drive connected");
+            resolve(true);
+          } catch (e) {
+            reject(e);
+          }
+        },
+      });
+      client.requestCode();
+    });
   },
 
   logout(silent) {

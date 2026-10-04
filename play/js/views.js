@@ -146,53 +146,208 @@ function newPlaylistModal(onCreate) {
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
 }
 
-/* ---------- home ---------- */
+/* ---------- home: personal library ---------- */
 async function home(v) {
-  v.innerHTML = `<div class="pagehead"><div class="greet">${utils.greet()}</div></div><div id="hbody">${stateBox("loading")}</div>`;
+  const { auth, api, upload, esc, toast } = window.Play;
+  v.innerHTML = `<div class="pagehead"><div class="greet">your library</div></div><div id="hbody">${stateBox("loading")}</div>`;
   const body = v.querySelector("#hbody");
+
+  if (!auth().user) {
+    body.innerHTML = `<div class="empty"><div class="big">♪</div>
+      <p>sign in to access your personal library.</p>
+      <p style="margin-top:12px"><a class="btn" href="#/settings">sign in</a></p></div>`;
+    return;
+  }
+
+  // check drive connection
+  let driveConnected = auth().driveConnected;
+  if (driveConnected === undefined) {
+    driveConnected = await auth().checkDrive().catch(() => false);
+  }
+  if (!driveConnected) {
+    body.innerHTML = `<div class="empty"><div class="big">◈</div>
+      <p>connect google drive to store your music.</p>
+      <p style="margin-top:12px"><button class="btn" id="connectDrive">connect drive</button></p></div>`;
+    body.querySelector("#connectDrive").onclick = async () => {
+      try { await auth().connectDrive(); home(v); }
+      catch (e) { toast("drive connect failed: " + e.message); }
+    };
+    return;
+  }
+
   try {
-    const [hist, pls] = await Promise.all([
-      auth().user ? api.get("/api/history?limit=10").catch(() => ({ tracks: [] })) : { tracks: [] },
-      auth().user ? api.get("/api/playlists").catch(() => ({ playlists: [] })) : { playlists: [] },
-    ]);
-    let h = "";
-    if (hist.tracks.length) {
-      h += `<div class="sec"><h2>recently played</h2><div class="cardgrid">` +
-        hist.tracks.slice(0, 5).map((t) => card(t)).join("") + `</div></div>`;
+    const d = await api.get("/api/songs").catch(() => ({ songs: [] }));
+    const songs = d.songs || [];
+
+    if (!songs.length) {
+      body.innerHTML = `<div class="empty" id="dropzone">
+        <div class="big">♪</div>
+        <p>your library is empty</p>
+        <p class="dim" style="margin-top:8px">enter your audio file</p>
+        <p style="margin-top:16px">
+          <button class="btn" id="pickFile">choose file</button>
+        </p>
+        <p class="dim" style="margin-top:8px;font-size:12px">or drag & drop mp3 here</p>
+        <input type="file" id="fileInput" accept="audio/*" style="display:none">
+      </div>`;
+      setupUpload(body, v);
+      return;
     }
-    if (pls.playlists && pls.playlists.length) {
-      h += `<div class="sec"><h2>your playlists</h2><div class="cardgrid">` +
-        pls.playlists.slice(0, 6).map((p) =>
-          `<div class="card" data-pl="${p._id}" tabindex="0" role="button" aria-label="${esc(p.name)}">
-            <img loading="lazy" src="${esc((p.tracks[0] || {}).albumArt || "")}" alt="" onerror="this.style.visibility='hidden'">
-            <div class="ct">${esc(p.name)}</div><div class="cs">${(p.tracks || []).length} tracks</div></div>`).join("") +
-        `</div></div>`;
-    }
-    let picks = [];
-    if (likedIds.size) {
-      const d = await api.get("/api/liked").catch(() => ({ tracks: [] }));
-      picks = d.tracks.slice(0, 8);
-      if (picks.length) {
-        h += `<div class="sec"><h2>quick picks</h2><div id="qpicks"></div></div>`;
-      }
-    }
-    if (!h) {
-      h = `<div class="empty"><div class="big">♪</div>
-        <p>search for music to get started.</p>
-        <p style="margin-top:12px"><a class="btn" href="#/search">search</a></p></div>`;
-    }
+
+    // library with search + upload button
+    let h = `<div class="searchbox"><input id="libq" placeholder="search your library…" aria-label="search library"></div>
+      <div style="margin:12px 0"><button class="btn" id="uploadBtn">+ add music</button>
+      <input type="file" id="fileInput" accept="audio/*" style="display:none"></div>
+      <div id="songlist"></div>`;
     body.innerHTML = h;
-    const qp = body.querySelector("#qpicks");
-    if (qp && picks && picks.length) qp.appendChild(trackList(picks));
-    body.querySelectorAll("[data-pl]").forEach((c) => {
-      const go = () => location.hash = "#/playlist/" + c.dataset.pl;
-      c.addEventListener("click", go);
-      c.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+
+    const renderSongs = (filter) => {
+      const list = body.querySelector("#songlist");
+      const filtered = filter
+        ? songs.filter((s) => (s.name + " " + (s.spotifyMatch?.artist || "")).toLowerCase().includes(filter.toLowerCase()))
+        : songs;
+      if (!filtered.length) {
+        list.innerHTML = `<p class="dim">no matches</p>`;
+        return;
+      }
+      list.innerHTML = filtered.map((s) => `
+        <div class="trackrow" data-song='${esc(JSON.stringify(s))}'>
+          <img src="${esc(s.spotifyMatch?.artworkUrl || "")}" alt="" onerror="this.style.visibility='hidden'">
+          <div class="tinfo"><div class="tt">${esc(s.name)}</div>
+          <div class="ta">${esc(s.spotifyMatch?.artist || "unknown artist")} · ${fmtDur(s.duration)}</div></div>
+          <button class="iconbtn" data-act="menu" aria-label="options">⋯</button>
+        </div>`).join("");
+      bindSongRows(list, songs, v);
+    };
+
+    renderSongs("");
+    body.querySelector("#libq").addEventListener("input", (e) => renderSongs(e.target.value));
+    body.querySelector("#uploadBtn").onclick = () => body.querySelector("#fileInput").click();
+    body.querySelector("#fileInput").addEventListener("change", (e) => {
+      if (e.target.files[0]) showNameDialog(e.target.files[0], songs, v, body);
     });
-    bindCards(body);
   } catch (e) {
-    body.innerHTML = stateBox("error", "couldn't load home: " + e.message, true);
-    body.querySelector("#retry")?.addEventListener("click", () => home(v));
+    body.innerHTML = stateBox("error", "couldn't load library: " + e.message, true);
+  }
+}
+
+function fmtDur(secs) {
+  if (!secs) return "--:--";
+  const m = Math.floor(secs / 60), s = Math.floor(secs % 60);
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+function bindSongRows(list, songs, v) {
+  list.querySelectorAll(".trackrow").forEach((row) => {
+    const s = JSON.parse(row.dataset.song);
+    // normalize song -> track shape for player
+    const toTrack = (song) => ({
+      id: song.id,
+      title: song.name,
+      artist: song.spotifyMatch?.artist || "unknown artist",
+      artists: song.spotifyMatch?.artist || "unknown artist",
+      album: song.spotifyMatch?.album || "",
+      albumArt: song.spotifyMatch?.artworkUrl || "",
+      duration: Math.round(song.duration || 0),
+      audioUrl: "/api/songs/" + song.id + "/audio",
+      _song: song,
+    });
+    row.addEventListener("click", (e) => {
+      if (e.target.dataset.act === "menu") {
+        showSongMenu(s, v);
+        return;
+      }
+      // play
+      const { player } = window.Play;
+      const tracks = songs.map(toTrack);
+      const idx = songs.findIndex((x) => x.id === s.id);
+      player().setQueue(tracks, idx);
+      player().playAt(idx);
+    });
+  });
+}
+
+function showSongMenu(song, v) {
+  const { api, toast } = window.Play;
+  const actions = [
+    ["play next", () => window.Play.player().playNext(song)],
+    ["add to queue", () => window.Play.player().addToQueue(song)],
+    ["rename", async () => {
+      const name = prompt("song name:", song.name);
+      if (name && name !== song.name) {
+        await api.patch("/api/songs/" + song.id, { name });
+        toast("renamed");
+        home(v);
+      }
+    }],
+    ["refresh lyrics", async () => {
+      toast("refreshing lyrics…");
+      await api.post(`/api/songs/${song.id}/lyrics/refresh`, {});
+      toast("lyrics refreshed");
+    }],
+    ["delete", async () => {
+      if (!confirm(`delete "${song.name}"?`)) return;
+      await api.delete("/api/songs/" + song.id);
+      toast("deleted");
+      home(v);
+    }],
+  ];
+  // simple: use prompt-style menu via confirm chain — replace with proper menu later
+  const choice = prompt("actions:\n" + actions.map((a, i) => `${i + 1}. ${a[0]}`).join("\n") + "\n\nenter number:");
+  const idx = parseInt(choice, 10) - 1;
+  if (actions[idx]) actions[idx][1]();
+}
+
+function setupUpload(body, v) {
+  const dz = body.querySelector("#dropzone");
+  const input = body.querySelector("#fileInput");
+  body.querySelector("#pickFile").onclick = () => input.click();
+  input.addEventListener("change", (e) => {
+    if (e.target.files[0]) showNameDialog(e.target.files[0], [], v, body);
+  });
+  ["dragover", "dragenter"].forEach((ev) => dz.addEventListener(ev, (e) => {
+    e.preventDefault(); dz.classList.add("dragover");
+  }));
+  ["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => {
+    e.preventDefault(); dz.classList.remove("dragover");
+  }));
+  dz.addEventListener("drop", (e) => {
+    const f = e.dataTransfer.files[0];
+    if (f) showNameDialog(f, [], v, body);
+  });
+}
+
+async function showNameDialog(file, songs, v, body) {
+  const { upload, toast } = window.Play;
+  // get duration first
+  toast("analyzing audio…");
+  let duration = 0;
+  try {
+    const meta = await upload.getMetadata(file);
+    duration = meta.duration;
+  } catch (e) {}
+
+  const name = prompt("what should we call this?", file.name.replace(/\.[^.]+$/, ""));
+  if (!name) return;
+
+  // upload with progress
+  body.innerHTML = `<div class="empty"><div class="big">↑</div>
+    <p id="upstage">uploading to drive…</p>
+    <div style="width:200px;height:4px;background:#333;border-radius:2px;margin:12px auto">
+      <div id="upbar" style="height:100%;width:0%;background:#fff;border-radius:2px;transition:width .2s"></div>
+    </div></div>`;
+
+  try {
+    const song = await upload.fullUploadFlow(
+      file, name,
+      (p) => { const b = body.querySelector("#upbar"); if (b) b.style.width = (p * 100) + "%"; },
+      (stage) => { const s = body.querySelector("#upstage"); if (s) s.textContent = stage; }
+    );
+    toast("added to library");
+    home(v); // refresh
+  } catch (e) {
+    toast("upload failed: " + e.message);
+    home(v);
   }
 }
 function card(t) {

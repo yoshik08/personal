@@ -135,13 +135,19 @@ const player = {
 
     let blob = await cache.get(track.id);
     if (!blob) {
+      /* personal library songs stream from drive; others use audio provider */
+      const audioUrl = track.audioUrl || (
+        /^[a-f0-9]{24}$/.test(track.id)
+          ? "/api/songs/" + encodeURIComponent(track.id) + "/audio"
+          : "/api/audio/" + encodeURIComponent(track.id)
+      );
       /* first play: download can take 1-3 min on throttled connections */
       this.downloading = true; this.loading = false;
       this.downloadInfo = { title: track.title, startedAt: Date.now(), gotBytes: 0, totalBytes: 0 };
       this.emit("state");
       this.emit("download");
       try {
-        blob = await api.fetchBlob("/api/audio/" + encodeURIComponent(track.id), (got, total) => {
+        blob = await api.fetchBlob(audioUrl, (got, total) => {
           this.downloadInfo.gotBytes = got;
           this.downloadInfo.totalBytes = total;
           this.emit("download");
