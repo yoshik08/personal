@@ -269,7 +269,9 @@
       spHeroLink = document.getElementById("spHeroLink"),
       spHeroArtists = document.getElementById("spHeroArtists"),
       spLabel = document.getElementById("spLabel"),
+      lyricsBtn = document.getElementById("lyricsBtn"),
       spTimer = null;
+  var spState = { key: null, title: null, artist: "", image: null, playing: false, progressMs: null, durationMs: null, lastUpdate: 0 };
   function renderHeroArtists(list) {
     spHeroArtists.textContent = "";
     if (!list || !list.length) return;
@@ -299,6 +301,8 @@
       spHeroArtists.textContent = "";
       spLabel.textContent = "last played —";
       spDot.classList.remove("on");
+      lyricsBtn.style.display = "none";
+      spState = { key: null, title: null, artist: "", image: null, playing: false, progressMs: null, durationMs: null, lastUpdate: 0 };
       if (spTimer) { clearInterval(spTimer); spTimer = null; }
       return;
     }
@@ -310,11 +314,22 @@
     spLabel.textContent = live ? "now playing —" : "last played —";
     spDot.classList.toggle("on", live);
     if (d.image) { spArt.style.backgroundImage = "url(" + d.image + ")"; spArt.textContent = ""; }
+    lyricsBtn.style.display = "";
+    spState.key = title + " :: " + artist;
+    spState.title = title;
+    spState.artist = artist;
+    spState.image = d.image || null;
+    spState.playing = live;
+    spState.progressMs = d.progressMs;
+    spState.durationMs = d.durationMs;
+    spState.lastUpdate = Date.now();
     if (spTimer) { clearInterval(spTimer); spTimer = null; }
     if (live && d.progressMs != null && d.durationMs) {
       var p = d.progressMs;
       var draw = function () {
         p += 1000;
+        spState.progressMs = p;
+        spState.lastUpdate = Date.now();
         spProg.style.width = Math.min(100, (p / d.durationMs) * 100) + "%";
         if (p >= d.durationMs) {
           if (spTimer) { clearInterval(spTimer); spTimer = null; }
@@ -333,6 +348,178 @@
   }
   pollSpotify();
   setInterval(pollSpotify, 5000);
+
+  /* ---------- 11b. synced lyrics overlay (verci-style) ---------- */
+  var lyricsOverlay = document.getElementById("lyricsOverlay"),
+      lyricsBg = document.getElementById("lyricsBg"),
+      lyricsLines = document.getElementById("lyricsLines"),
+      lyricsHint = document.getElementById("lyricsHint"),
+      lyricsTitle = document.getElementById("lyricsTitle"),
+      lyricsArtist = document.getElementById("lyricsArtist"),
+      lyricsArt = document.getElementById("lyricsArt");
+  var lyrCache = { id: null, lines: null, loading: false };
+  var lyrTimer = null, lyrActiveIdx = -1, lyrUserScrollAt = 0;
+  function lyrPos() {
+    var p = spState.progressMs || 0;
+    if (spState.playing) p += Date.now() - spState.lastUpdate;
+    return p;
+  }
+  function parseLRC(lrc) {
+    var lines = [];
+    lrc.split("\n").forEach(function (raw) {
+      var times = [], m, re = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
+      while ((m = re.exec(raw))) {
+        var frac = m[3] || "0";
+        var mult = frac.length === 3 ? 1 : frac.length === 2 ? 10 : 100;
+        times.push((+m[1]) * 60000 + (+m[2]) * 1000 + (+frac) * mult);
+      }
+      var text = raw.replace(/\[.*?\]/g, "").replace(/<[^>]*>/g, "").trim();
+      if (!text || !times.length) return;
+      times.forEach(function (t) { lines.push({ time: t, text: text }); });
+    });
+    lines.sort(function (a, b) { return a.time - b.time; });
+    return lines.filter(function (l, i) { return i === 0 || l.time !== lines[i - 1].time; });
+  }
+  function showSynced(lines, durationMs) {
+    lyrCache.lines = lines;
+    lyricsHint.textContent = "";
+    lyricsLines.innerHTML = "";
+    var frag = document.createDocumentFragment();
+    lines.forEach(function (ln, i) {
+      var next = i + 1 < lines.length ? lines[i + 1].time : (durationMs || ln.time + 8000);
+      var span = Math.max(1500, Math.min(next - ln.time, 12000));
+      var words = ln.text.split(/\s+/).filter(Boolean);
+      var total = words.join("").length || 1, acc = 0;
+      ln.words = words.map(function (w) {
+        var t = ln.time + span * (acc / total);
+        acc += w.length;
+        return t;
+      });
+      var div = document.createElement("div");
+      div.className = "lyr-line";
+      words.forEach(function (w, j) {
+        var s = document.createElement("span");
+        s.className = "w";
+        s.textContent = w;
+        div.appendChild(s);
+        if (j < words.length - 1) div.appendChild(document.createTextNode(" "));
+      });
+      frag.appendChild(div);
+    });
+    lyricsLines.appendChild(frag);
+    lyrActiveIdx = -1;
+    lyrTick();
+  }
+  function showPlain(plain) {
+    lyrCache.lines = null;
+    lyricsHint.textContent = "unsynced lyrics";
+    lyricsLines.innerHTML = "";
+    var frag = document.createDocumentFragment();
+    plain.split("\n").forEach(function (t) {
+      t = t.trim();
+      if (!t) return;
+      var div = document.createElement("div");
+      div.className = "lyr-line past";
+      div.textContent = t;
+      frag.appendChild(div);
+    });
+    lyricsLines.appendChild(frag);
+  }
+  function noLyrics() {
+    lyrCache.lines = null;
+    lyricsLines.innerHTML = "";
+    lyricsHint.textContent = "no lyrics found for this one";
+  }
+  function fetchLyrics(title, artist, durationMs) {
+    var key = title + " :: " + artist;
+    if (lyrCache.id === key || lyrCache.loading) return;
+    lyrCache = { id: key, lines: null, loading: true };
+    lyrActiveIdx = -1;
+    lyricsLines.innerHTML = "";
+    lyricsHint.textContent = "finding lyrics…";
+    var q = encodeURIComponent(title + " " + (artist || "").split(",")[0]);
+    fetch("https://lrclib.net/api/search?q=" + q)
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (res) {
+        lyrCache.loading = false;
+        if (!res || !res.length) { noLyrics(); return; }
+        var dur = (durationMs || 0) / 1000, best = null, bestScore = Infinity;
+        res.forEach(function (r) {
+          var score = Math.abs((r.duration || 0) - dur) + (r.syncedLyrics ? 0 : 1e9);
+          if (score < bestScore) { bestScore = score; best = r; }
+        });
+        if (best && best.syncedLyrics) {
+          var lines = parseLRC(best.syncedLyrics);
+          if (lines.length) { showSynced(lines, durationMs); return; }
+        }
+        if (best && best.plainLyrics) { showPlain(best.plainLyrics); return; }
+        noLyrics();
+      })
+      .catch(function () { lyrCache.loading = false; noLyrics(); });
+  }
+  function lyrTick() {
+    if (!lyricsOverlay.classList.contains("open")) return;
+    /* track changed while open — swap lyrics */
+    if (spState.key && spState.key !== lyrCache.id && !lyrCache.loading) {
+      lyricsTitle.textContent = spState.title;
+      lyricsArtist.textContent = spState.artist;
+      if (spState.image) {
+        lyricsArt.src = spState.image;
+        lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
+      }
+      fetchLyrics(spState.title, spState.artist, spState.durationMs);
+      return;
+    }
+    var lines = lyrCache.lines;
+    if (!lines || !lines.length) return;
+    var pos = lyrPos(), idx = -1, i;
+    for (i = 0; i < lines.length; i++) if (lines[i].time <= pos) idx = i;
+    if (idx !== lyrActiveIdx) {
+      var kids = lyricsLines.children;
+      if (lyrActiveIdx >= 0 && kids[lyrActiveIdx]) kids[lyrActiveIdx].className = "lyr-line past";
+      if (idx >= 0 && kids[idx]) {
+        kids[idx].className = "lyr-line active";
+        if (Date.now() - lyrUserScrollAt > 3000) {
+          kids[idx].scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+      }
+      lyrActiveIdx = idx;
+    }
+    if (idx >= 0 && lyricsLines.children[idx]) {
+      var words = lyricsLines.children[idx].querySelectorAll(".w");
+      var wt = lines[idx].words || [];
+      for (i = 0; i < words.length; i++) words[i].classList.toggle("lit", pos >= (wt[i] || 0));
+    }
+  }
+  function openLyrics() {
+    if (!spState.title) return;
+    lyricsTitle.textContent = spState.title;
+    lyricsArtist.textContent = spState.artist;
+    if (spState.image) {
+      lyricsArt.src = spState.image;
+      lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
+    }
+    lyricsOverlay.classList.add("open");
+    lyricsOverlay.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    if (lyrCache.id !== spState.key) fetchLyrics(spState.title, spState.artist, spState.durationMs);
+    else { lyrActiveIdx = -1; lyrTick(); }
+    if (lyrTimer) clearInterval(lyrTimer);
+    lyrTimer = setInterval(lyrTick, 200);
+  }
+  function closeLyrics() {
+    lyricsOverlay.classList.remove("open");
+    lyricsOverlay.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    if (lyrTimer) { clearInterval(lyrTimer); lyrTimer = null; }
+  }
+  lyricsBtn.addEventListener("click", openLyrics);
+  document.getElementById("lyricsClose").addEventListener("click", closeLyrics);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && lyricsOverlay.classList.contains("open")) closeLyrics();
+  });
+  lyricsLines.addEventListener("wheel", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
+  lyricsLines.addEventListener("touchmove", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
 
   /* ---------- 12. discord ---------- */
   var dcStatus = document.getElementById("dcStatus"),
