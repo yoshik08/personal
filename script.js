@@ -660,16 +660,17 @@
     var idx = findLyricIndex(lines, pos, lyrActiveIdx);
     if (idx !== lyrActiveIdx) {
       var kids = lyricsLines.children, i;
+      /* read layout BEFORE mutating classes — avoids a forced reflow */
+      var scrollTarget = null;
+      if (idx >= 0 && kids[idx] && Date.now() - lyrUserScrollAt > 3000) {
+        var _el = kids[idx];
+        scrollTarget = _el.offsetTop + _el.offsetHeight / 2 - lyricsLines.clientHeight / 2;
+      }
       if (lyrActiveIdx >= 0 && kids[lyrActiveIdx]) kids[lyrActiveIdx].className = "lyr-line past";
       if (idx >= 0 && kids[idx]) {
         kids[idx].className = "lyr-line active";
-        if (Date.now() - lyrUserScrollAt > 3000) {
-          /* pin the active line to the exact vertical middle */
-          var cRect = lyricsLines.getBoundingClientRect();
-          var lRect = kids[idx].getBoundingClientRect();
-          var target = lyricsLines.scrollTop + (lRect.top + lRect.height / 2) - (cRect.top + cRect.height / 2);
-          lyricsLines.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
-        }
+        if (scrollTarget !== null)
+          lyricsLines.scrollTo({ top: Math.max(0, scrollTarget), behavior: "smooth" });
       }
       lyrActiveIdx = idx;
       lyrLitCount = -1;

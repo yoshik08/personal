@@ -13,13 +13,13 @@ export default async function handler(req, res) {
     if (!j || !j.success || !j.data) return res.status(200).json({});
     const u = j.data.discord_user || {};
     const s = j.data.discord_status || "offline";
-    const ext = u.avatar && u.avatar.indexOf("a_") === 0 ? "gif" : "png";
+    /* always png: the animated gif avatar is 1.7mb, a 128px png is ~15kb */
     res.setHeader("Cache-Control", "s-maxage=25, stale-while-revalidate=25");
     return res.status(200).json({
       username: u.global_name || u.username || "x04_",
       status: s,
       avatar: u.avatar
-        ? "https://cdn.discordapp.com/avatars/" + DISCORD_ID + "/" + u.avatar + "." + ext + "?size=128"
+        ? "https://cdn.discordapp.com/avatars/" + DISCORD_ID + "/" + u.avatar + ".png?size=128"
         : null,
     });
   } catch {
