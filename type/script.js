@@ -66,6 +66,7 @@
     }
     wordsInner.innerHTML = html;
     wordsInner.style.transform = "translateY(0)";
+    currentShift = 0;
   }
 
   /* repaint a single word's letters in place — no dom rebuild per keystroke,
@@ -100,25 +101,26 @@
   function updateCaret() {
     var wordEl = wordsInner.children[wordIndex];
     if (!wordEl) return;
-    var ir = wordsInner.getBoundingClientRect();
     var t = typedWords[wordIndex] || "";
     var letters = wordEl.children;
+    if (!letters.length) return;
     var target = letters[Math.min(t.length, letters.length - 1)];
-    var r = target.getBoundingClientRect();
-    var x = r.left - ir.left;
-    if (t.length >= letters.length && letters.length) {
-      x = r.left - ir.left + r.width;
-    }
-    caret.style.transform = "translate(" + x + "px," + (r.top - ir.top) + "px)";
-    caret.style.height = r.height + "px";
+    /* layout coords (immune to the scroll transform + its transition),
+       relative to wordsWrap which is the caret's offset parent */
+    var x = target.offsetLeft;
+    if (t.length >= letters.length) x += target.offsetWidth;
+    var y = target.offsetTop - currentShift;
+    caret.style.transform = "translate(" + x + "px," + y + "px)";
+    caret.style.height = target.offsetHeight + "px";
   }
 
+  var currentShift = 0;
   function updateLine() {
     var wordEl = wordsInner.children[wordIndex];
     if (!wordEl) return;
     var lineH = wordEl.offsetHeight + 14;
-    var shift = Math.max(0, wordEl.offsetTop - lineH);
-    wordsInner.style.transform = "translateY(" + (-shift) + "px)";
+    currentShift = Math.max(0, wordEl.offsetTop - lineH);
+    wordsInner.style.transform = "translateY(" + (-currentShift) + "px)";
   }
 
   /* ---------- game flow ---------- */
