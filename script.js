@@ -268,6 +268,7 @@
       spDot = document.getElementById("spDot"),
       spHeroLink = document.getElementById("spHeroLink"),
       spHeroArtists = document.getElementById("spHeroArtists"),
+      spLabel = document.getElementById("spLabel"),
       spTimer = null;
   function shortArtists(a) {
     var parts = (a || "").split(", ");
@@ -276,25 +277,28 @@
   function renderSpotify(d) {
     var title = d && d.title ? d.title : null;
     var artist = d && d.artist ? d.artist : "";
-    if (!d || d.playing === false) {
+    var live = !!(d && d.playing);
+    if (!title) {
       spTrack.textContent = "nothing playing rn";
-      spArtist.textContent = d && d.recent ? "last: " + d.recent : "quiet mode";
+      spArtist.textContent = "quiet mode";
       spHeroLink.textContent = "quiet rn";
       spHeroLink.removeAttribute("href");
       spHeroArtists.textContent = "";
+      spLabel.textContent = "last played —";
       spDot.classList.remove("on");
       if (spTimer) { clearInterval(spTimer); spTimer = null; }
       return;
     }
-    spTrack.textContent = title || "unknown track";
-    spArtist.textContent = artist;
-    spHeroLink.textContent = title || "unknown track";
+    spTrack.textContent = title;
+    spArtist.textContent = (live ? "" : "last: ") + artist;
+    spHeroLink.textContent = title;
     if (d.url) spHeroLink.setAttribute("href", d.url); else spHeroLink.removeAttribute("href");
     spHeroArtists.textContent = artist ? " — " + shortArtists(artist) : "";
-    spDot.classList.add("on");
+    spLabel.textContent = live ? "now playing —" : "last played —";
+    spDot.classList.toggle("on", live);
     if (d.image) { spArt.style.backgroundImage = "url(" + d.image + ")"; spArt.textContent = ""; }
-    if (spTimer) clearInterval(spTimer);
-    if (d.progressMs != null && d.durationMs) {
+    if (spTimer) { clearInterval(spTimer); spTimer = null; }
+    if (live && d.progressMs != null && d.durationMs) {
       var p = d.progressMs;
       var draw = function () {
         p += 1000;
