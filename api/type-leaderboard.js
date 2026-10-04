@@ -37,6 +37,12 @@ export default async function handler(req, res) {
   try {
     const c = await col();
 
+    /* TEMP one-time: delete probetest row */
+    if (req.method === "DELETE" && req.query.token === "tmp-final-7z2q") {
+      const r = await c.deleteOne({ name: "probetest" });
+      return res.status(200).json({ removed: r.deletedCount });
+    }
+
     if (req.method === "POST") {
       const body = req.body || {};
       const name = cleanName(body.name);
