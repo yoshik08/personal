@@ -1,1 +1,1 @@
-{"rewrites":[{"destination":"/engagement/index.html","source":"/engagement/"},{"destination":"/type/index.html","source":"/type/"},{"destination":"/sportsphere/index.html","source":"/sportsphere/"}]}
+{"redirects":[{"destination":"/engagement","permanent":true,"source":"/engagement/"},{"destination":"/type","permanent":true,"source":"/type/"},{"destination":"/sportsphere","permanent":true,"source":"/sportsphere/"}]}
