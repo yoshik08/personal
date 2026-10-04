@@ -367,37 +367,25 @@
     if (spState.playing) p += Date.now() - spState.lastUpdate;
     return p;
   }
-  function parseLRC(lrc) {
-    var lines = [];
-    lrc.split("\n").forEach(function (raw) {
-      var times = [], m, re = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
-      while ((m = re.exec(raw))) {
-        var frac = m[3] || "0";
-        var mult = frac.length === 3 ? 1 : frac.length === 2 ? 10 : 100;
-        times.push((+m[1]) * 60000 + (+m[2]) * 1000 + (+frac) * mult);
-      }
-      var text = raw.replace(/\[.*?\]/g, "").replace(/<[^>]*>/g, "").trim();
-      if (!text || !times.length) return;
-      times.forEach(function (t) { lines.push({ time: t, text: text }); });
-    });
-    lines.sort(function (a, b) { return a.time - b.time; });
-    return lines.filter(function (l, i) { return i === 0 || l.time !== lines[i - 1].time; });
-  }
   function showSynced(lines, durationMs) {
     lyrCache.lines = lines;
     lyricsHint.textContent = "";
     lyricsLines.innerHTML = "";
     var frag = document.createDocumentFragment();
     lines.forEach(function (ln, i) {
-      var next = i + 1 < lines.length ? lines[i + 1].time : (durationMs || ln.time + 8000);
-      var span = Math.max(1500, Math.min(next - ln.time, 12000));
       var words = ln.text.split(/\s+/).filter(Boolean);
-      var total = words.join("").length || 1, acc = 0;
-      ln.words = words.map(function (w) {
-        var t = ln.time + span * (acc / total);
-        acc += w.length;
-        return t;
-      });
+      if (!(ln.words && ln.words.length === words.length)) {
+        /* no real word data — interpolate across the line's window */
+        var next = i + 1 < lines.length ? lines[i + 1].time : (durationMs || ln.time + 8000);
+        var span = Math.max(1500, Math.min(next - ln.time, 12000));
+        var total = words.join("").length || 1, acc = 0;
+        ln.words = words.map(function (w) {
+          var t = ln.time + span * (acc / total);
+          acc += w.length;
+          return t;
+        });
+        ln.guessed = true;
+      }
       var div = document.createElement("div");
       div.className = "lyr-line";
       words.forEach(function (w, j) {
@@ -446,25 +434,19 @@
     lyricsHint.textContent = "finding lyrics…";
     lyricsHint.style.cursor = "";
     lyricsHint.onclick = null;
-    var q = encodeURIComponent(title + " " + (artist || "").split(",")[0]);
-    fetch("/api/lyrics?q=" + q)
+    var url = "/api/lyrics?artist=" + encodeURIComponent((artist || "").split(",")[0]) +
+      "&title=" + encodeURIComponent(title) +
+      "&duration=" + Math.round((durationMs || 0) / 1000);
+    fetch(url)
       .then(function (r) {
         if (r.status === 429) { var e = new Error("rate-limited"); e.rate = true; throw e; }
-        return r.ok ? r.json() : [];
+        if (!r.ok) throw new Error("bad response");
+        return r.json();
       })
-      .then(function (res) {
+      .then(function (data) {
         lyrCache.loading = false;
-        if (!res || !res.length) { noLyrics(); return; }
-        var dur = (durationMs || 0) / 1000, best = null, bestScore = Infinity;
-        res.forEach(function (r) {
-          var score = Math.abs((r.duration || 0) - dur) + (r.syncedLyrics ? 0 : 1e9);
-          if (score < bestScore) { bestScore = score; best = r; }
-        });
-        if (best && best.syncedLyrics) {
-          var lines = parseLRC(best.syncedLyrics);
-          if (lines.length) { showSynced(lines, durationMs); return; }
-        }
-        if (best && best.plainLyrics) { showPlain(best.plainLyrics); return; }
+        if (data && data.lines && data.lines.length) { showSynced(data.lines, durationMs); return; }
+        if (data && data.plain) { showPlain(data.plain); return; }
         noLyrics();
       })
       .catch(function (err) {
