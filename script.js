@@ -432,7 +432,7 @@
     lyricsHint.style.cursor = "";
     lyricsHint.onclick = null;
     var q = encodeURIComponent(title + " " + (artist || "").split(",")[0]);
-    fetch("https://lrclib.net/api/search?q=" + q)
+    fetch("/api/lyrics?q=" + q)
       .then(function (r) {
         if (r.status === 429) { var e = new Error("rate-limited"); e.rate = true; throw e; }
         return r.ok ? r.json() : [];
