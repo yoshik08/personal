@@ -136,6 +136,8 @@ body.link-hover .cursor-ring { width: 48px; height: 48px; opacity: .85; }
 .sp-song { color: var(--ink); font-weight: 600; text-decoration: none; }
 .sp-song[href]:hover { text-decoration: underline; }
 .sp-artists { color: var(--dim); font-weight: 400; }
+.sp-artists a { color: inherit; text-decoration: none; }
+.sp-artists a[href]:hover { text-decoration: underline; }
 .socials { display: flex; gap: 6px; }
 .socials a {
   width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
