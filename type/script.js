@@ -296,7 +296,15 @@
   }
   function saveScore(wpm, acc) {
     var lb = getLB();
-    lb.push({ name: playerName || "anon", wpm: wpm, acc: acc, ts: Date.now() });
+    var nm = playerName || "anon";
+    var ix = -1;
+    for (var i = 0; i < lb.length; i++) if (lb[i].name === nm) { ix = i; break; }
+    /* one row per name locally too — only a personal best overwrites */
+    if (ix >= 0) {
+      if (wpm > lb[ix].wpm) lb[ix] = { name: nm, wpm: wpm, acc: acc, ts: Date.now() };
+    } else {
+      lb.push({ name: nm, wpm: wpm, acc: acc, ts: Date.now() });
+    }
     lb.sort(function (a, b) { return b.wpm - a.wpm; });
     try { localStorage.setItem(LB_KEY, JSON.stringify(lb.slice(0, 50))); } catch (e) {}
     /* persist to the global leaderboard — fire and forget */
