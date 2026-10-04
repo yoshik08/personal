@@ -125,6 +125,8 @@ const player = {
     if (!track) return;
     this.error = null;
     this.recordHistory(); /* close out previous track */
+    /* stop current audio immediately — don't let old track play under new ui */
+    try { this.audio.pause(); } catch (e) {}
     this.currentTrack = track;
     this.downloading = false; this.loading = true;
     this.emit("track");
