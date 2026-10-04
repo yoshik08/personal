@@ -134,8 +134,14 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 }
 
 @media (max-width: 640px) {
+  .topbar { padding: 16px 20px; }
+  .stage { padding: 0 20px; }
+  .hud { gap: 10px; margin-bottom: 14px; }
+  .timer { font-size: 24px; }
+  .live-wpm { font-size: 24px; }
   .words-inner { font-size: 22px; }
   .words-wrap { height: calc((22px * 1.6 + 14px) * 3); }
+  .word { margin: 0 10px 14px 0; }
   .result-stats { gap: 40px; }
   .r-val { font-size: 42px; }
 }
