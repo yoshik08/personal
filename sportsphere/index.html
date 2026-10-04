@@ -312,7 +312,9 @@ footer{border-top:1px solid var(--line-soft);padding:44px 6%;display:flex;justif
   body.menu-open .navbar nav{display:flex}
   .navbar nav a{padding:15px 4px;font-size:16px;border-bottom:1px solid var(--line-soft)}
   .navbar nav .portal-btn,.navbar nav .admin-nav-btn{width:100%;margin:12px 0 0;padding:14px;box-sizing:border-box}
-  #authContainer{gap:6px}
+  #authContainer{gap:6px;min-width:0}
+  #googleBtnNav{max-width:100%}
+  #googleBtnNav iframe{max-width:100% !important}
   #authContainer .outline-btn,#authContainer .small-btn{padding:10px 14px;font-size:12.5px}
   #logoutContainer .outline-btn{padding:10px 14px;font-size:12.5px}
   body{overflow-x:hidden}
@@ -899,7 +901,10 @@ function initGoogleBtn() {
   }
   const nav = document.getElementById('googleBtnNav');
   if (nav && !nav.dataset.done) {
-    google.accounts.id.renderButton(nav, { theme: 'outline', size: 'medium' });
+    var small = window.innerWidth <= 700;
+    google.accounts.id.renderButton(nav, small
+      ? { theme: 'outline', size: 'small' }
+      : { theme: 'outline', size: 'medium' });
     nav.dataset.done = '1';
   }
   const modal = document.getElementById('googleBtn');
