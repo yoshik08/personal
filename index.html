@@ -6,7 +6,6 @@
 <title>yoshik — developer</title>
 <meta name="description" content="yoshik builds full-stack apps, android tools and ml models.">
 <link rel="preload" href="assets/fonts/HankenGrotesk-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/lyrics/engine.css">
 <link rel="stylesheet" href="style.css?v=lyr2">
 </head>
 <body>
@@ -288,7 +287,6 @@
           <div class="np-meta">
             <p class="np-track" id="spTrack">connect spotify to go live</p>
             <p class="np-artist" id="spArtist">add keys in vercel → redeploy</p>
-            <div class="np-karaoke" id="npKaraoke" role="button" tabindex="0" aria-label="open fullscreen lyrics"></div>
           </div>
         </div>
         <div class="np-bar"><i id="spProg"></i></div>
@@ -360,9 +358,6 @@
 <div class="lyrics-overlay" id="lyricsOverlay" aria-hidden="true">
   <div class="lyrics-bg" id="lyricsBg"></div>
   <button class="lyrics-close" id="lyricsClose" data-hover aria-label="close lyrics">✕</button>
-  <button class="lyrics-share" id="lyricsShare" data-hover aria-label="share current lyric">share</button>
-  <button class="lyrics-desk" id="lyricsDesk" data-hover aria-label="desk mode">desk</button>
-  <div class="desk-stage" id="deskStage" aria-hidden="true"></div>
   <div class="lyrics-body">
     <div class="lyrics-side">
       <img id="lyricsArt" alt="">
@@ -372,12 +367,11 @@
       </div>
       <div class="lyrics-progress"><i id="lyricsProg"></i></div>
     </div>
-    <div class="lyrics-mount" id="lyricsMount"></div>
+    <div class="lyrics-lines" id="lyricsLines"></div>
   </div>
   <p class="lyrics-hint" id="lyricsHint"></p>
 </div>
 
-<script src="assets/lyrics/engine.js"></script>
-<script src="script.js?v=lyrics17"></script>
+<script src="script.js?v=lyrics16"></script>
 </body>
 </html>

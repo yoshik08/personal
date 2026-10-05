@@ -329,22 +329,13 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .lyrics-btn:hover { color: var(--ink); border-color: var(--faint); background: var(--hover); }
 .lyrics-overlay {
   position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column;
-  background: transparent; /* EMERGENCY unbox: the ONLY backdrop is #lyricsBg (full-bleed art). no dark plate, no backdrop-filter. */
+  background: rgba(8, 8, 10, .82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   opacity: 0; visibility: hidden; transition: opacity .35s ease, visibility .35s;
-  --bloom: rgb(125, 155, 255); --bloom-2: rgb(80, 60, 180); /* D1: album colors, set per track */
 }
 .lyrics-overlay.open { opacity: 1; visibility: visible; }
 .lyrics-bg {
   position: absolute; inset: -40px; background-size: cover; background-position: center;
-  filter: blur(70px) brightness(.42) saturate(.95); transform: scale(1.1); pointer-events: none;
-}
-.lyrics-bg::after {
-  content: ""; position: absolute; inset: 0;
-  /* EMERGENCY unbox: soft vignette ONLY. no uniform opaque wash — that
-     flattened the art into a charcoal plate. */
-  background:
-    radial-gradient(120% 95% at 50% 42%, transparent 30%, rgba(0,0,0,.55) 100%),
-    linear-gradient(to bottom, rgba(0,0,0,.35), transparent 22%, transparent 75%, rgba(0,0,0,.45));
+  filter: blur(70px) brightness(.45); transform: scale(1.1); pointer-events: none;
 }
 .lyrics-close {
   position: absolute; top: 22px; right: 28px; z-index: 3;
@@ -362,7 +353,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   width: 100%; aspect-ratio: 1; border-radius: 14px; object-fit: cover; background: #1a1a1e;
   box-shadow: 0 24px 70px rgba(0,0,0,.55); display: block;
 }
-.lyrics-title { color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Hanken Grotesk", system-ui, sans-serif; font-weight: 600; font-size: 17px; margin: 18px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lyrics-title { color: #fff; font-family: "Sora", sans-serif; font-weight: 600; font-size: 17px; margin: 18px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lyrics-title a { color: inherit; text-decoration: none; }
 .lyrics-title a[href]:hover { text-decoration: underline; }
 .lyrics-artist { color: rgba(255,255,255,.55); font-size: 14px; margin: 5px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -370,145 +361,30 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .lyrics-artist a[href]:hover { text-decoration: underline; color: #fff; }
 .lyrics-progress { margin-top: 20px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; }
 .lyrics-progress i { display: block; height: 100%; width: 0; border-radius: inherit; background: rgba(255,255,255,.85); }
-/* engine container: the LyricsEngine builds its own .lyrics-engine tree
-   inside here (full mode); the engine owns scroll + animation.
-   NOTE: no mask-image here — on iOS Safari a masked layer composites as a
-   faint rectangular edge against the blurred art. The engine root already
-   clips (overflow:hidden), so the mount needs no clipping of its own. */
-.lyrics-mount {
-  flex: 1; min-width: 0; height: 100%;
+.lyrics-lines {
+  flex: 1; min-width: 0; height: 100%; overflow-y: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+  mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 92%, transparent);
 }
-/* EMERGENCY unbox: body scrims DELETED. the heavy ::before/::after gradients
-   painted a hard horizontal band (mobile top:155px) that read as a box top.
-   readability at scroll edges now comes only from the soft #lyricsBg::after
-   vignette. no mask-image anywhere near the mount. */
-/* plain-level static scroll inside the engine */
-.lyrics-engine.is-plain::-webkit-scrollbar { display: none; }
-.lyrics-engine.is-plain { scrollbar-width: none; -ms-overflow-style: none; }
-/* time readouts stay aligned while ticking */
-.lyrics-overlay, .np-body { font-variant-numeric: tabular-nums; }
+.lyrics-lines::-webkit-scrollbar { display: none; }
+.lyr-line {
+  color: rgba(255,255,255,.32);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700; letter-spacing: -0.015em;
+  font-size: clamp(22px, 2.9vw, 34px); line-height: 1.35; margin: 0; padding: 16px 0;
+  transition: color .3s ease;
+}
+.lyr-line.active { color: #fff; font-size: clamp(30px, 4vw, 48px); }
+.lyr-line.active .w { color: rgba(255,255,255,.35); }
+.lyr-line.active .w .ch { transition: color .45s ease; }
+.lyr-line.active .w .ch.lit { color: #fff; }
+.lyr-line.past { color: rgba(255,255,255,.45); }
 .lyrics-hint { position: relative; z-index: 2; text-align: center; color: rgba(255,255,255,.4); font-size: 12px; padding: 0 20px 26px; margin: 0; min-height: 18px; }
 .lyrics-side-text { min-width: 0; }
-/* ---------- S1: card karaoke line (now-playing card) ---------- */
-.np-karaoke { margin-top: 6px; min-height: 24px; max-height: 46px; overflow: hidden; }
-.np-karaoke:focus-visible { outline: 1px solid var(--faint); border-radius: 6px; }
-/* engine card mode ships white text — re-tint to the site theme so the
-   wipe stays readable in both light and dark card themes */
-.np-karaoke .lyrics-engine[data-mode="card"] {
-  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont,
-               system-ui, sans-serif;
-}
-.np-karaoke .lyrics-engine[data-mode="card"] .lyrics-lines { padding: 0; }
-.np-karaoke .lyrics-engine[data-mode="card"] .lyrics-line {
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.35;
-  color: var(--dim);
-}
-/* wipe: accent leads, dim trails — readable on light + dark cards */
-.np-karaoke .lyrics-engine[data-motion="true"] .lyrics-word,
-.np-karaoke .lyrics-engine[data-motion="true"] .lyrics-letter {
-  background: linear-gradient(90deg,
-    var(--accent) calc(var(--p) - 0.25em),
-    var(--dim)    calc(var(--p) + 0.25em));
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent; -webkit-text-fill-color: transparent;
-}
-.np-karaoke .lyrics-engine[data-motion="false"] .lyrics-word { color: var(--dim); }
-.np-karaoke .lyrics-engine[data-motion="false"] .lyrics-word.is-now,
-.np-karaoke .lyrics-engine[data-motion="false"] .lyrics-word.is-past { color: var(--accent); }
-/* static line-level in the card: solid accent when active */
-.np-karaoke .lyrics-engine .lyrics-line.is-active .lyrics-word-static {
-  color: var(--accent);
-  -webkit-text-fill-color: var(--accent);
-  background: none;
-}
-/* ---------- S2: desk mode ---------- */
-.lyrics-desk, .lyrics-share {
-  position: absolute; top: 22px; z-index: 3;
-  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #fff;
-  border-radius: 999px; font-family: "JetBrains Mono", monospace; font-size: 10px;
-  letter-spacing: .12em; text-transform: uppercase; padding: 10px 16px; cursor: pointer;
-  transition: background .15s ease;
-}
-.lyrics-desk { right: 78px; }
-.lyrics-share { right: 170px; }
-.lyrics-desk:hover, .lyrics-share:hover { background: rgba(255,255,255,.18); }
-.lyrics-desk.on { background: rgba(255,255,255,.24); }
-.desk-stage { display: none; position: absolute; inset: 0; z-index: 2; }
-body.desk-mode .desk-stage { display: block; }
-body.desk-mode .lyrics-body { visibility: hidden; }
-body.desk-mode .lyrics-hint { visibility: hidden; }
-/* focus layout: card mode (single active line) at giant size, centered */
-body.desk-mode .desk-stage .lyrics-engine[data-mode="card"] .lyrics-lines {
-  padding: 0 8vw; justify-content: center;
-}
-body.desk-mode .desk-stage .lyrics-engine[data-mode="card"] .lyrics-line.is-active {
-  font-size: clamp(48px, 7.5vw, 110px);
-  font-weight: 800; line-height: 1.12; letter-spacing: -0.022em;
-  max-width: 20ch; text-wrap: balance; text-align: center;
-}
-/* ---------- D1: album-color bloom behind the desk lyric ---------- */
-body.desk-mode .desk-stage { overflow: hidden; }
-body.desk-mode .desk-stage::before {
-  content: ""; position: absolute; inset: -20%;
-  background: radial-gradient(ellipse at 50% 45%, var(--bloom), transparent 70%);
-  background: radial-gradient(ellipse at 50% 45%,
-    color-mix(in srgb, var(--bloom) 55%, transparent),
-    transparent 62%);
-  filter: blur(48px); pointer-events: none; z-index: 0;
-  animation: desk-bloom-breathe 7s ease-in-out infinite;
-}
-body.desk-mode .desk-stage .lyrics-engine { position: relative; z-index: 1; }
-@keyframes desk-bloom-breathe {
-  0%, 100% { opacity: .55; transform: scale(1); }
-  50%      { opacity: .9;  transform: scale(1.06); }
-}
-/* ---------- D2: micro-slam on line change ---------- */
-body.desk-mode .lyrics-line.desk-slam {
-  animation: desk-slam .18s cubic-bezier(.16, 1, .3, 1);
-}
-@keyframes desk-slam {
-  0%   { transform: scale(1); }
-  35%  { transform: scale(1.035); }
-  100% { transform: scale(1); }
-}
-/* ---------- D3: interlude theater (orb + enlarged dots) ---------- */
-body.desk-mode .lyrics-engine.is-interlude-theater::after {
-  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background: radial-gradient(circle at 50% 50%, var(--bloom), transparent 60%);
-  background: radial-gradient(circle at 50% 50%,
-    color-mix(in srgb, var(--bloom) 45%, transparent),
-    transparent 55%);
-  animation: desk-orb 2.4s ease-in-out infinite;
-  transition: opacity .3s ease;
-}
-body.desk-mode .lyrics-engine.is-interlude-theater .lyrics-dots { gap: .8em; }
-body.desk-mode .lyrics-engine.is-interlude-theater .lyrics-dots i {
-  width: .55em; height: .55em;
-}
-@keyframes desk-orb {
-  0%, 100% { opacity: .35; transform: scale(.96); }
-  50%      { opacity: .6;  transform: scale(1.04); }
-}
-/* reduced motion: no bloom animation, no slam, no vibrate (host-gated) */
-@media (prefers-reduced-motion: reduce) {
-  body.desk-mode .desk-stage::before,
-  body.desk-mode .lyrics-engine.is-interlude-theater::after { animation: none; }
-  body.desk-mode .lyrics-line.desk-slam { animation: none; }
-}
-html[data-motion="off"] body.desk-mode .desk-stage::before,
-html[data-motion="off"] body.desk-mode .lyrics-engine.is-interlude-theater::after,
-html[data-motion="off"] body.desk-mode .lyrics-line.desk-slam { animation: none; }
 @media (max-width: 700px) {
   .lyrics-close { top: 16px; right: 18px; }
-  /* EMERGENCY unbox: body has NO horizontal padding on mobile — the mount
-     spans the full viewport width edge-to-edge. the header keeps its inset
-     via .lyrics-side padding; lyric text inset comes from the engine's own
-     7vw line padding. no inset column = no inset rectangle. */
-  .lyrics-body { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 16px; padding: 74px 0 16px; }
-  .lyrics-side { padding: 0 7vw; }
+  .lyrics-body { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 16px; padding: 74px 7vw 16px; }
   .lyrics-side { width: 100%; display: flex; align-items: center; gap: 12px; }
   .lyrics-side img { width: 54px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
   .lyrics-title { margin: 0; font-size: 15px; }
@@ -516,8 +392,7 @@ html[data-motion="off"] body.desk-mode .lyrics-line.desk-slam { animation: none;
   .lyrics-side-text { flex: 1; min-width: 0; }
   .lyrics-side { flex-wrap: wrap; }
   .lyrics-progress { flex: 1 1 100%; margin-top: 6px; }
-  .lyrics-share { right: 66px; top: 16px; }
-  .lyrics-desk { right: 148px; top: 16px; }
+  .lyr-line { padding: 12px 0; }
 }
 .foot-base { color: var(--faint); font-size: 11.5px; }
 
