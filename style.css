@@ -353,7 +353,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   width: 100%; aspect-ratio: 1; border-radius: 14px; object-fit: cover; background: #1a1a1e;
   box-shadow: 0 24px 70px rgba(0,0,0,.55); display: block;
 }
-.lyrics-title { color: #fff; font-family: "Sora", sans-serif; font-weight: 600; font-size: 17px; margin: 18px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lyrics-title { color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Hanken Grotesk", system-ui, sans-serif; font-weight: 600; font-size: 17px; margin: 18px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lyrics-title a { color: inherit; text-decoration: none; }
 .lyrics-title a[href]:hover { text-decoration: underline; }
 .lyrics-artist { color: rgba(255,255,255,.55); font-size: 14px; margin: 5px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -361,27 +361,65 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .lyrics-artist a[href]:hover { text-decoration: underline; color: #fff; }
 .lyrics-progress { margin-top: 20px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; }
 .lyrics-progress i { display: block; height: 100%; width: 0; border-radius: inherit; background: rgba(255,255,255,.85); }
+/* engine container: the LyricsEngine builds its own .lyrics-engine tree
+   inside here (full mode); the engine owns scroll + animation. */
 .lyrics-lines {
-  flex: 1; min-width: 0; height: 100%; overflow-y: auto;
-  scrollbar-width: none; -ms-overflow-style: none;
+  flex: 1; min-width: 0; height: 100%; overflow: hidden;
   mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 92%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 92%, transparent);
 }
-.lyrics-lines::-webkit-scrollbar { display: none; }
-.lyr-line {
-  color: rgba(255,255,255,.32);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-weight: 700; letter-spacing: -0.015em;
-  font-size: clamp(22px, 2.9vw, 34px); line-height: 1.35; margin: 0; padding: 16px 0;
-  transition: color .3s ease;
-}
-.lyr-line.active { color: #fff; font-size: clamp(30px, 4vw, 48px); }
-.lyr-line.active .w { color: rgba(255,255,255,.35); }
-.lyr-line.active .w .ch { transition: color .45s ease; }
-.lyr-line.active .w .ch.lit { color: #fff; }
-.lyr-line.past { color: rgba(255,255,255,.45); }
+/* plain-level static scroll inside the engine */
+.lyrics-engine.is-plain::-webkit-scrollbar { display: none; }
+.lyrics-engine.is-plain { scrollbar-width: none; -ms-overflow-style: none; }
+/* time readouts stay aligned while ticking */
+.lyrics-overlay, .np-body { font-variant-numeric: tabular-nums; }
 .lyrics-hint { position: relative; z-index: 2; text-align: center; color: rgba(255,255,255,.4); font-size: 12px; padding: 0 20px 26px; margin: 0; min-height: 18px; }
 .lyrics-side-text { min-width: 0; }
+/* ---------- S1: card karaoke line (now-playing card) ---------- */
+.np-karaoke { margin-top: 6px; min-height: 24px; max-height: 46px; overflow: hidden; }
+.np-karaoke:focus-visible { outline: 1px solid var(--faint); border-radius: 6px; }
+/* engine card mode ships white text — re-tint to the site theme so the
+   wipe stays readable in both light and dark card themes */
+.np-karaoke .lyrics-engine[data-mode="card"] .lyrics-lines { padding: 0; }
+.np-karaoke .lyrics-engine[data-mode="card"] .lyrics-line {
+  font-size: 14px; line-height: 1.35; color: var(--faint);
+}
+.np-karaoke .lyrics-engine[data-motion="true"] .lyrics-word,
+.np-karaoke .lyrics-engine[data-motion="true"] .lyrics-letter {
+  background: linear-gradient(90deg,
+    var(--ink) calc(var(--p) - 0.25em),
+    var(--faint) calc(var(--p) + 0.25em));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+}
+.np-karaoke .lyrics-engine[data-motion="false"] .lyrics-word { color: var(--faint); }
+.np-karaoke .lyrics-engine[data-motion="false"] .lyrics-word.is-now,
+.np-karaoke .lyrics-engine[data-motion="false"] .lyrics-word.is-past { color: var(--ink); }
+/* ---------- S2: desk mode ---------- */
+.lyrics-desk, .lyrics-share {
+  position: absolute; top: 22px; z-index: 3;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #fff;
+  border-radius: 999px; font-family: "JetBrains Mono", monospace; font-size: 10px;
+  letter-spacing: .12em; text-transform: uppercase; padding: 10px 16px; cursor: pointer;
+  transition: background .15s ease;
+}
+.lyrics-desk { right: 78px; }
+.lyrics-share { right: 170px; }
+.lyrics-desk:hover, .lyrics-share:hover { background: rgba(255,255,255,.18); }
+.lyrics-desk.on { background: rgba(255,255,255,.24); }
+.desk-stage { display: none; position: absolute; inset: 0; z-index: 2; }
+body.desk-mode .desk-stage { display: block; }
+body.desk-mode .lyrics-body { visibility: hidden; }
+body.desk-mode .lyrics-hint { visibility: hidden; }
+/* focus layout: card mode (single active line) at giant size, centered */
+body.desk-mode .desk-stage .lyrics-engine[data-mode="card"] .lyrics-lines {
+  padding: 0 8vw; justify-content: center;
+}
+body.desk-mode .desk-stage .lyrics-engine[data-mode="card"] .lyrics-line.is-active {
+  font-size: clamp(48px, 7.5vw, 110px);
+  font-weight: 800; line-height: 1.12; letter-spacing: -0.022em;
+  max-width: 20ch; text-wrap: balance; text-align: center;
+}
 @media (max-width: 700px) {
   .lyrics-close { top: 16px; right: 18px; }
   .lyrics-body { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 16px; padding: 74px 7vw 16px; }
@@ -392,7 +430,8 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   .lyrics-side-text { flex: 1; min-width: 0; }
   .lyrics-side { flex-wrap: wrap; }
   .lyrics-progress { flex: 1 1 100%; margin-top: 6px; }
-  .lyr-line { padding: 12px 0; }
+  .lyrics-share { right: 66px; top: 16px; }
+  .lyrics-desk { right: 148px; top: 16px; }
 }
 .foot-base { color: var(--faint); font-size: 11.5px; }
 

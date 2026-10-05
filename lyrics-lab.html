@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lyrics lab — sync test</title>
+<link rel="stylesheet" href="assets/lyrics/engine.css">
+<style>
+  :root{ color-scheme: dark; }
+  *{ box-sizing: border-box; }
+  body{
+    background:#08080a; color:#e9e9ec; margin:0; padding:28px 18px; line-height:1.5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  .wrap{ max-width:960px; margin:0 auto; }
+  h1{ font-size:20px; margin:0 0 4px; font-weight:700; }
+  h1 .sub{ font-weight:400; }
+  .sub{ color:#8b8b93; font-size:12px; margin:0 0 14px; }
+  .pill{
+    display:inline-block; font-size:11px; padding:3px 10px; border-radius:999px;
+    border:1px solid #333; margin-left:10px; vertical-align:middle;
+  }
+  .pill.ok{ color:#7ee2a8; border-color:#2c5b40; background:#0f1f16; }
+  .pill.warn{ color:#ffd479; border-color:#5b4a2c; background:#1f180f; }
+  .pill.bad{ color:#ff8f8f; border-color:#5b2c2c; background:#1f0f0f; }
+  .controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:14px 0; }
+  .controls label{ font-size:12px; color:#8b8b93; display:flex; gap:8px; align-items:center; }
+  button, select{
+    background:#16161a; color:#e9e9ec; border:1px solid #2e2e35; border-radius:8px;
+    padding:9px 14px; font:inherit; font-size:13px; cursor:pointer;
+  }
+  button:hover:not(:disabled){ border-color:#4a4a55; background:#1c1c22; }
+  button:disabled, select:disabled{ opacity:.4; cursor:default; }
+  select{ padding:9px 10px; }
+  #stage{
+    border:1px solid #232329; border-radius:12px; min-height:340px;
+    padding:28px; margin:14px 0; background:#0c0c0f; overflow:hidden;
+  }
+  #readout{
+    background:#0c0c0f; border:1px solid #232329; border-radius:8px; padding:12px;
+    font-size:12px; white-space:pre-wrap; min-height:44px; color:#b9e2c8; margin:0;
+  }
+  #seekNote{ font-size:12px; color:#ffd479; min-height:18px; margin:8px 0; }
+  .summary{ font-size:13px; margin:14px 0 4px; }
+  table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; }
+  th, td{ text-align:left; padding:5px 8px; border-bottom:1px solid #1c1c22; }
+  th{ color:#8b8b93; font-weight:600; }
+  td.num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .pass{ color:#7ee2a8; } .fail{ color:#ff8f8f; } .dim{ color:#6d6d75; } .warnline{ color:#ffd479; }
+  .notes{ margin-top:28px; font-size:12px; color:#8b8b93; }
+  .notes b{ color:#c9c9d1; }
+  .notes li{ margin-bottom:7px; }
+  code{ color:#c9c9d1; background:#16161a; padding:1px 5px; border-radius:4px; font-size:11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>lyrics lab <span class="sub">· word-sync test</span><span id="engineStatus" class="pill warn">engine: loading…</span></h1>
+  <p class="sub">plays synthetic clicks on a synthetic word timeline while the lyrics engine renders the same timeline, then measures highlight offset per word. no spotify needed.</p>
+
+  <div class="controls">
+    <button id="startBtn" disabled>start run</button>
+    <label title="multiplies the 400ms word spacing">word spacing
+      <select id="tempo" disabled>
+        <option value="0.75">0.75x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.5">1.5x</option>
+      </select>
+    </label>
+    <button id="seekBtn" disabled>simulate seek (+20s)</button>
+  </div>
+
+  <div id="stage"></div>
+  <pre id="readout">idle — press start.</pre>
+  <div id="seekNote"></div>
+  <div id="results"></div>
+
+  <div class="notes">
+    <b>notes &amp; assumptions</b>
+    <ul>
+      <li>synthetic lyric: 8 lines, 4–6 words each, word starts every 400ms from t=1000ms at 1x. the word <i>holds</i> (line 4) is fixed at 1200ms — the emphasis test. a 5s gap sits between lines 6 and 7 — the interlude test.</li>
+      <li>each word start fires a short oscillator blip scheduled with precise <code>AudioContext</code> timing. the mock clock reads <code>audioCtx.currentTime</code>, so clicks and the engine share one time domain.</li>
+      <li>word elements are the engine's <code>span.lyrics-word</code> nodes (in DOM order); for emphasis words the wipe <code>--p</code> lives on the <code>span.lyrics-letter</code> children, so a word counts as lit when its own <code>--p</code> (or its first letter's) first exceeds 0. words are expected to light in time order. a word with no <code>--p</code> progress 1.5s after its end is marked missed.</li>
+      <li>the engine highlights <b>40ms early by design</b> (<code>HIGHLIGHT_LEAD_MS</code>), so expect deltas around −40ms. <code>click-i</code> / <code>lit-i</code> marks are taken in the same rAF loop, so deltas share about ±1 frame of quantization — comfortably inside the ±60ms pass window (highlight leading by up to 60ms is allowed).</li>
+      <li>seek test jumps the mock clock +20s mid-run and fires the engine's real seek path: clicks for skipped words are cancelled, the rest rescheduled; re-lock = time from the seek to the first lit word at/after the new position.</li>
+      <li>this page exercises the <b>mock clock only</b>. the <code>AudioElementClock</code> path still needs its own test.</li>
+      <li>real-browser QA is pending — this environment has no live browser. keep this tab visible during a run: rAF throttles in background tabs and invalidates the numbers.</li>
+      <li>run: serve the repo root over http (e.g. <code>python3 -m http.server</code>) and open <code>/lyrics-lab.html</code>, or open the deployed page. requires <code>assets/lyrics/engine.js</code> to exist and expose <code>window.LyricsEngine</code>.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= config ================= */
+var BASE_WORD_MS = 400;   /* word spacing at 1x */
+var EMPH_WORD_MS = 1200;  /* emphasis-test word; fixed so it stays >=1200ms at any tempo */
+var GAP_MS = 5000;        /* interlude gap after line 6 */
+var T0_MS = 1000;         /* first word starts 1s into lab time */
+var LEAD_MS = 1500;       /* pause between pressing start and lab t=0 */
+var SEEK_MS = 20000;
+var PASS_LO = -60, PASS_HI = 60;
+var MISS_GRACE_MS = 1500;
+var ENGINE_URLS = ['assets/lyrics/engine.js'];
+var ENGINE_CSS  = ['assets/lyrics/engine.css'];
+
+var LINE_TEXTS = [
+  'midnight static hums below',
+  'a neon pulse begins to rise',
+  'drums count time in hollow rooms',
+  'one long note holds the dark',
+  'silence folds the night in half',
+  'bassline rolls through velvet skies',
+  'chorus breaks the quiet open',
+  'fade to black the signal dies'
+];
+var GAP_AFTER_LINE = 5; /* 0-based: 5s gap after line 6, before line 7 */
+var EMPH_WORD = 'holds';
+
+/* ================= tiny helpers ================= */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function safeMark(n){ try{ performance.mark(n); }catch(e){} }
+function markEntries(n){ try{ return performance.getEntriesByName(n); }catch(e){ return []; } }
+
+/* ================= engine loader =================
+   primary path is assets/lyrics/engine.js (per spec);
+   falls back to assets/lyrics/engine.js so the page also works
+   when served from the repo root locally (/play/lyrics-lab.html). */
+var engineOK = false, engine = null, R = null;
+
+function setStatus(t, cls){
+  var el = $('engineStatus');
+  el.textContent = t;
+  el.className = 'pill ' + cls;
+}
+function loadScript(url, cb){
+  var s = document.createElement('script'), done = false;
+  s.src = url;
+  s.onload = function(){ if(!done){ done = true; cb(true); } };
+  s.onerror = function(){ if(!done){ done = true; cb(false); } };
+  setTimeout(function(){ if(!done){ done = true; cb(false); } }, 8000);
+  document.head.appendChild(s);
+}
+function addCss(url){
+  var l = document.createElement('link');
+  l.rel = 'stylesheet'; l.href = url;
+  document.head.appendChild(l);
+}
+function ensureEngine(i, cb){
+  if(window.LyricsEngine){
+    if(i > 0) addCss(ENGINE_CSS[i]);
+    setStatus('engine: ready', 'ok');
+    cb(true);
+    return;
+  }
+  if(i >= ENGINE_URLS.length){
+    setStatus('engine: NOT FOUND', 'bad');
+    cb(false);
+    return;
+  }
+  loadScript(ENGINE_URLS[i], function(ok){
+    if(ok && window.LyricsEngine){
+      if(i > 0) addCss(ENGINE_CSS[i]);
+      setStatus('engine: ready', 'ok');
+      cb(true);
+    }else{
+      ensureEngine(i + 1, cb);
+    }
+  });
+}
+
+/* ================= synthetic lyric ================= */
+function buildLyric(tempo){
+  var words = [], lines = [], t = T0_MS, emphUsed = false, li, wi, parts, lw, dur, emph, w;
+  for(li = 0; li < LINE_TEXTS.length; li++){
+    parts = LINE_TEXTS[li].split(' ');
+    lw = [];
+    for(wi = 0; wi < parts.length; wi++){
+      dur = BASE_WORD_MS * tempo;
+      emph = false;
+      if(!emphUsed && parts[wi] === EMPH_WORD){ dur = EMPH_WORD_MS; emph = true; emphUsed = true; }
+      w = { text: parts[wi], start: Math.round(t), end: Math.round(t + dur),
+            emph: emph, line: li + 1, idx: words.length };
+      words.push(w); lw.push(w); t += dur;
+    }
+    lines.push({
+      start: lw[0].start, end: lw[lw.length - 1].end, text: LINE_TEXTS[li],
+      words: lw.map(function(x){ return { text: x.text, start: x.start, end: x.end }; })
+    });
+    if(li === GAP_AFTER_LINE) t += GAP_MS;
+  }
+  return { words: words, lines: lines };
+}
+
+/* ================= audio ================= */
+var actx = null;
+function ensureAudio(){
+  if(!actx){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    actx = new AC();
+  }
+  if(actx.state === 'suspended') actx.resume();
+}
+function blip(atSec, freq, durSec){
+  var o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(freq, atSec);
+  g.gain.setValueAtTime(0.0001, atSec);
+  g.gain.exponentialRampToValueAtTime(0.35, atSec + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, atSec + durSec);
+  o.connect(g); g.connect(actx.destination);
+  o.start(atSec); o.stop(atSec + durSec + 0.05);
+  o.onended = function(){ try{ o.disconnect(); }catch(e){} try{ g.disconnect(); }catch(e){} };
+  return o;
+}
+
+/* ================= mock clock (per spec) =================
+   The engine subscribes via clock.onSeek(handler); we keep the handler so
+   the seek button can fire the engine's real seek path (snap + re-lock). */
+var clockOffsetMs = 0, seekHandler = null;
+var mockClock = {
+  now: function(){ return actx.currentTime * 1000 + clockOffsetMs; },
+  playing: function(){ return !!(R && R.running); },
+  onSeek: function(h){ seekHandler = h; return function(){ seekHandler = null; }; },
+  onRate: function(){}
+};
+
+/* ================= word element discovery + --p read =================
+   Engine-aware (see assets/lyrics/engine.js): each word renders as
+   span.lyrics-word. Emphasis words (dur >= 1000ms, 2-7 chars) split into
+   span.lyrics-letter children and the wipe --p is written to the letters,
+   so a word's progress element is its first letter when present, else the
+   word element itself. Each progress element is attributed to the earliest
+   word that has none yet and isn't skipped/lit/missed -- discovery order ==
+   light order == word order, so seeks can't misalign attribution. */
+function scanWordEls(){
+  var els = R.allEls, i, wi, w;
+  for(i = 0; i < els.length; i++){
+    var el = els[i];
+    if(el._labDone) continue;
+    var p = el.style.getPropertyValue('--p');
+    if(p === '' || p == null) continue;
+    el._labDone = true;
+    if(!el.closest) continue;
+    var wordEl = el.closest('.lyrics-word');
+    if(!wordEl || (wordEl.classList && wordEl.classList.contains('lyrics-word-static'))) continue;
+    var progEl = wordEl.querySelector('.lyrics-letter') || wordEl;
+    if(progEl._labTaken) continue;
+    progEl._labTaken = true;
+    for(wi = 0; wi < R.words.length; wi++){
+      w = R.words[wi];
+      if(!w.el && !w.skipped && !w.lit && !w.missed){ w.el = progEl; break; }
+    }
+  }
+}
+function readP(el){
+  var v = el.style.getPropertyValue('--p');
+  if(!v){
+    try{ v = window.getComputedStyle(el).getPropertyValue('--p'); }catch(e){ v = ''; }
+  }
+  var n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
+/* ================= run control ================= */
+function setControls(){
+  var running = !!(R && R.running);
+  $('startBtn').disabled = !engineOK || running;
+  $('tempo').disabled = !engineOK || running;
+  $('seekBtn').disabled = !running;
+}
+
+function startRun(){
+  if(!engineOK || (R && R.running)) return;
+  ensureAudio();
+  if(engine){ try{ engine.destroy(); }catch(e){} engine = null; }
+  try{ performance.clearMarks(); performance.clearMeasures(); }catch(e){}
+
+  clockOffsetMs = 0;
+  seekHandler = null;
+  var tempo = parseFloat($('tempo').value) || 1;
+  var lyric = buildLyric(tempo);
+  var baseAudioMs = actx.currentTime * 1000 + LEAD_MS;
+  var words = lyric.words, i, w;
+
+  for(i = 0; i < words.length; i++){
+    w = words[i];
+    w.absStartMs = baseAudioMs + w.start;
+    w.absEndMs = baseAudioMs + w.end;
+    w.clickAtAudioMs = w.absStartMs;
+    w.clicked = false; w.skipped = false; w.lit = false; w.missed = false;
+    w.osc = null; w.litAudioMs = null; w.el = null;
+  }
+
+  var data = {
+    source: 'synth-lab', level: 'word',
+    lines: lyric.lines.map(function(L){
+      return {
+        start: L.start + baseAudioMs, end: L.end + baseAudioMs, text: L.text,
+        words: L.words.map(function(x){
+          return { text: x.text, start: x.start + baseAudioMs, end: x.end + baseAudioMs };
+        })
+      };
+    })
+  };
+
+  var container = $('stage');
+  container.innerHTML = '';
+  try{
+    engine = window.LyricsEngine.create({ container: container, clock: mockClock });
+    engine.setLyrics(data);
+    engine.open();
+  }catch(err){
+    $('results').innerHTML = '<p class="fail">engine failed: ' + esc(String((err && err.message) || err)) + '</p>';
+    return;
+  }
+
+  for(i = 0; i < words.length; i++){
+    w = words[i];
+    w.osc = blip(w.clickAtAudioMs / 1000, w.emph ? 620 : 880, w.emph ? 0.14 : 0.06);
+  }
+
+  R = {
+    running: true, words: words, tempo: tempo, frames: 0,
+    nextClick: 0, expect: 0,
+    endAudioMs: words[words.length - 1].absEndMs + 4000,
+    hardStop: actx.currentTime * 1000 + 150000,
+    t0audio: actx.currentTime * 1000,
+    seekCount: 0, seekAudioMs: null, relockIdx: -1, relockMs: null,
+    lastDelta: null, raf: 0,
+    allEls: container.getElementsByTagName('*') /* live collection */
+  };
+  try{
+    R.domWordCount = container.querySelectorAll('.lyrics-word:not(.lyrics-word-static)').length;
+  }catch(e){ R.domWordCount = -1; }
+
+  $('results').innerHTML = '';
+  $('seekNote').textContent = '';
+  $('readout').textContent = 'running…';
+  safeMark('lab-start');
+  setControls();
+  R.raf = requestAnimationFrame(frame);
+}
+
+function doSeek(){
+  if(!R || !R.running) return;
+  var seekAudioMs = actx.currentTime * 1000;
+  safeMark('seek');
+  clockOffsetMs += SEEK_MS;
+  if(seekHandler){ try{ seekHandler(); }catch(e){} } /* engine's real seek path: snap + re-lock */
+  var newNow = seekAudioMs + clockOffsetMs;
+  var firstAfter = -1, i, w, lastClick = 0;
+
+  for(i = 0; i < R.words.length; i++){
+    w = R.words[i];
+    if(w.skipped || w.lit) continue; /* resolved words are untouched by the seek */
+    if(w.osc){
+      try{ w.osc.stop(actx.currentTime); }catch(e){}
+      try{ w.osc.disconnect(); }catch(e){}
+      w.osc = null;
+    }
+    if(w.absStartMs <= newNow){
+      /* word falls inside the skipped region -- excluded from scoring even if
+         its click already played but the engine never lit it */
+      w.skipped = true;
+    }else{
+      w.clickAtAudioMs = w.absStartMs - clockOffsetMs;
+      w.osc = blip(w.clickAtAudioMs / 1000, w.emph ? 620 : 880, w.emph ? 0.14 : 0.06);
+      if(firstAfter < 0) firstAfter = i;
+    }
+  }
+  for(i = 0; i < R.words.length; i++){
+    w = R.words[i];
+    if(!w.skipped && w.clickAtAudioMs > lastClick) lastClick = w.clickAtAudioMs;
+  }
+  R.nextClick = 0; /* click times stay in order; pointer rescans past clicked/skipped */
+  R.relockIdx = firstAfter;
+  R.relockMs = null;
+  R.seekAudioMs = seekAudioMs;
+  R.seekCount++;
+  R.endAudioMs = lastClick + 4000;
+  renderReadout(seekAudioMs);
+}
+
+function finish(){
+  R.running = false;
+  cancelAnimationFrame(R.raf);
+  safeMark('lab-end');
+  for(var i = 0; i < R.words.length; i++){
+    try{ performance.measure('sync-' + i, 'click-' + i, 'lit-' + i); }catch(e){}
+  }
+  renderResults();
+  renderReadout(actx.currentTime * 1000);
+  setControls();
+}
+
+/* ================= per-frame poll ================= */
+function frame(){
+  if(!R || !R.running) return;
+  var aNowMs = actx.currentTime * 1000;
+  var w, guard;
+
+  scanWordEls();
+
+  /* click marks: fire when audio time reaches the scheduled click */
+  while(R.nextClick < R.words.length){
+    w = R.words[R.nextClick];
+    if(w.clicked || w.skipped){ R.nextClick++; continue; }
+    if(aNowMs >= w.clickAtAudioMs){
+      safeMark('click-' + w.idx);
+      w.clicked = true;
+      R.nextClick++;
+    }else break;
+  }
+
+  /* lit detection, word-driven: a word counts lit when its own --p first exceeds 0 */
+  guard = 0;
+  while(R.expect < R.words.length && guard++ < 16){
+    while(R.expect < R.words.length){
+      w = R.words[R.expect];
+      if(w.skipped || w.lit || w.missed){ R.expect++; continue; }
+      if(aNowMs > w.absEndMs + MISS_GRACE_MS){ w.missed = true; R.expect++; continue; }
+      break;
+    }
+    if(R.expect >= R.words.length) break;
+    w = R.words[R.expect];
+    if(!w.el) break; /* element not discovered yet */
+    if(readP(w.el) > 0){
+      safeMark('lit-' + R.expect);
+      w.lit = true;
+      w.litAudioMs = aNowMs;
+      var ce = markEntries('click-' + R.expect)[0];
+      var le = markEntries('lit-' + R.expect)[0];
+      if(ce && le) R.lastDelta = le.startTime - ce.startTime;
+      if(R.relockIdx === R.expect && R.relockMs == null && R.seekAudioMs != null){
+        R.relockMs = aNowMs - R.seekAudioMs;
+      }
+      R.expect++;
+    }else break;
+  }
+
+  if((R.frames++ % 15) === 0) renderReadout(aNowMs);
+  if(aNowMs > R.endAudioMs || aNowMs > R.hardStop){ finish(); return; }
+  R.raf = requestAnimationFrame(frame);
+}
+
+/* ================= reporting ================= */
+function renderReadout(aNowMs){
+  var lit = 0, sk = 0, ms = 0, i, w;
+  for(i = 0; i < R.words.length; i++){
+    w = R.words[i];
+    if(w.lit) lit++; else if(w.skipped) sk++; else if(w.missed) ms++;
+  }
+  var s = 't=' + ((aNowMs - R.t0audio) / 1000).toFixed(1) + 's' +
+    ' · audio=' + Math.round(aNowMs) +
+    ' · engine(now)=' + Math.round(aNowMs + clockOffsetMs) +
+    ' · lit=' + lit + '/' + R.words.length +
+    ' · skipped=' + sk + ' · missed=' + ms;
+  if(R.lastDelta != null) s += ' · last Δ ' + (R.lastDelta >= 0 ? '+' : '') + R.lastDelta.toFixed(1) + 'ms';
+  if(R.relockMs != null) s += ' · re-lock ' + R.relockMs.toFixed(1) + 'ms';
+  $('readout').textContent = s;
+
+  if(R.seekCount > 0){
+    if(R.relockMs != null){
+      $('seekNote').textContent = 'seek #' + R.seekCount + ': +20s — re-locked in ' +
+        R.relockMs.toFixed(1) + 'ms on word "' + R.words[R.relockIdx].text + '".';
+    }else{
+      $('seekNote').textContent = 'seek #' + R.seekCount + ': +20s — waiting for re-lock…';
+    }
+  }
+}
+
+function renderResults(){
+  var rows = [], deltas = [], i, w, c, l, d, verdict, cls, skN = 0, msN = 0;
+  for(i = 0; i < R.words.length; i++){
+    w = R.words[i];
+    c = markEntries('click-' + i)[0];
+    l = markEntries('lit-' + i)[0];
+    d = (c && l) ? (l.startTime - c.startTime) : null;
+    if(w.skipped){ verdict = 'skip (seek)'; cls = 'dim'; skN++; }
+    else if(w.missed){ verdict = 'FAIL — never lit'; cls = 'fail'; msN++; }
+    else if(d == null){ verdict = 'FAIL — no marks'; cls = 'fail'; msN++; }
+    else{
+      deltas.push({ i: i, d: d });
+      if(d >= PASS_LO && d <= PASS_HI){ verdict = 'pass'; cls = 'pass'; }
+      else{ verdict = 'FAIL'; cls = 'fail'; }
+    }
+    rows.push({ n: i + 1, line: w.line, text: w.text + (w.emph ? ' [EMPH]' : ''),
+                d: d, verdict: verdict, cls: cls });
+  }
+  deltas.sort(function(a, b){ return a.d - b.d; });
+  var n = deltas.length, k;
+  var p50 = n ? deltas[Math.floor((n - 1) / 2)].d : null;
+  var p95 = n ? deltas[Math.ceil(0.95 * n) - 1].d : null;
+  var mn = n ? deltas[0].d : null, mx = n ? deltas[n - 1].d : null;
+  var passN = 0;
+  for(k = 0; k < n; k++){ if(deltas[k].d >= PASS_LO && deltas[k].d <= PASS_HI) passN++; }
+  function f(x){ return x == null ? '—' : (x >= 0 ? '+' : '') + x.toFixed(1) + 'ms'; }
+
+  var h = '<div class="summary">';
+  h += 'measured <b>' + n + '/' + R.words.length + '</b> words · skipped ' + skN + ' · missed ' + msN +
+       ' · pass <b class="' + (n > 0 && passN === n ? 'pass' : 'fail') + '">' + passN + '/' + n + '</b>' +
+       ' (±60ms, lead to −60 allowed)';
+  h += '<br>p50 <b>' + f(p50) + '</b> · p95 <b>' + f(p95) + '</b> · min <b>' + f(mn) + '</b> · max <b>' + f(mx) + '</b>';
+  if(R.domWordCount >= 0 && R.domWordCount !== R.words.length){
+    h += '<br><span class="warnline">engine rendered ' + R.domWordCount +
+         ' word elements, expected ' + R.words.length + ' — attribution may be off</span>';
+  }
+  if(R.seekCount > 0){
+    h += '<br>seeks: ' + R.seekCount;
+    if(R.relockMs != null && R.relockIdx >= 0){
+      h += ' · re-lock <b class="pass">' + R.relockMs.toFixed(1) + 'ms</b> on word "' + esc(R.words[R.relockIdx].text) + '"';
+    }else{
+      h += ' · re-lock <span class="fail">not observed</span>';
+    }
+  }
+  h += '</div>';
+  h += '<table><tr><th>#</th><th>ln</th><th>word</th>' +
+       '<th style="text-align:right">Δ (lit−click)</th><th>verdict</th></tr>';
+  for(i = 0; i < rows.length; i++){
+    var row = rows[i];
+    h += '<tr><td class="dim">' + row.n + '</td><td class="dim">' + row.line + '</td><td>' + esc(row.text) + '</td>' +
+         '<td class="num ' + (row.d == null ? 'dim' : '') + '">' + (row.d == null ? '—' : f(row.d)) + '</td>' +
+         '<td class="' + row.cls + '">' + row.verdict + '</td></tr>';
+  }
+  h += '</table>';
+  $('results').innerHTML = h;
+}
+
+/* ================= boot ================= */
+setStatus('engine: loading…', 'warn');
+ensureEngine(0, function(ok){
+  engineOK = ok;
+  if(!ok){
+    $('results').innerHTML = '<p class="warnline">could not load the engine script ' +
+      '(tried <code>' + esc(ENGINE_URLS.join('</code> and <code>')) + '</code>). ' +
+      'the lab needs <code>assets/lyrics/engine.js</code> exposing <code>window.LyricsEngine</code>.</p>';
+  }
+  setControls();
+});
+$('startBtn').addEventListener('click', startRun);
+$('seekBtn').addEventListener('click', doSeek);
+
+})();
+</script>
+</body>
+</html>
