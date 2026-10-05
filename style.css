@@ -336,7 +336,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .lyrics-overlay.open { opacity: 1; visibility: visible; }
 .lyrics-bg {
   position: absolute; inset: -40px; background-size: cover; background-position: center;
-  filter: blur(70px) brightness(.4) saturate(.85); transform: scale(1.1); pointer-events: none;
+  filter: blur(70px) brightness(.42) saturate(.95); transform: scale(1.1); pointer-events: none;
 }
 .lyrics-bg::after {
   content: ""; position: absolute; inset: 0;
@@ -371,11 +371,28 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .lyrics-progress { margin-top: 20px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; }
 .lyrics-progress i { display: block; height: 100%; width: 0; border-radius: inherit; background: rgba(255,255,255,.85); }
 /* engine container: the LyricsEngine builds its own .lyrics-engine tree
-   inside here (full mode); the engine owns scroll + animation. */
+   inside here (full mode); the engine owns scroll + animation.
+   NOTE: no mask-image here — on iOS Safari a masked layer composites as a
+   faint rectangular edge against the blurred art. The engine root already
+   clips (overflow:hidden), so the mount needs no clipping of its own. */
 .lyrics-mount {
-  flex: 1; min-width: 0; height: 100%; overflow: hidden;
-  mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 92%, transparent);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 92%, transparent);
+  flex: 1; min-width: 0; height: 100%;
+}
+/* readability fade at the scroll edges, WITHOUT mask-image: two soft
+   non-masking scrims painted over the body. Full-width soft gradients only —
+   no stops that could read as a panel edge. pointer-events:none. */
+.lyrics-body::before,
+.lyrics-body::after {
+  content: ""; position: absolute; left: 0; right: 0; z-index: 2;
+  pointer-events: none;
+}
+.lyrics-body::before {
+  top: 0; height: 20%;
+  background: linear-gradient(to bottom, rgba(4,4,7,.92), transparent);
+}
+.lyrics-body::after {
+  bottom: 0; height: 18%;
+  background: linear-gradient(to top, rgba(4,4,7,.95), transparent);
 }
 /* plain-level static scroll inside the engine */
 .lyrics-engine.is-plain::-webkit-scrollbar { display: none; }
@@ -499,6 +516,10 @@ html[data-motion="off"] body.desk-mode .lyrics-line.desk-slam { animation: none;
 @media (max-width: 700px) {
   .lyrics-close { top: 16px; right: 18px; }
   .lyrics-body { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 16px; padding: 74px 7vw 16px; }
+  /* on mobile the mount starts below the header (~155px); drop the top
+     scrim to the mount's clip edge so the fade lands on scrolling text,
+     not on the header art */
+  .lyrics-body::before { top: 155px; height: 24%; }
   .lyrics-side { width: 100%; display: flex; align-items: center; gap: 12px; }
   .lyrics-side img { width: 54px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
   .lyrics-title { margin: 0; font-size: 15px; }
