@@ -1,1 +1,29 @@
-{"redirects":[{"destination":"/engagement","permanent":true,"source":"/engagement/"},{"destination":"/type","permanent":true,"source":"/type/"},{"destination":"/sportsphere","permanent":true,"source":"/sportsphere/"}]}
+{
+ "redirects": [
+  {
+   "destination": "/engagement",
+   "permanent": true,
+   "source": "/engagement/"
+  },
+  {
+   "destination": "/type",
+   "permanent": true,
+   "source": "/type/"
+  },
+  {
+   "destination": "/sportsphere",
+   "permanent": true,
+   "source": "/sportsphere/"
+  }
+ ],
+ "rewrites": [
+  {
+   "source": "/val",
+   "destination": "https://val.vercel.app/"
+  },
+  {
+   "source": "/val/:path*",
+   "destination": "https://val.vercel.app/:path*"
+  }
+ ]
+}
