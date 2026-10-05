@@ -152,6 +152,7 @@ function create(options) {
   var mode = options.mode === 'card' ? 'card' : 'full';
   var motion = options.motion !== false;
   var onOpenRequest = options.onOpenRequest;
+  var onLineChange = options.onLineChange; // optional host hook: (idx, prev, lineRec)
 
   if (!container) { throw new Error('LyricsEngine.create: container is required'); }
   if (!clock) { throw new Error('LyricsEngine.create: clock is required'); }
@@ -274,12 +275,21 @@ function create(options) {
         yEl.appendChild(wrec.el);
         rec.words.push(wrec);
       }
-      // word-level timing missing but line has text: one static span, no wipe
+      // word-level timing missing but line has text: one static span.
+      // push a word record so updateWords/setWordP/resetWord drive --p
+      // across the whole line window (active line goes bright, past => 100%).
       if (!rec.words.length && line.text) {
         var t = document.createElement('span');
         t.className = 'lyrics-word lyrics-word-static';
         t.textContent = line.text;
         yEl.appendChild(t);
+        rec.words.push({
+          el: t,
+          start: line.start,
+          end: line.end || (line.start + 1),
+          letters: null,
+          staticLine: true
+        });
       }
     }
 
@@ -400,6 +410,9 @@ function create(options) {
       }
     }
     if (motion && !isCard && idx !== prev && idx >= 0) { ripple(idx, prev); }
+    if (idx !== prev && idx >= 0 && typeof onLineChange === 'function') {
+      try { onLineChange(idx, prev, lines[idx]); } catch (e) { /* host may throw */ }
+    }
   }
 
   /* ---------------- scroll ---------------- */
@@ -534,14 +547,23 @@ function create(options) {
   }
 
   /* ---------------- clock events ---------------- */
-  function onSeekEvent() {
+  // Shared snap body: land exactly on the current line, no fly-through.
+  // Used by onSeekEvent (seek/skip) and open() (overlay opened mid-track).
+  function hardSnapToClock() {
     if (destroyed) { return; }
     clearRipple();
     var t = clock.now() + offsetMs;
     setActive(findActive(t + CONFIG.HIGHLIGHT_LEAD_MS));
     scrollIndex = findActive(t + CONFIG.SCROLL_LEAD_MS);
-    scrollSpring.snap(scrollTargetFor(scrollIndex)); // seeks jump; velocity preserved otherwise
-    linesEl.style.transform = 'translate3d(0,' + scrollSpring.get().toFixed(2) + 'px,0)';
+    if (!isCard && !plain) {
+      scrollSpring.snap(scrollTargetFor(scrollIndex)); // seeks jump; velocity preserved otherwise
+      linesEl.style.transform = 'translate3d(0,' + scrollSpring.get().toFixed(2) + 'px,0)';
+    }
+    updateWords(t + CONFIG.HIGHLIGHT_LEAD_MS);
+  }
+
+  function onSeekEvent() {
+    hardSnapToClock();
     wake();
   }
 
@@ -604,6 +626,7 @@ function create(options) {
       addClass(root, 'is-open');
       measure();
       updateBlurAttr();
+      hardSnapToClock();   // land on the current line first; spring only after
       if (!plain) { wake(); }
     },
 
