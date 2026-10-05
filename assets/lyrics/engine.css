@@ -41,8 +41,10 @@
 }
 
 /* ---------------- lines container ---------------- */
-/* The engine writes spring-driven translateY here. */
-.lyrics-lines {
+/* The engine writes spring-driven translateY here. Scoped under
+   .lyrics-engine so the host mount (.lyrics-mount) never picks up
+   this padding — double padding collapsed phone viewports to ~0. */
+.lyrics-engine .lyrics-lines {
   position: relative; /* offsetParent for offsetTop measurements */
   padding: 42vh 7vw;
   will-change: transform;
@@ -118,6 +120,20 @@
 }
 .lyrics-letter {
   display: inline-block; /* keeps emphasized letters on their own metrics */
+}
+
+/* Static (line-level) words: solid bright when active instead of a
+   feathered whole-line wipe, which reads like a slow paint roll. */
+.lyrics-engine[data-motion="true"] .lyrics-word-static {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: rgba(255, 255, 255, 0.34);
+  -webkit-text-fill-color: currentColor;
+}
+.lyrics-engine .lyrics-line.is-active .lyrics-word-static {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
 }
 
 /* Reduced motion: word wipe becomes a discrete per-word color change. */
@@ -201,11 +217,11 @@
 
 /* ---------------- small screens ---------------- */
 @media (max-width: 640px) {
-  .lyrics-lines {
+  .lyrics-engine .lyrics-lines {
     padding-left: 7vw;
     padding-right: 7vw;
   }
-  .lyrics-line {
+  .lyrics-engine .lyrics-line {
     font-size: 30px; /* mobile floor: 30-34px per spec */
   }
 }

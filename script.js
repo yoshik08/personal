@@ -547,7 +547,7 @@
   /* ---------- 11b. synced lyrics overlay (Lyrics V2 engine) ---------- */
   var lyricsOverlay = document.getElementById("lyricsOverlay"),
       lyricsBg = document.getElementById("lyricsBg"),
-      lyricsLines = document.getElementById("lyricsLines"),
+      lyricsMount = document.getElementById("lyricsMount"),
       lyricsHint = document.getElementById("lyricsHint"),
       lyricsTitle = document.getElementById("lyricsTitle"),
       lyricsArtist = document.getElementById("lyricsArtist"),
@@ -590,13 +590,13 @@
   var fullEngine = null, cardEngine = null, deskEngine = null;
   if (window.LyricsEngine) {
     var lyrMotion = motionOK();
-    fullEngine = window.LyricsEngine.create({ container: lyricsLines, clock: spotifyClock, mode: "full", motion: lyrMotion });
+    fullEngine = window.LyricsEngine.create({ container: lyricsMount, clock: spotifyClock, mode: "full", motion: lyrMotion });
     /* S1: card karaoke — a second engine instance in card mode showing the
        current line under the track title, live word-by-word wipe.
        tap (via the engine's onOpenRequest) opens the fullscreen overlay. */
     cardEngine = window.LyricsEngine.create({ container: npKaraoke, clock: spotifyClock, mode: "card", motion: lyrMotion, onOpenRequest: openLyrics });
     /* S2: desk mode focus layout — card mode at giant size */
-    deskEngine = window.LyricsEngine.create({ container: deskStage, clock: spotifyClock, mode: "card", motion: lyrMotion });
+    deskEngine = window.LyricsEngine.create({ container: deskStage, clock: spotifyClock, mode: "card", motion: lyrMotion, onLineChange: onDeskLineChange });
     cardEngine.open(); /* card karaoke runs live under the card */
   }
 
@@ -686,7 +686,48 @@
     if (spState.image) {
       lyricsArt.src = spState.image;
       lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
+      setBloomFromArt(spState.image); /* D1: album colors for desk bloom */
     }
+  }
+  /* D1: album-color bloom — extract vivid + muted colors from the art into
+     --bloom / --bloom-2 on the overlay (i.scdn.co sends ACAO:* so the canvas
+     is clean). Cached per URL; fails soft to the CSS defaults. */
+  var bloomCache = {};
+  function setBloomFromArt(url) {
+    if (!url) return;
+    var apply = function (c1, c2) {
+      lyricsOverlay.style.setProperty("--bloom", c1);
+      lyricsOverlay.style.setProperty("--bloom-2", c2);
+    };
+    if (bloomCache[url]) { apply(bloomCache[url][0], bloomCache[url][1]); return; }
+    try {
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = function () {
+        try {
+          var cv = document.createElement("canvas");
+          cv.width = cv.height = 32;
+          var cx = cv.getContext("2d");
+          cx.drawImage(img, 0, 0, 32, 32);
+          var d = cx.getImageData(0, 0, 32, 32).data;
+          var r = 0, g = 0, b = 0, n = 0, r2 = 0, g2 = 0, b2 = 0, n2 = 0;
+          for (var i = 0; i < d.length; i += 4) {
+            var pr = d[i], pg = d[i + 1], pb = d[i + 2];
+            var mx = Math.max(pr, pg, pb), mn = Math.min(pr, pg, pb);
+            if (mx < 24 || mn > 232) continue; /* skip near-black / near-white */
+            if (mx - mn > 40) { r += pr; g += pg; b += pb; n++; }      /* vivid */
+            else { r2 += pr; g2 += pg; b2 += pb; n2++; }               /* muted */
+          }
+          var c1 = n ? [Math.round(r / n), Math.round(g / n), Math.round(b / n)] : [125, 155, 255];
+          var c2 = n2 ? [Math.round(r2 / n2), Math.round(g2 / n2), Math.round(b2 / n2)] : c1;
+          var s1 = "rgb(" + c1.join(",") + ")", s2 = "rgb(" + c2.join(",") + ")";
+          bloomCache[url] = [s1, s2];
+          apply(s1, s2);
+        } catch (e) { /* tainted canvas: keep the default bloom */ }
+      };
+      img.onerror = function () {};
+      img.src = url;
+    } catch (e) {}
   }
   /* lightweight UI timer while the overlay is open: progress bar only.
      the engine runs its own rAF loop for the lyrics themselves. */
@@ -750,7 +791,23 @@
   });
 
   /* ---------- S2. desk mode ---------- */
-  var deskOn = false, wakeLock = null;
+  var deskOn = false, wakeLock = null, deskSlamTimer = null;
+  /* D2 + D3 host hook (wired as deskEngine onLineChange): haptic + micro-slam
+     on every line change, interlude theater class while an interlude is active.
+     All gated on desk + visible + motion OK. */
+  function onDeskLineChange(idx, prev, line) {
+    if (!deskOn || document.hidden || !motionOK()) return;
+    try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {}
+    var eng = deskStage.querySelector(".lyrics-engine");
+    if (eng) eng.classList.toggle("is-interlude-theater", !!(line && line.interlude));
+    var el = deskStage.querySelector(".lyrics-line.is-active");
+    if (!el) return;
+    el.classList.remove("desk-slam");
+    void el.offsetWidth; /* restart the keyframe */
+    el.classList.add("desk-slam");
+    if (deskSlamTimer) clearTimeout(deskSlamTimer);
+    deskSlamTimer = setTimeout(function () { el.classList.remove("desk-slam"); }, 200);
+  }
   function deskEnter() {
     if (!fullEngine || deskOn) return;
     deskOn = true;
@@ -774,6 +831,8 @@
     deskStage.setAttribute("aria-hidden", "true");
     lyricsDesk.classList.remove("on");
     deskEngine.close();
+    var deskEngRoot = deskStage.querySelector(".lyrics-engine");
+    if (deskEngRoot) deskEngRoot.classList.remove("is-interlude-theater");
     if (lyricsOverlay.classList.contains("open") && fullEngine) fullEngine.open();
     if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
     if (document.fullscreenElement && document.exitFullscreen) {
@@ -795,7 +854,7 @@
   var lastShareAt = 0;
   function lineElFromEvent(e) {
     var t = e.target;
-    while (t && t !== lyricsLines && t !== deskStage) {
+    while (t && t !== lyricsMount && t !== deskStage) {
       if (t.classList && t.classList.contains("lyrics-line")) return t;
       t = t.parentNode;
     }
@@ -910,10 +969,10 @@
     root.addEventListener("touchend", lpClear);
     root.addEventListener("touchmove", lpClear, { passive: true });
   }
-  bindShareGestures(lyricsLines);
+  bindShareGestures(lyricsMount);
   bindShareGestures(deskStage);
   if (lyricsShare) lyricsShare.addEventListener("click", function () {
-    var active = (deskOn ? deskStage : lyricsLines).querySelector(".lyrics-line.is-active");
+    var active = (deskOn ? deskStage : lyricsMount).querySelector(".lyrics-line.is-active");
     shareLineText(active ? active.textContent : (spState.title || ""));
   });
 
