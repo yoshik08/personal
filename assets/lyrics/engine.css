@@ -31,12 +31,12 @@
   user-select: none;
 }
 
-/* Static background. P1 owns this (album palette / WebGL);
-   reduced-motion keeps it static. */
+/* Engine-local bg layer. Transparent: the host overlay already paints the
+   blurred album art behind the mount. (P1 may own this for palette/WebGL.) */
 .lyrics-bg {
   position: absolute;
   inset: 0;
-  background: #000;
+  background: transparent;
   pointer-events: none;
 }
 
