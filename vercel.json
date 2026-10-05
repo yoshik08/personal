@@ -19,11 +19,11 @@
  "rewrites": [
   {
    "source": "/val",
-   "destination": "https://val.vercel.app/"
+   "destination": "https://val.yoshik.xyz/"
   },
   {
    "source": "/val/:path*",
-   "destination": "https://val.vercel.app/:path*"
+   "destination": "https://val.yoshik.xyz/:path*"
   }
  ]
 }
