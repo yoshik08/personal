@@ -54,21 +54,25 @@ const upload = {
       const tracks = d.tracks || [];
       if (!tracks.length) return null;
 
-      // score by title similarity + duration proximity
+      // If user set an artist, REQUIRE a case-insensitive artist match.
+      // Never return art from a different artist (e.g. Summer Walker for cupcakke).
+      const hint = (artistHint || "").toLowerCase().trim();
+      let candidates = tracks.slice(0, 10);
+      if (hint) {
+        candidates = candidates.filter((t) => (t.artist || "").toLowerCase().includes(hint));
+        if (!candidates.length) return null; // no artist match — don't swap to wrong art
+      }
+
+      // score by title similarity + duration proximity (among artist-matched candidates)
       let best = null, bestScore = -1;
-      for (const t of tracks.slice(0, 10)) {
+      for (const t of candidates) {
         const titleSim = this.similarity(name, t.title);
         if (titleSim < 0.5) continue; // reject bad title matches
-
-        let artistSim = 1;
-        if (artistHint) {
-          artistSim = this.similarity(artistHint, t.artist);
-        }
 
         const durDiff = Math.abs((t.duration || 0) - durationSecs);
         const durScore = durDiff < 5 ? 1 : durDiff < 15 ? 0.7 : durDiff < 30 ? 0.4 : 0;
 
-        const score = titleSim * 0.5 + artistSim * 0.2 + durScore * 0.3;
+        const score = titleSim * 0.7 + durScore * 0.3;
         if (score > bestScore) {
           bestScore = score;
           best = t;
