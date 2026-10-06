@@ -8,6 +8,9 @@ const player = () => window.Play.player;
 const cache = () => window.Play.cache;
 const lyrics = () => window.Play.lyrics;
 
+// last-good songs in memory: remount doesn't wipe the library after upload
+let lastGoodSongs = null;
+
 function stateBox(kind, msg, retry) {
   if (kind === "loading") {
     return `<div class="loading"><div class="spinner"></div><p>loading…</p></div>`;
@@ -84,13 +87,23 @@ async function home(v, optimisticSongs) {
     let songs;
     if (optimisticSongs && optimisticSongs.length) {
       songs = optimisticSongs;
+      lastGoodSongs = songs;
     } else {
-      // 4s timeout: if /api/songs hangs, fail fast to "nothing here yet"
-      const d = await Promise.race([
-        api.get("/api/songs"),
-        new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), 4000))
-      ]).catch(() => ({ songs: [] }));
-      songs = d.songs || [];
+      // 5s timeout with AbortController; on failure keep last-good songs if we have them
+      try {
+        const d = await api.get("/api/songs", 5000);
+        songs = d.songs || [];
+        lastGoodSongs = songs;
+      } catch (e) {
+        if (lastGoodSongs && lastGoodSongs.length) {
+          songs = lastGoodSongs; // show cached library, don't wipe after upload
+        } else {
+          // no cached songs: show error with retry, not fake empty
+          body.innerHTML = stateBox("error", "couldn't load library: " + e.message + " — your uploads are safe", true);
+          body.querySelector("#retry").onclick = () => home(v);
+          return;
+        }
+      }
     }
 
     if (!songs.length) {

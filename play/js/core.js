@@ -41,18 +41,24 @@ const api = {
       headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(opts.body);
     }
+    const timeoutMs = opts.timeout || 0;
+    const ctrl = timeoutMs ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
     let r;
     try {
-      r = await fetch(API() + path, { ...opts, headers });
+      r = await fetch(API() + path, { ...opts, headers, signal: ctrl ? ctrl.signal : undefined });
     } catch (e) {
+      if (e.name === "AbortError") throw new Error("request timed out");
       throw new Error("network error — is the api reachable?");
+    } finally {
+      if (timer) clearTimeout(timer);
     }
     let data = null;
     try { data = await r.json(); } catch (e) {}
     if (!r.ok) throw new Error((data && data.error) || ("request failed: " + r.status));
     return data;
   },
-  get(p) { return this.call(p); },
+  get(p, timeout) { return this.call(p, timeout ? { timeout } : {}); },
   post(p, body) { return this.call(p, { method: "POST", body }); },
   put(p, body) { return this.call(p, { method: "PUT", body }); },
   patch(p, body) { return this.call(p, { method: "PATCH", body }); },
