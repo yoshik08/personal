@@ -118,7 +118,7 @@ const upload = {
       xhr.onerror = () => reject(new Error("upload failed"));
     });
 
-    xhr.open("POST", window.Play.api.base + "/api/songs");
+    xhr.open("POST", (window.PLAY_API || "") + "/api/songs");
     const token = localStorage.getItem("play_token");
     if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
     xhr.send(fd);
