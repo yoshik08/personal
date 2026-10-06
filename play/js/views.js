@@ -52,7 +52,8 @@ async function home(v, optimisticSongs) {
       <div class="dz-text">drop audio here<br><span class="dim">or tap to choose</span></div>
       <input type="file" id="dzFile" accept="audio/*" style="display:none">
     </div>
-    <div id="hbody">${optimisticSongs ? "" : stateBox("loading")}</div>`;
+    <div id="hbody">${optimisticSongs ? "" : stateBox("loading")}</div>
+    <div id="playlists-sec"></div>`;
   const body = v.querySelector("#hbody");
 
   // UI-level guarantee: never show loading spinner for more than 5s
@@ -178,6 +179,8 @@ async function home(v, optimisticSongs) {
     body.querySelector("#fileInput").addEventListener("change", (e) => {
       if (e.target.files[0]) showNameDialog(e.target.files[0], songs, v, body);
     });
+    // load playlists section (non-blocking)
+    playlistsSection(v);
   } catch (e) {
     body.innerHTML = stateBox("error", "couldn't load library: " + e.message, true);
   }
@@ -207,9 +210,9 @@ function showSongMenu(song, v) {
     <div style="display:flex;flex-direction:column">
       <button class="txtbtn" data-a="next" style="text-align:left;padding:12px 4px">play next</button>
       <button class="txtbtn" data-a="queue" style="text-align:left;padding:12px 4px">add to queue</button>
+      <button class="txtbtn" data-a="playlist" style="text-align:left;padding:12px 4px">add to playlist</button>
       <button class="txtbtn" data-a="rename" style="text-align:left;padding:12px 4px">rename</button>
       <button class="txtbtn" data-a="artwork" style="text-align:left;padding:12px 4px">refresh cover art</button>
-      <button class="txtbtn" data-a="arturl" style="text-align:left;padding:12px 4px">paste cover url</button>
       <button class="txtbtn" data-a="lyrics" style="text-align:left;padding:12px 4px">refresh lyrics</button>
       <button class="txtbtn" data-a="delete" style="text-align:left;padding:12px 4px;color:var(--danger)">delete</button>
     </div>
@@ -220,6 +223,27 @@ function showSongMenu(song, v) {
       const a = b.dataset.a;
       if (a === "next") { closeModal(); p.playNext(toTrack(song)); }
       else if (a === "queue") { closeModal(); p.addToQueue(toTrack(song)); }
+      else if (a === "playlist") {
+        closeModal();
+        try {
+          const d = await api.get("/api/playlists", 5000);
+          const pls = d.playlists || [];
+          if (!pls.length) { toast("create a playlist first"); return; }
+          const bg3 = modal(`<h3>add to playlist</h3>
+            <div style="display:flex;flex-direction:column">
+              ${pls.map((pl) => `<button class="txtbtn" data-pl="${pl.id}" style="text-align:left;padding:12px 4px">${esc(pl.name)}</button>`).join("")}
+            </div>
+            <div class="row" style="margin-top:12px"><button class="btn ghost" data-x>cancel</button></div>`);
+          bg3.querySelector("[data-x]").onclick = closeModal;
+          bg3.querySelectorAll("[data-pl]").forEach((pb) => {
+            pb.onclick = async () => {
+              await api.post(`/api/playlists/${pb.dataset.pl}/songs`, { songId: song.id });
+              closeModal();
+              toast("added to playlist");
+            };
+          });
+        } catch (e) { toast("failed: " + e.message); }
+      }
       else if (a === "rename") {
         closeModal();
         const curArtist = (song.spotifyMatch && song.spotifyMatch.artist) || "";
@@ -266,23 +290,6 @@ function showSongMenu(song, v) {
           }
         } catch (e) { toast("refresh failed: " + e.message); }
         home(v);
-      }
-      else if (a === "arturl") {
-        closeModal();
-        const bg3 = modal(`<h3>cover art url</h3><input id="arturl" placeholder="https://..." maxlength="500">
-          <div class="row"><button class="btn ghost" data-x>cancel</button><button class="btn" data-ok>save</button></div>`);
-        bg3.querySelector("[data-x]").onclick = closeModal;
-        bg3.querySelector("[data-ok]").onclick = async () => {
-          const url = bg3.querySelector("#arturl").value.trim();
-          if (url) {
-            await api.patch("/api/songs/" + song.id, {
-              spotifyMatch: { ...(song.spotifyMatch || {}), artworkUrl: url }
-            });
-            toast("cover updated");
-          }
-          closeModal();
-          home(v);
-        };
       }
       else if (a === "lyrics") {
         closeModal();
@@ -363,6 +370,128 @@ async function showNameDialog(file, songs, v, body) {
       home(v); // refresh (show empty/error state)
     }
   };
+}
+
+/* ---------- playlists ---------- */
+async function playlistsSection(v) {
+  const { api, toast, modal, closeModal } = window.Play;
+  const el = v.querySelector("#playlists-sec");
+  if (!el) return;
+  try {
+    const d = await api.get("/api/playlists", 5000);
+    const pls = d.playlists || [];
+    el.innerHTML = `<div class="sec"><h2>playlists</h2>
+      <div style="margin-bottom:8px"><button class="btn ghost" id="pl-new">+ new playlist</button></div>
+      ${pls.length ? pls.map((p) => `
+        <div class="trackrow" data-pl="${p.id}" style="cursor:pointer">
+          <div class="tinfo"><div class="tt">${esc(p.name)}</div>
+          <div class="ta">${p.songCount} songs</div></div>
+          <button class="iconbtn" data-act="plmenu" aria-label="options">⋯</button>
+        </div>`).join("") : `<p class="dim">no playlists yet</p>`}
+    </div>`;
+    el.querySelector("#pl-new").onclick = async () => {
+      const bg = modal(`<h3>new playlist</h3><input id="plname" placeholder="name" maxlength="100">
+        <div class="row"><button class="btn ghost" data-x>cancel</button><button class="btn" data-ok>create</button></div>`);
+      bg.querySelector("[data-x]").onclick = closeModal;
+      bg.querySelector("[data-ok]").onclick = async () => {
+        const name = bg.querySelector("#plname").value.trim() || "new playlist";
+        await api.post("/api/playlists", { name });
+        closeModal();
+        playlistsSection(v);
+        toast("playlist created");
+      };
+    };
+    el.querySelectorAll(".trackrow").forEach((row) => {
+      const pid = row.dataset.pl;
+      row.addEventListener("click", (e) => {
+        if (e.target.dataset.act === "plmenu") {
+          showPlaylistMenu(pid, v);
+          return;
+        }
+        openPlaylist(pid, v);
+      });
+    });
+  } catch (e) {
+    el.innerHTML = `<div class="sec"><h2>playlists</h2><p class="dim">couldn't load</p></div>`;
+  }
+}
+
+async function showPlaylistMenu(pid, v) {
+  const { api, toast, modal, closeModal, confirmModal } = window.Play;
+  const bg = modal(`<h3>playlist</h3>
+    <div style="display:flex;flex-direction:column">
+      <button class="txtbtn" data-a="rename" style="text-align:left;padding:12px 4px">rename</button>
+      <button class="txtbtn" data-a="delete" style="text-align:left;padding:12px 4px;color:var(--danger)">delete</button>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" data-x>close</button></div>`);
+  bg.querySelector("[data-x]").onclick = closeModal;
+  bg.querySelectorAll("[data-a]").forEach((b) => {
+    b.onclick = async () => {
+      const a = b.dataset.a;
+      if (a === "rename") {
+        closeModal();
+        const bg2 = modal(`<h3>rename playlist</h3><input id="prname" maxlength="100">
+          <div class="row"><button class="btn ghost" data-x>cancel</button><button class="btn" data-ok>save</button></div>`);
+        bg2.querySelector("[data-x]").onclick = closeModal;
+        bg2.querySelector("[data-ok]").onclick = async () => {
+          const name = bg2.querySelector("#prname").value.trim();
+          if (name) await api.patch("/api/playlists/" + pid, { name });
+          closeModal();
+          playlistsSection(v);
+        };
+      } else if (a === "delete") {
+        closeModal();
+        if (await confirmModal("delete this playlist?")) {
+          await api.call("/api/playlists/" + pid, { method: "DELETE" });
+          playlistsSection(v);
+          toast("deleted");
+        }
+      }
+    };
+  });
+}
+
+async function openPlaylist(pid, v) {
+  const { api, toast } = window.Play;
+  const player = () => window.Play.player;
+  try {
+    const d = await api.get("/api/playlists/" + pid, 5000);
+    const songs = d.songs || [];
+    v.innerHTML = `<div class="pagehead"><a href="#/" class="txtbtn">← library</a>
+      <div class="greet">${esc(d.name)}</div><div class="dim">${songs.length} songs</div></div>
+      <div id="hbody"><div id="songlist"></div></div>
+      <div style="margin:16px 0"><button class="btn ghost" id="pl-playall">▶ play all</button></div>`;
+    const list = v.querySelector("#songlist");
+    const { esc: esc2 } = window.Play.utils;
+    list.innerHTML = songs.map((s) => `
+      <div class="trackrow" data-song='${esc2(JSON.stringify(s))}'>
+        <img src="${esc2((s.spotifyMatch && s.spotifyMatch.artworkUrl) || "")}" alt="" onerror="this.style.visibility='hidden'">
+        <div class="tinfo"><div class="tt">${esc2(s.name)}</div>
+        <div class="ta">${esc2((s.spotifyMatch && s.spotifyMatch.artist) || "unknown artist")}</div></div>
+        <button class="iconbtn" data-act="plrm" aria-label="remove">✕</button>
+      </div>`).join("") || `<p class="dim">empty playlist</p>`;
+    v.querySelector("#pl-playall").onclick = () => {
+      if (!songs.length) return;
+      player().playQueue(songs.map(toTrack), 0);
+    };
+    list.querySelectorAll(".trackrow").forEach((row) => {
+      const s = JSON.parse(row.dataset.song);
+      row.addEventListener("click", (e) => {
+        if (e.target.dataset.act === "plrm") {
+          e.stopPropagation();
+          api.call(`/api/playlists/${pid}/songs/${s.id}`, { method: "DELETE" }).then(() => {
+            toast("removed");
+            openPlaylist(pid, v);
+          });
+          return;
+        }
+        const idx = songs.findIndex((x) => x.id === s.id);
+        player().playQueue(songs.map(toTrack), idx);
+      });
+    });
+  } catch (e) {
+    toast("couldn't open playlist: " + e.message);
+  }
 }
 
 /* ---------- settings ---------- */
