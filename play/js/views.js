@@ -44,8 +44,34 @@ function toTrack(song) {
 /* ---------- home: personal library ---------- */
 async function home(v) {
   const { auth, api, upload, esc, toast } = window.Play;
-  v.innerHTML = `<div class="pagehead"><div class="greet">your library</div></div><div id="hbody">${stateBox("loading")}</div>`;
+  v.innerHTML = `<div class="pagehead"><div class="greet">your library</div></div>
+    <div id="uploaddz" class="uploaddz" title="upload audio">
+      <div class="dz-icon">+</div>
+      <div class="dz-text">drop audio here<br><span class="dim">or tap to choose</span></div>
+      <input type="file" id="dzFile" accept="audio/*" style="display:none">
+    </div>
+    <div id="hbody">${stateBox("loading")}</div>`;
   const body = v.querySelector("#hbody");
+
+  // wire the persistent dropzone (works even if library fails to load)
+  const dz = v.querySelector("#uploaddz");
+  const dzFile = v.querySelector("#dzFile");
+  if (dz && dzFile) {
+    dz.onclick = () => dzFile.click();
+    dzFile.onchange = (e) => {
+      if (e.target.files[0]) showNameDialog(e.target.files[0], [], v, body);
+    };
+    ["dragover", "dragenter"].forEach((ev) => dz.addEventListener(ev, (e) => {
+      e.preventDefault(); dz.classList.add("dragover");
+    }));
+    ["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => {
+      e.preventDefault(); dz.classList.remove("dragover");
+    }));
+    dz.addEventListener("drop", (e) => {
+      const f = e.dataTransfer.files[0];
+      if (f) showNameDialog(f, [], v, body);
+    });
+  }
 
   if (!auth().user) {
     body.innerHTML = `<div class="empty"><div class="big">♪</div>
