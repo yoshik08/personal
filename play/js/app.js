@@ -44,11 +44,6 @@ function renderUserbox() {
 }
 
 /* ---------- player bar / mini player / now playing ---------- */
-function fmtDl(d) {
-  if (!d) return "";
-  const size = d.totalMB ? ` · ${d.gotMB}/${d.totalMB}mb` : d.gotMB > 0 ? ` · ${d.gotMB}mb` : "";
-  return `downloading “${d.title}”… ${d.secs}s${size}`;
-}
 function syncPlayerUI() {
   const p = player();
   const t = p.currentTrack;
@@ -72,17 +67,8 @@ function syncPlayerUI() {
     if (b) b.textContent = icon;
   });
 
-  /* downloading state — clear, with track name + elapsed */
-  const dl = p.downloadStatus();
-  [["pb-dlstate", "pb-seek"], ["np-dlstate", null]].forEach(([id, hideId]) => {
-    const elx = document.getElementById(id);
-    if (!elx) return;
-    elx.hidden = !dl;
-    if (dl) elx.innerHTML = `<span class="spin"></span><span>${esc(fmtDl(dl))}</span>`;
-    if (hideId) document.getElementById(hideId).style.opacity = dl ? ".35" : "1";
-  });
   const mpStatus = document.getElementById("mp-status");
-  if (mpStatus) mpStatus.textContent = dl ? `downloading… ${dl.secs}s` : (p.loading ? "loading…" : "");
+  if (mpStatus) mpStatus.textContent = p.loading ? "loading…" : "";
 
   /* shuffle / repeat */
   [["pb-shuffle", "np-shuffle"], ["pb-repeat", "np-repeat"]].forEach(([a, b]) => {

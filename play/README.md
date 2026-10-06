@@ -12,7 +12,7 @@ config.js    window.PLAY_API (backend base url), window.GOOGLE_CLIENT_ID
 style.css    design system (matches yoshik.xyz dark theme)
 js/
   core.js    utils, api client, local analytics, toast/modal
-  auth.js    google sign-in (redirect flow, ios-safe) + jwt session + drive connect
+  auth.js    google sign-in (redirect flow, ios-safe) + jwt session
   cache.js   indexeddb audio blob cache (lru, 300mb cap)
   player.js  global player singleton (queue, shuffle, repeat)
   lyrics.js  synced lyrics (word-level + line fallback)
@@ -36,16 +36,19 @@ Edit `config.js` before deploy:
 Uploads only — there is no search/stream catalogue and no third-party audio
 fetching anywhere. `POST /api/songs` (JWT) sends the file to the backend, which
 stores it in Yoshik's Google Drive (`yoshik-play` folder) and keeps metadata in
-MongoDB. Playback is `GET /api/songs/:id/audio` (JWT): the backend streams from
-Drive with Range support; the frontend caches the bytes in IndexedDB (300mb LRU)
-and plays from a blob url. Spotify/iTunes are used metadata-only (names/artwork
-for the upload matcher).
+MongoDB. Playback is `GET /api/songs/:id/audio?token=JWT`: the backend streams
+from Drive with Range support and the browser plays/seeks immediately (the
+`<audio>` element can't set Authorization headers, so the JWT goes in the query).
+The frontend also fills an IndexedDB cache (300mb LRU) in the background for
+instant replay. Spotify/iTunes are used metadata-only (names/artwork for the
+upload matcher).
 
 ## drive
 
-Drive auth is app-level and backend-only: settings → "connect drive" opens a
-Google consent page (`drive.file` scope, offline access); the backend stores
-the refresh token in mongo `app_config`. Users never touch Drive directly.
+Drive is entirely server-side. The backend holds Yoshik's refresh token in the
+`DRIVE_REFRESH_TOKEN` env var (minted once via `scripts/mint-drive-token.js` in
+the backend repo). Users never see or touch Drive — no connect buttons, no
+Drive OAuth in the app. Google login is for app identity only.
 
 ## notes
 

@@ -9,8 +9,6 @@ const player = {
   queue: [],
   queueIndex: -1,
   isPlaying: false,
-  downloading: false,   /* first-play fetch from drive */
-  downloadInfo: null,   /* {title, startedAt, gotBytes, totalBytes} */
   loading: false,
   error: null,
   shuffle: false,
@@ -32,7 +30,7 @@ const player = {
     a.addEventListener("playing", () => this.emit("state"));
     a.addEventListener("error", () => {
       this.error = "playback error";
-      this.downloading = false; this.loading = false;
+      this.loading = false;
       this.emit("state");
       toast("playback unavailable for this track");
     });
@@ -128,47 +126,40 @@ const player = {
     /* stop current audio immediately — don't let old track play under new ui */
     try { this.audio.pause(); } catch (e) {}
     this.currentTrack = track;
-    this.downloading = false; this.loading = true;
+    this.loading = true;
     this.emit("track");
     this.emit("state");
     this.playStartAt = Date.now();
 
     let blob = await cache.get(track.id);
-    if (!blob) {
-      /* uploads-only library: every song streams from drive */
+    if (blob) {
+      /* cached: instant play from IndexedDB */
+      if (this._objUrl) URL.revokeObjectURL(this._objUrl);
+      this._objUrl = URL.createObjectURL(blob);
+      this.audio.src = this._objUrl;
+      this.loading = false;
+      this.emit("state");
+      analytics.track("track_play", { id: track.id, title: track.title, cached: true });
+    } else {
+      /* not cached: stream directly so playback and seeking start immediately.
+         the browser issues Range requests; JWT goes via ?token= (audio element
+         can't set Authorization headers). cache fills in the background. */
       const audioUrl = track.audioUrl ||
         "/api/songs/" + encodeURIComponent(track.id) + "/audio";
-      /* first play: fetch from drive (fast, same-region cdn) */
-      this.downloading = true; this.loading = false;
-      this.downloadInfo = { title: track.title, startedAt: Date.now(), gotBytes: 0, totalBytes: 0 };
+      const sep = audioUrl.includes("?") ? "&" : "?";
+      const streamUrl = (window.PLAY_API || "") + audioUrl +
+        sep + "token=" + encodeURIComponent(api.token || "");
+      if (this._objUrl) { URL.revokeObjectURL(this._objUrl); this._objUrl = null; }
+      this.audio.src = streamUrl;
+      this.loading = false;
       this.emit("state");
-      this.emit("download");
-      try {
-        blob = await api.fetchBlob(audioUrl, (got, total) => {
-          this.downloadInfo.gotBytes = got;
-          this.downloadInfo.totalBytes = total;
-          this.emit("download");
-        });
-        await cache.put(track.id, blob, track); /* failed put is silent — still plays */
-      } catch (e) {
-        this.downloading = false;
-        this.downloadInfo = null;
-        this.error = "playback unavailable for this track";
-        this.emit("state");
-        toast("couldn't fetch audio for “" + track.title + "”");
-        return;
-      }
-      this.downloading = false;
-      this.downloadInfo = null;
-      this.loading = true;
-      this.emit("state");
+      analytics.track("track_play", { id: track.id, title: track.title, cached: false });
+      /* background cache fill for next time — never blocks playback */
+      api.fetchBlob(audioUrl, null).then(
+        (b) => cache.put(track.id, b, track),
+        () => {}
+      );
     }
-    if (this._objUrl) URL.revokeObjectURL(this._objUrl);
-    this._objUrl = URL.createObjectURL(blob);
-    this.audio.src = this._objUrl;
-    this.loading = false;
-    this.emit("state");
-    analytics.track("track_play", { id: track.id, title: track.title, cached: true });
     if (autoplay) {
       try { await this.audio.play(); }
       catch (e) { this.error = "playback blocked"; this.emit("state"); }
@@ -258,12 +249,6 @@ const player = {
     } catch (e) {}
   },
 
-  downloadStatus() {
-    if (!this.downloading || !this.downloadInfo) return null;
-    const d = this.downloadInfo;
-    const secs = Math.floor((Date.now() - d.startedAt) / 1000);
-    return { title: d.title, secs, gotMB: (d.gotBytes / 1048576).toFixed(1), totalMB: d.totalBytes ? (d.totalBytes / 1048576).toFixed(1) : null };
-  },
 };
 
 window.Play.player = player;
