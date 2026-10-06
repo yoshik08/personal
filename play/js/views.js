@@ -45,7 +45,7 @@ function toTrack(song) {
 
 /* ---------- home: personal library ---------- */
 async function home(v, optimisticSongs) {
-  const { api, upload, esc, toast } = window.Play;
+  const { api, upload, toast } = window.Play;
   v.innerHTML = `<div class="pagehead"><div class="greet">your library</div></div>
     <div id="uploaddz" class="uploaddz" title="upload audio">
       <div class="dz-icon">+</div>
