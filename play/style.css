@@ -89,6 +89,22 @@ img { display: block; }
   border-radius: 6px; color: var(--ink); }
 .menu button:hover { background: var(--hover); }
 
+/* library rows (uploads) */
+.trackrow { display: flex; align-items: center; gap: 14px; padding: 10px 12px;
+  border-radius: var(--r); cursor: pointer; transition: background .15s ease; }
+.trackrow:hover { background: var(--hover); }
+.trackrow img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover;
+  background: var(--panel2); flex-shrink: 0; }
+.trackrow .tinfo { flex: 1; min-width: 0; }
+.trackrow .tt { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trackrow .ta { color: var(--dim); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.trackrow .iconbtn { flex-shrink: 0; }
+
+/* dropzone */
+#dropzone { border: 2px dashed var(--line); border-radius: 16px;
+  transition: border-color .15s ease, background .15s ease; }
+#dropzone.dragover { border-color: var(--accent); background: var(--hover); }
+
 /* cards */
 .cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);

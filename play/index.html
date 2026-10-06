@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>play — yoshik.xyz</title>
-<meta name="description" content="a minimal personal music player. search, play, playlists, synced lyrics.">
+<meta name="description" content="a minimal personal music library. upload, play, synced lyrics.">
 <link rel="canonical" href="https://yoshik.xyz/play">
 <meta property="og:title" content="play — yoshik.xyz">
-<meta property="og:description" content="a minimal personal music player. search, play, playlists, synced lyrics.">
+<meta property="og:description" content="a minimal personal music library. upload, play, synced lyrics.">
 <meta property="og:url" content="https://yoshik.xyz/play">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="play — yoshik.xyz">
-<meta name="twitter:description" content="a minimal personal music player.">
+<meta name="twitter:description" content="a minimal personal music library.">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='none' stroke='%237d9bff' stroke-width='2.5'/><path d='M13 11l8 5-8 5z' fill='%237d9bff'/></svg>">
 <link rel="preload" href="/assets/fonts/HankenGrotesk-400.woff2" as="font" type="font/woff2" crossorigin>
@@ -31,14 +31,8 @@
     <a class="brand" href="#/">play</a>
     <nav id="mainnav">
       <a href="#/" data-route="home"><span class="ni">⌂</span>home</a>
-      <a href="#/search" data-route="search"><span class="ni">⌕</span>search</a>
-      <a href="#/library" data-route="library"><span class="ni">▤</span>library</a>
-      <a href="#/liked" data-route="liked"><span class="ni">♥</span>liked songs</a>
+      <a href="#/settings" data-route="settings"><span class="ni">⚙</span>settings</a>
     </nav>
-    <div class="side-sec">
-      <div class="side-head"><span>playlists</span><button id="newpl" class="iconbtn" aria-label="new playlist">+</button></div>
-      <div id="sideplaylists"></div>
-    </div>
     <div class="side-foot" id="userbox"></div>
   </aside>
 
@@ -46,9 +40,7 @@
 
   <nav id="mobilenav" aria-label="primary mobile">
     <a href="#/" data-route="home">⌂<span>home</span></a>
-    <a href="#/search" data-route="search">⌕<span>search</span></a>
-    <a href="#/library" data-route="library">▤<span>library</span></a>
-    <a href="#/liked" data-route="liked">♥<span>liked</span></a>
+    <a href="#/settings" data-route="settings">⚙<span>settings</span></a>
   </nav>
 
   <div id="miniplayer" hidden>
@@ -62,7 +54,6 @@
     <div class="pb-left">
       <img id="pb-art" alt="">
       <div class="pb-meta"><div id="pb-title"></div><div id="pb-artist" class="dim"></div></div>
-      <button id="pb-like" class="iconbtn" aria-label="like">♡</button>
     </div>
     <div class="pb-center">
       <div class="pb-controls">
@@ -104,7 +95,6 @@
         <button id="np-repeat" class="iconbtn" aria-label="repeat">↻</button>
       </div>
       <div class="np-row">
-        <button id="np-like" class="iconbtn" aria-label="like">♡</button>
         <button id="np-lyricsbtn" class="txtbtn">lyrics</button>
         <button id="np-queuebtn" class="txtbtn">queue</button>
       </div>

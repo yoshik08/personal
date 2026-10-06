@@ -14,16 +14,21 @@
    "destination": "/sportsphere",
    "permanent": true,
    "source": "/sportsphere/"
+  },
+  {
+   "destination": "/play",
+   "permanent": true,
+   "source": "/play/"
   }
  ],
  "rewrites": [
   {
    "source": "/val",
-   "destination": "https://val-lake.vercel.app/val"
+   "destination": "https://val.yoshik.xyz/"
   },
   {
    "source": "/val/:path*",
-   "destination": "https://val-lake.vercel.app/val/:path*"
+   "destination": "https://val.yoshik.xyz/:path*"
   }
  ]
 }

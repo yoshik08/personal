@@ -55,10 +55,13 @@ const api = {
   get(p) { return this.call(p); },
   post(p, body) { return this.call(p, { method: "POST", body }); },
   put(p, body) { return this.call(p, { method: "PUT", body }); },
+  patch(p, body) { return this.call(p, { method: "PATCH", body }); },
   del(p) { return this.call(p, { method: "DELETE" }); },
-  /* raw fetch for blobs (getmp3) with progress callback */
+  /* raw fetch for blobs with progress callback (sends the jwt) */
   async fetchBlob(path, onProgress) {
-    const r = await fetch(API() + path);
+    const headers = {};
+    if (this.token) headers.Authorization = "Bearer " + this.token;
+    const r = await fetch(API() + path, { headers });
     if (!r.ok) throw new Error("download failed: " + r.status);
     const total = parseInt(r.headers.get("Content-Length") || "0", 10);
     const reader = r.body.getReader();

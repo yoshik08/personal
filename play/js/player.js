@@ -9,7 +9,7 @@ const player = {
   queue: [],
   queueIndex: -1,
   isPlaying: false,
-  downloading: false,   /* first-play fetch from /api/audio/:trackId */
+  downloading: false,   /* first-play fetch from drive */
   downloadInfo: null,   /* {title, startedAt, gotBytes, totalBytes} */
   loading: false,
   error: null,
@@ -135,13 +135,10 @@ const player = {
 
     let blob = await cache.get(track.id);
     if (!blob) {
-      /* personal library songs stream from drive; others use audio provider */
-      const audioUrl = track.audioUrl || (
-        /^[a-f0-9]{24}$/.test(track.id)
-          ? "/api/songs/" + encodeURIComponent(track.id) + "/audio"
-          : "/api/audio/" + encodeURIComponent(track.id)
-      );
-      /* first play: download can take 1-3 min on throttled connections */
+      /* uploads-only library: every song streams from drive */
+      const audioUrl = track.audioUrl ||
+        "/api/songs/" + encodeURIComponent(track.id) + "/audio";
+      /* first play: fetch from drive (fast, same-region cdn) */
       this.downloading = true; this.loading = false;
       this.downloadInfo = { title: track.title, startedAt: Date.now(), gotBytes: 0, totalBytes: 0 };
       this.emit("state");

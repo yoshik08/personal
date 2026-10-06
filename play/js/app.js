@@ -11,12 +11,6 @@ const lyrics = () => window.Play.lyrics;
 /* ---------- router ---------- */
 const routes = [
   [/^#\/?$/, (v) => views().home(v)],
-  [/^#\/search$/, (v) => views().search(v)],
-  [/^#\/library$/, (v) => views().library(v)],
-  [/^#\/liked$/, (v) => views().liked(v)],
-  [/^#\/playlist\/(.+)$/, (v, m) => views().playlistDetail(v, decodeURIComponent(m[1]))],
-  [/^#\/album\/(.+)$/, (v, m) => views().albumView(v, decodeURIComponent(m[1]))],
-  [/^#\/artist\/(.+)$/, (v, m) => views().artistView(v, decodeURIComponent(m[1]))],
   [/^#\/settings$/, (v) => views().settings(v)],
 ];
 function route() {
@@ -39,16 +33,7 @@ function route() {
   v.innerHTML = `<div class="empty"><div class="big">?</div><p>not found.</p></div>`;
 }
 
-/* ---------- sidebar ---------- */
-async function loadSidePlaylists() {
-  const box = document.getElementById("sideplaylists");
-  if (!auth().user) { box.innerHTML = ""; return; }
-  try {
-    const d = await api.get("/api/playlists");
-    box.innerHTML = (d.playlists || []).map((p) =>
-      `<a href="#/playlist/${p._id}">${esc(p.name)}</a>`).join("");
-  } catch (e) {}
-}
+/* ---------- userbox ---------- */
 function renderUserbox() {
   const u = auth().user;
   document.getElementById("userbox").innerHTML = u
@@ -78,7 +63,7 @@ function syncPlayerUI() {
     const ti = document.getElementById(pfx + "-title");
     if (ti) ti.textContent = t ? t.title : "";
     const ar = document.getElementById(pfx + "-artist");
-    if (ar) ar.textContent = t ? (t.artists || t.artist) : "";
+    if (ar) ar.textContent = t ? (t.artists || t.artist || "unknown artist") : "";
   });
 
   const icon = p.isPlaying ? "⏸" : "▶";
@@ -98,14 +83,6 @@ function syncPlayerUI() {
   });
   const mpStatus = document.getElementById("mp-status");
   if (mpStatus) mpStatus.textContent = dl ? `downloading… ${dl.secs}s` : (p.loading ? "loading…" : "");
-
-  /* like */
-  const likeBtns = [document.getElementById("pb-like"), document.getElementById("np-like")];
-  likeBtns.forEach((b) => {
-    if (!b || !t) return;
-    b.textContent = views().isLiked(t.id) ? "♥" : "♡";
-    b.classList.toggle("on", views().isLiked(t.id));
-  });
 
   /* shuffle / repeat */
   [["pb-shuffle", "np-shuffle"], ["pb-repeat", "np-repeat"]].forEach(([a, b]) => {
@@ -151,7 +128,7 @@ function renderQueue() {
       `<div class="q-item${i === p.queueIndex ? " current" : ""}" data-i="${i}" tabindex="0" role="button">
         <img loading="lazy" src="${esc(t.albumArt || "")}" alt="" onerror="this.style.visibility='hidden'">
         <div style="flex:1;min-width:0"><div style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.title)}</div>
-        <div class="dim" style="font-size:12px">${esc(t.artists || t.artist)}</div></div>
+        <div class="dim" style="font-size:12px">${esc(t.artists || t.artist || "unknown artist")}</div></div>
         ${i !== p.queueIndex ? `<button class="iconbtn" data-rm aria-label="remove">✕</button>` : `<span class="dim mono" style="font-size:11px">playing</span>`}
       </div>`).join("")
       : `<div class="empty"><p>queue is empty.</p></div>`);
@@ -173,7 +150,6 @@ function init() {
   const p = player();
   p.init();
   auth().init();
-  views().refreshLikes();
 
   /* motion pref */
   try {
@@ -183,11 +159,9 @@ function init() {
 
   window.addEventListener("hashchange", route);
   document.addEventListener("auth", () => {
-    renderUserbox(); loadSidePlaylists(); views().refreshLikes();
-    if (/^#\/(library|liked|playlist)/.test(location.hash)) route();
+    renderUserbox();
+    if (/^#\/settings/.test(location.hash)) route();
   });
-  document.addEventListener("playlists", loadSidePlaylists);
-  document.addEventListener("likes", () => { syncPlayerUI(); });
 
   p.on("track", () => {
     syncPlayerUI();
@@ -207,8 +181,6 @@ function init() {
   wire("pb-next", () => p.next()); wire("np-next", () => p.next());
   wire("pb-shuffle", () => p.toggleShuffle()); wire("np-shuffle", () => p.toggleShuffle());
   wire("pb-repeat", () => p.cycleRepeat()); wire("np-repeat", () => p.cycleRepeat());
-  wire("pb-like", () => p.currentTrack && views().toggleLike(p.currentTrack));
-  wire("np-like", () => p.currentTrack && views().toggleLike(p.currentTrack));
   wire("pb-expand", openNowPlaying);
   wire("np-close", closeNowPlaying);
   document.getElementById("miniplayer").addEventListener("click", (e) => {
@@ -226,13 +198,7 @@ function init() {
   document.getElementById("pb-vol").addEventListener("input", (e) => p.setVolume(e.target.value / 100));
   document.getElementById("pb-vol").value = Math.round(p.volume * 100);
 
-  document.getElementById("newpl").addEventListener("click", () => {
-    if (!auth().require()) return;
-    views().newPlaylistModal();
-  });
-
   renderUserbox();
-  loadSidePlaylists();
   route();
   syncPlayerUI();
 }

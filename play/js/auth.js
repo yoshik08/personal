@@ -14,9 +14,13 @@ const auth = {
     if (code) {
       // clean url first
       history.replaceState(null, "", location.pathname + location.hash);
-      this.handleCode(code).then(() => {
-        location.hash = "#/library";
-      });
+      const isDrive = sessionStorage.getItem("play_drive_connect") === "1";
+      sessionStorage.removeItem("play_drive_connect");
+      if (isDrive) {
+        this.handleDriveCode(code).then(() => { location.hash = "#/settings"; });
+      } else {
+        this.handleCode(code).then(() => { location.hash = "#/"; });
+      }
       return;
     }
     const token = localStorage.getItem("play_token");
@@ -64,7 +68,7 @@ const auth = {
       localStorage.setItem("play_user", JSON.stringify(d.user));
       toast("signed in as " + d.user.name);
       document.dispatchEvent(new CustomEvent("auth", { detail: this.user }));
-      this.checkDrive();
+
     } catch (e) {
       toast("sign-in failed: " + e.message);
     }
@@ -94,50 +98,46 @@ const auth = {
       toast("signed in as " + d.user.name);
       document.dispatchEvent(new CustomEvent("auth", { detail: this.user }));
       // check drive status
-      this.checkDrive();
+
     } catch (e) {
       toast("sign-in failed: " + e.message);
     }
   },
 
-  async checkDrive() {
-    if (!this.user) return false;
-    try {
-      const d = await api.get("/api/drive/status");
-      this.driveConnected = d.connected;
-      document.dispatchEvent(new CustomEvent("drive", { detail: d.connected }));
-      return d.connected;
-    } catch (e) { return false; }
+  /* drive: full-page redirect with offline access so the backend gets a
+     refresh token for Yoshik's Drive (backend-only storage).
+     redirectUri matches the login flow's authorized URI exactly. */
+  connectDrive() {
+    const cid = window.GOOGLE_CLIENT_ID;
+    if (!cid) { toast("sign-in not configured yet"); return; }
+    const redirectUri = location.origin + location.pathname;
+    sessionStorage.setItem("play_drive_connect", "1");
+    const url = "https://accounts.google.com/o/oauth2/v2/auth" +
+      "?client_id=" + encodeURIComponent(cid) +
+      "&redirect_uri=" + encodeURIComponent(redirectUri) +
+      "&response_type=code" +
+      "&scope=" + encodeURIComponent("openid email profile https://www.googleapis.com/auth/drive.file") +
+      "&access_type=offline" +
+      "&prompt=consent";
+    location.href = url;
   },
 
-  connectDrive() {
-    return new Promise((resolve, reject) => {
-      if (!window.google || !google.accounts || !google.accounts.oauth2) {
-        reject(new Error("google auth not loaded"));
-        return;
-      }
-      const client = google.accounts.oauth2.initCodeClient({
-        client_id: window.GOOGLE_CLIENT_ID,
-        scope: "https://www.googleapis.com/auth/drive.file",
-        ux_mode: "popup",
-        callback: async (resp) => {
-          if (resp.error) { reject(new Error(resp.error)); return; }
-          try {
-            await api.post("/api/auth/google/drive", {
-              code: resp.code,
-              redirectUri: location.origin,
-            });
-            this.driveConnected = true;
-            document.dispatchEvent(new CustomEvent("drive", { detail: true }));
-            toast("google drive connected");
-            resolve(true);
-          } catch (e) {
-            reject(e);
-          }
-        },
-      });
-      client.requestCode();
-    });
+  async handleDriveCode(code) {
+    try {
+      const redirectUri = location.origin + location.pathname;
+      await api.post("/api/drive/reconnect", { code, redirectUri });
+      toast("google drive connected");
+      document.dispatchEvent(new CustomEvent("drive", { detail: true }));
+    } catch (e) {
+      toast("drive connect failed: " + e.message);
+    }
+  },
+
+  async driveStatus() {
+    try {
+      const d = await api.get("/api/drive/status");
+      return !!d.connected;
+    } catch (e) { return false; }
   },
 
   logout(silent) {
