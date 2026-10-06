@@ -149,7 +149,8 @@ const lyrics = {
         const ael = els[active];
         if (ael) {
           const body = this.container.querySelector("#ly-body");
-          const top = ael.offsetTop - body.clientHeight / 2 + 20;
+          // center active line vertically in the pane
+          const top = ael.offsetTop - body.clientHeight / 2 + ael.clientHeight / 2;
           body.scrollTo({ top, behavior: motionOK ? "smooth" : "auto" });
         }
       }

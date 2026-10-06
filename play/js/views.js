@@ -188,12 +188,11 @@ function bindSongRows(list, songs, v) {
         showSongMenu(s, v);
         return;
       }
-      // play
+      // play immediately on click
       const { player } = window.Play;
       const tracks = songs.map(toTrack);
       const idx = songs.findIndex((x) => x.id === s.id);
-      player().setQueue(tracks, idx);
-      player().playAt(idx);
+      player().playQueue(tracks, idx);
     });
   });
 }
@@ -206,6 +205,7 @@ function showSongMenu(song, v) {
       <button class="txtbtn" data-a="next" style="text-align:left;padding:12px 4px">play next</button>
       <button class="txtbtn" data-a="queue" style="text-align:left;padding:12px 4px">add to queue</button>
       <button class="txtbtn" data-a="rename" style="text-align:left;padding:12px 4px">rename</button>
+      <button class="txtbtn" data-a="artwork" style="text-align:left;padding:12px 4px">refresh cover art</button>
       <button class="txtbtn" data-a="lyrics" style="text-align:left;padding:12px 4px">refresh lyrics</button>
       <button class="txtbtn" data-a="delete" style="text-align:left;padding:12px 4px;color:var(--danger)">delete</button>
     </div>
@@ -243,6 +243,22 @@ function showSongMenu(song, v) {
           closeModal();
           home(v);
         };
+      }
+      else if (a === "artwork") {
+        closeModal();
+        toast("refreshing cover art…");
+        try {
+          const { upload } = window.Play;
+          const artist = (song.spotifyMatch && song.spotifyMatch.artist) || "";
+          const match = await upload.findSpotifyMatch(song.name, song.duration || 0, artist || null);
+          if (match) {
+            await api.patch("/api/songs/" + song.id, { spotifyMatch: match });
+            toast("cover art updated");
+          } else {
+            toast("no cover art found");
+          }
+        } catch (e) { toast("refresh failed: " + e.message); }
+        home(v);
       }
       else if (a === "lyrics") {
         closeModal();

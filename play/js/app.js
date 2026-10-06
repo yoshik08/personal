@@ -38,8 +38,7 @@ function renderUserbox() {
   const u = auth().user;
   document.getElementById("userbox").innerHTML = u
     ? `<div style="display:flex;align-items:center;gap:10px">
-        <span style="font-weight:600">${esc(u.name)}</span>
-        <a href="#/settings" style="color:var(--dim);font-size:12px" class="mono">settings</a></div>`
+        <span style="font-weight:600">${esc(u.name)}</span></div>`
     : `<a href="#/settings" class="txtbtn">sign in</a>`;
 }
 
