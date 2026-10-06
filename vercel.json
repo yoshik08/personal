@@ -1,22 +1,9 @@
 {
- "redirects": [
-  {
-   "destination": "/engagement",
-   "permanent": true,
-   "source": "/engagement/"
-  },
-  {
-   "destination": "/type",
-   "permanent": true,
-   "source": "/type/"
-  },
-  {
-   "destination": "/sportsphere",
-   "permanent": true,
-   "source": "/sportsphere/"
-  }
- ],
  "rewrites": [
+  {
+   "source": "/play/",
+   "destination": "/play/index.html"
+  },
   {
    "source": "/val",
    "destination": "https://val-lake.vercel.app/val"
@@ -25,6 +12,5 @@
    "source": "/val/:path*",
    "destination": "https://val-lake.vercel.app/val/:path*"
   }
- ],
- "trailingSlash": false
+ ]
 }
