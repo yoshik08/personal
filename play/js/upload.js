@@ -49,39 +49,37 @@ const upload = {
 
   async findSpotifyMatch(name, durationSecs, artistHint) {
     try {
-      const q = artistHint ? `${name} ${artistHint}` : name;
-      const d = await api.get("/api/search?q=" + encodeURIComponent(q));
-      const tracks = d.tracks || [];
-      if (!tracks.length) return null;
-
-      // If user set an artist, REQUIRE a case-insensitive artist match.
-      // Never return art from a different artist (e.g. Summer Walker for cupcakke).
       const hint = (artistHint || "").toLowerCase().trim();
-      let candidates = tracks.slice(0, 10);
-      if (hint) {
-        candidates = candidates.filter((t) => (t.artist || "").toLowerCase().includes(hint));
-        if (!candidates.length) return null; // no artist match — don't swap to wrong art
+      
+      // Try 1: "title artist" (e.g. "CPR cupcakke")
+      let tracks = await this._searchTracks(artistHint ? `${name} ${artistHint}` : name);
+      let candidates = this._filterByArtist(tracks, hint);
+      
+      // Try 2: if no artist match, search artist alone and filter by title
+      // (e.g. Spotify might not return "CPR cupcakke" but will return cupcakke tracks)
+      if (hint && !candidates.length) {
+        tracks = await this._searchTracks(artistHint);
+        candidates = tracks.filter((t) => {
+          const tl = (t.title || "").toLowerCase();
+          return tl.includes(name.toLowerCase()) || name.toLowerCase().includes(tl.split(" ")[0]);
+        });
+        // still require artist match
+        candidates = this._filterByArtist(candidates, hint);
       }
+      
+      if (!candidates.length) return null;
 
-      // score by title similarity + duration proximity (among artist-matched candidates)
+      // score by title similarity + duration (among artist-matched)
       let best = null, bestScore = -1;
-      for (const t of candidates) {
+      for (const t of candidates.slice(0, 10)) {
         const titleSim = this.similarity(name, t.title);
-        if (titleSim < 0.5) continue; // reject bad title matches
-
+        if (titleSim < 0.5) continue;
         const durDiff = Math.abs((t.duration || 0) - durationSecs);
         const durScore = durDiff < 5 ? 1 : durDiff < 15 ? 0.7 : durDiff < 30 ? 0.4 : 0;
-
         const score = titleSim * 0.7 + durScore * 0.3;
-        if (score > bestScore) {
-          bestScore = score;
-          best = t;
-        }
+        if (score > bestScore) { bestScore = score; best = t; }
       }
-
-      // require minimum confidence
       if (!best || bestScore < 0.6) return null;
-
       return {
         trackId: best.id,
         title: best.title,
@@ -94,6 +92,19 @@ const upload = {
       console.log("spotify match failed:", e.message);
       return null;
     }
+  },
+
+  async _searchTracks(q) {
+    try {
+      const d = await api.get("/api/search?q=" + encodeURIComponent(q));
+      return d.tracks || [];
+    } catch (e) { return []; }
+  },
+
+  _filterByArtist(tracks, hint) {
+    if (!hint) return tracks.slice(0, 10);
+    // REQUIRE case-insensitive artist match — never wrong-artist art
+    return tracks.filter((t) => (t.artist || "").toLowerCase().includes(hint)).slice(0, 10);
   },
 
   async uploadFile(file, onProgress) {
