@@ -254,8 +254,11 @@ function showSongMenu(song, v) {
           const { upload } = window.Play;
           const artist = (song.spotifyMatch && song.spotifyMatch.artist) || "";
           const match = await upload.findSpotifyMatch(song.name, song.duration || 0, artist || null);
-          if (match) {
-            await api.patch("/api/songs/" + song.id, { spotifyMatch: match });
+          if (match && match.artworkUrl) {
+            // ONLY update artworkUrl — preserve user's title/artist edits
+            await api.patch("/api/songs/" + song.id, {
+              spotifyMatch: { ...(song.spotifyMatch || {}), artworkUrl: match.artworkUrl }
+            });
             toast("cover art updated");
           } else {
             toast("no cover art found");
