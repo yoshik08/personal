@@ -55,6 +55,23 @@ async function home(v, optimisticSongs) {
     <div id="hbody">${optimisticSongs ? "" : stateBox("loading")}</div>`;
   const body = v.querySelector("#hbody");
 
+  // UI-level guarantee: never show loading spinner for more than 5s
+  // (independent of API AbortController — force-clears even if fetch hangs)
+  let loadingCleared = false;
+  const forceClearLoading = setTimeout(() => {
+    if (loadingCleared) return;
+    loadingCleared = true;
+    const lb = v.querySelector("#hbody");
+    if (lb && lb.innerHTML.includes("loading")) {
+      if (lastGoodSongs && lastGoodSongs.length) {
+        // re-render with cached songs (avoid infinite recursion)
+        home(v, lastGoodSongs);
+      } else {
+        lb.innerHTML = `<div class="empty"><div class="big">♪</div><p>nothing here yet</p></div>`;
+      }
+    }
+  }, 5000);
+
   // wire the persistent dropzone (works even if library fails to load)
   const dz = v.querySelector("#uploaddz");
   const dzFile = v.querySelector("#dzFile");
@@ -88,13 +105,19 @@ async function home(v, optimisticSongs) {
     if (optimisticSongs && optimisticSongs.length) {
       songs = optimisticSongs;
       lastGoodSongs = songs;
+      loadingCleared = true;
+      clearTimeout(forceClearLoading);
     } else {
       // 5s timeout with AbortController; on failure keep last-good songs if we have them
       try {
         const d = await api.get("/api/songs", 5000);
         songs = d.songs || [];
         lastGoodSongs = songs;
+        loadingCleared = true;
+        clearTimeout(forceClearLoading);
       } catch (e) {
+        loadingCleared = true;
+        clearTimeout(forceClearLoading);
         if (lastGoodSongs && lastGoodSongs.length) {
           songs = lastGoodSongs; // show cached library, don't wipe after upload
         } else {
