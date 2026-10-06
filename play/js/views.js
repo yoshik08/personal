@@ -145,6 +145,9 @@ async function home(v, optimisticSongs) {
     }
 
     // library with search + upload button
+    // de-emphasize the giant dropzone now that songs exist
+    const dzTop = v.querySelector("#uploaddz");
+    if (dzTop) dzTop.classList.add("compact");
     body.innerHTML = `<div class="searchbox"><input id="libq" placeholder="search your library…" aria-label="search library"></div>
       <div style="margin:12px 0"><button class="btn" id="uploadBtn">+ add music</button>
       <input type="file" id="fileInput" accept="audio/*" style="display:none"></div>

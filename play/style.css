@@ -293,3 +293,14 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
 /* lyrics: hide scrollbar, keep scrollable */
 #ly-body { scrollbar-width: none; -ms-overflow-style: none; }
 #ly-body::-webkit-scrollbar { display: none; }
+
+/* compact dropzone when library has songs */
+.uploaddz.compact { width: 100%; height: 56px; flex-direction: row; gap: 12px; border-radius: 12px; }
+.uploaddz.compact .dz-icon { font-size: 24px; }
+.uploaddz.compact .dz-text { font-size: 13px; text-align: left; }
+.uploaddz.compact .dz-text br { display: none; }
+
+/* song row hover: play affordance */
+.trackrow { cursor: pointer; transition: background .15s; }
+.trackrow:hover { background: var(--hover); }
+.trackrow:hover .tt { color: var(--accent); }

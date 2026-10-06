@@ -159,6 +159,15 @@ function init() {
   p.on("download", syncPlayerUI);
   p.on("queue", () => { if (!document.getElementById("queuepanel").hidden) renderQueue(); });
 
+  /* keyboard: space toggle, arrows seek (not in inputs) */
+  document.addEventListener("keydown", (e) => {
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+    if (e.code === "Space") { e.preventDefault(); p.toggle(); }
+    else if (e.code === "ArrowLeft") { p.seek(Math.max(0, (p.audio.currentTime || 0) - 5) / (p.audio.duration || 1)); }
+    else if (e.code === "ArrowRight") { p.seek(Math.min(1, ((p.audio.currentTime || 0) + 5) / (p.audio.duration || 1))); }
+  });
+
   /* transport buttons */
   const wire = (id, fn) => document.getElementById(id)?.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
   wire("pb-toggle", () => p.toggle()); wire("mp-toggle", () => p.toggle()); wire("np-toggle", () => p.toggle());
