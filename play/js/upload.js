@@ -146,12 +146,15 @@ const upload = {
     if (onStage) onStage("uploading to drive…");
     const song = await this.uploadFile(file, onProgress);
 
-    // stage 2: spotify match
+    // stage 2: spotify match (artwork only — never overwrite user's title/artist)
     if (onStage) onStage("finding cover art…");
     const match = await this.findSpotifyMatch(songName, song.duration, null);
-    if (match) {
-      await api.patch("/api/songs/" + song.id, { name: songName, spotifyMatch: match });
-      song.spotifyMatch = match;
+    if (match && match.artworkUrl) {
+      await api.patch("/api/songs/" + song.id, {
+        name: songName,
+        spotifyMatch: { artworkUrl: match.artworkUrl }
+      });
+      song.spotifyMatch = { ...(song.spotifyMatch || {}), artworkUrl: match.artworkUrl };
       song.name = songName;
     } else {
       await api.patch("/api/songs/" + song.id, { name: songName });
