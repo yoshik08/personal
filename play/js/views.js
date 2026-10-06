@@ -80,10 +80,10 @@ async function home(v) {
   }
 
   try {
-    // 15s timeout: if /api/songs hangs, fail fast to "nothing here yet"
+    // 4s timeout: if /api/songs hangs, fail fast to "nothing here yet"
     const d = await Promise.race([
       api.get("/api/songs"),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), 15000))
+      new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), 4000))
     ]).catch(() => ({ songs: [] }));
     const songs = d.songs || [];
 
