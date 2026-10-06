@@ -41,7 +41,7 @@ function toTrack(song) {
 }
 
 /* ---------- home: personal library ---------- */
-async function home(v) {
+async function home(v, optimisticSongs) {
   const { auth, api, upload, esc, toast } = window.Play;
   v.innerHTML = `<div class="pagehead"><div class="greet">your library</div></div>
     <div id="uploaddz" class="uploaddz" title="upload audio">
@@ -49,7 +49,7 @@ async function home(v) {
       <div class="dz-text">drop audio here<br><span class="dim">or tap to choose</span></div>
       <input type="file" id="dzFile" accept="audio/*" style="display:none">
     </div>
-    <div id="hbody">${stateBox("loading")}</div>`;
+    <div id="hbody">${optimisticSongs ? "" : stateBox("loading")}</div>`;
   const body = v.querySelector("#hbody");
 
   // wire the persistent dropzone (works even if library fails to load)
@@ -80,12 +80,18 @@ async function home(v) {
   }
 
   try {
-    // 4s timeout: if /api/songs hangs, fail fast to "nothing here yet"
-    const d = await Promise.race([
-      api.get("/api/songs"),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), 4000))
-    ]).catch(() => ({ songs: [] }));
-    const songs = d.songs || [];
+    // if we just uploaded, show the song immediately without waiting for API
+    let songs;
+    if (optimisticSongs && optimisticSongs.length) {
+      songs = optimisticSongs;
+    } else {
+      // 4s timeout: if /api/songs hangs, fail fast to "nothing here yet"
+      const d = await Promise.race([
+        api.get("/api/songs"),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), 4000))
+      ]).catch(() => ({ songs: [] }));
+      songs = d.songs || [];
+    }
 
     if (!songs.length) {
       body.innerHTML = `<div class="empty" id="dropzone">
@@ -258,16 +264,17 @@ async function showNameDialog(file, songs, v, body) {
       </div></div>`;
 
     try {
-      await upload.fullUploadFlow(
+      const song = await upload.fullUploadFlow(
         file, name,
         (p) => { const b = body.querySelector("#upbar"); if (b) b.style.width = (p * 100) + "%"; },
         (stage) => { const s = body.querySelector("#upstage"); if (s) s.textContent = stage; }
       );
       toast("added to library");
+      home(v, [song]); // refresh, show uploaded song immediately
     } catch (e) {
       toast("upload failed: " + e.message);
+      home(v); // refresh (show empty/error state)
     }
-    home(v); // refresh
   };
 }
 
