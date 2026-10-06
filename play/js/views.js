@@ -253,11 +253,6 @@ async function settings(v) {
         <div class="desc">sign in to use your personal library.</div></div></div>
         <div id="gsi" style="margin-top:12px"></div>`}
     </div>
-    <div class="sec"><h2>google drive</h2>
-      <div class="setrow"><div><div class="lab">storage</div>
-        <div class="desc" id="drivedesc">checking…</div></div>
-        <button class="btn ghost" id="drivebtn" hidden>connect drive</button></div>
-    </div>
     <div class="sec"><h2>playback</h2>
       <div class="setrow"><div><div class="lab">motion</div><div class="desc">animations and lyric transitions</div></div>
         <div class="seg" id="segs-motion"><button data-v="auto">auto</button><button data-v="on">on</button><button data-v="off">off</button></div></div>
@@ -268,21 +263,6 @@ async function settings(v) {
     </div>`;
   if (!u) auth().renderButton(v.querySelector("#gsi"));
   else v.querySelector("#logout").onclick = () => auth().logout();
-
-  /* drive status */
-  const desc = v.querySelector("#drivedesc");
-  const dbtn = v.querySelector("#drivebtn");
-  if (u) {
-    const connected = await auth().driveStatus();
-    desc.textContent = connected
-      ? "connected — uploads go to the yoshik-play folder."
-      : "not connected — uploads will fail until drive is connected.";
-    dbtn.hidden = false;
-    dbtn.textContent = connected ? "reconnect" : "connect drive";
-    dbtn.onclick = () => auth().connectDrive();
-  } else {
-    desc.textContent = "sign in first.";
-  }
 
   /* motion seg */
   const mv = document.documentElement.dataset.motion || "auto";
