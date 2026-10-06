@@ -49,7 +49,7 @@ async function home(v, optimisticSongs) {
   v.innerHTML = `<div class="pagehead"><div class="greet">your library</div></div>
     <div id="uploaddz" class="uploaddz" title="upload audio">
       <div class="dz-icon">+</div>
-      <div class="dz-text">drop audio here<br><span class="dim">or tap to choose</span></div>
+      <div class="dz-text">drop audio here <br><span class="dim">or tap to choose</span></div>
       <input type="file" id="dzFile" accept="audio/*" style="display:none">
     </div>
     <div id="hbody">${optimisticSongs ? "" : stateBox("loading")}</div>
@@ -213,7 +213,6 @@ function showSongMenu(song, v) {
       <button class="txtbtn" data-a="playlist" style="text-align:left;padding:12px 4px">add to playlist</button>
       <button class="txtbtn" data-a="rename" style="text-align:left;padding:12px 4px">rename</button>
       <button class="txtbtn" data-a="artwork" style="text-align:left;padding:12px 4px">refresh cover art</button>
-      <button class="txtbtn" data-a="arturl" style="text-align:left;padding:12px 4px">paste cover url</button>
       <button class="txtbtn" data-a="lyrics" style="text-align:left;padding:12px 4px">refresh lyrics</button>
       <button class="txtbtn" data-a="delete" style="text-align:left;padding:12px 4px;color:var(--danger)">delete</button>
     </div>
@@ -291,23 +290,6 @@ function showSongMenu(song, v) {
           }
         } catch (e) { toast("refresh failed: " + e.message); }
         home(v);
-      }
-      else if (a === "arturl") {
-        closeModal();
-        const bg3 = modal(`<h3>cover art url</h3><input id="arturl" placeholder="https://..." maxlength="500">
-          <div class="row"><button class="btn ghost" data-x>cancel</button><button class="btn" data-ok>save</button></div>`);
-        bg3.querySelector("[data-x]").onclick = closeModal;
-        bg3.querySelector("[data-ok]").onclick = async () => {
-          const url = bg3.querySelector("#arturl").value.trim();
-          if (url) {
-            await api.patch("/api/songs/" + song.id, {
-              spotifyMatch: { ...(song.spotifyMatch || {}), artworkUrl: url }
-            });
-            toast("cover updated");
-          }
-          closeModal();
-          home(v);
-        };
       }
       else if (a === "lyrics") {
         closeModal();
