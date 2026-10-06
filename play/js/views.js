@@ -218,14 +218,25 @@ function showSongMenu(song, v) {
       else if (a === "queue") { closeModal(); p.addToQueue(toTrack(song)); }
       else if (a === "rename") {
         closeModal();
-        const bg2 = modal(`<h3>rename</h3><input id="rname" value="${esc(song.name)}" maxlength="200">
+        const curArtist = (song.spotifyMatch && song.spotifyMatch.artist) || "";
+        const bg2 = modal(`<h3>rename</h3>
+          <label style="display:block;margin:8px 0 4px;font-size:12px;color:var(--muted)">title</label>
+          <input id="rname" value="${esc(song.name)}" maxlength="200">
+          <label style="display:block;margin:8px 0 4px;font-size:12px;color:var(--muted)">artist</label>
+          <input id="rartist" value="${esc(curArtist)}" maxlength="200" placeholder="artist name">
           <div class="row"><button class="btn ghost" data-x>cancel</button><button class="btn" data-ok>save</button></div>`);
         bg2.querySelector("[data-x]").onclick = closeModal;
         bg2.querySelector("[data-ok]").onclick = async () => {
           const name = bg2.querySelector("#rname").value.trim();
-          if (name && name !== song.name) {
+          const artist = bg2.querySelector("#rartist").value.trim();
+          const patch = {};
+          if (name && name !== song.name) patch.name = name;
+          if (artist !== curArtist) {
+            patch.spotifyMatch = { ...(song.spotifyMatch || {}), artist };
+          }
+          if (Object.keys(patch).length) {
             try {
-              await api.patch("/api/songs/" + song.id, { name });
+              await api.patch("/api/songs/" + song.id, patch);
               toast("renamed");
             } catch (e) { toast("rename failed: " + e.message); }
           }
