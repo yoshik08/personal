@@ -14,16 +14,12 @@
    "destination": "/sportsphere",
    "permanent": true,
    "source": "/sportsphere/"
-  }
- ],
- "rewrites": [
-  {
-   "source": "/val",
-   "destination": "https://val.yoshik.xyz/"
   },
   {
    "source": "/val/:path*",
-   "destination": "https://val.yoshik.xyz/:path*"
+   "destination": "https://val.yoshik.xyz/:path*",
+   "permanent": true
   }
- ]
+ ],
+ "rewrites": []
 }
