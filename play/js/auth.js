@@ -11,9 +11,15 @@ const auth = {
     /* handle oauth redirect callback (login only) */
     const params = new URLSearchParams(location.search);
     const code = params.get("code");
+    const state = params.get("state");
     if (code) {
       // clean url first
       history.replaceState(null, "", location.pathname + location.hash);
+      // drive oauth (backend setup): don't consume, just display for manual copy
+      if (state === "drive") {
+        document.body.innerHTML = '<div style="padding:40px;font-family:monospace;word-break:break-all;color:#fff;background:#000;min-height:100vh"><h2>drive oauth code</h2><p>copy this code:</p><pre style="background:#222;padding:16px;border-radius:8px">' + code.replace(/</g, "&lt;") + '</pre></div>';
+        return;
+      }
       this.handleCode(code).then(() => { location.hash = "#/"; });
       return;
     }
