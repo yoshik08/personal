@@ -10,8 +10,7 @@ const lyrics = () => window.Play.lyrics;
 
 function stateBox(kind, msg, retry) {
   if (kind === "loading") {
-    return `<div>${[0, 1, 2, 3, 4].map(() =>
-      `<div class="skel" style="height:60px;margin:8px 0"></div>`).join("")}</div>`;
+    return `<div class="loading"><div class="spinner"></div><p>loading…</p></div>`;
   }
   if (kind === "empty") {
     return `<div class="empty"><div class="big">∅</div><p>${esc(msg)}</p></div>`;
@@ -81,13 +80,17 @@ async function home(v) {
   }
 
   try {
-    const d = await api.get("/api/songs").catch(() => ({ songs: [] }));
+    // 15s timeout: if /api/songs hangs, fail fast to "nothing here yet"
+    const d = await Promise.race([
+      api.get("/api/songs"),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), 15000))
+    ]).catch(() => ({ songs: [] }));
     const songs = d.songs || [];
 
     if (!songs.length) {
       body.innerHTML = `<div class="empty" id="dropzone">
         <div class="big">♪</div>
-        <p>your library is empty</p>
+        <p>nothing here yet</p>
         <p class="dim" style="margin-top:8px">enter your audio file</p>
         <p style="margin-top:16px">
           <button class="btn" id="pickFile">choose file</button>
