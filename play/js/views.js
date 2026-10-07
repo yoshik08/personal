@@ -459,11 +459,11 @@ async function showPlaylistMenu(pid, v) {
         };
       } else if (a === "delete") {
         closeModal();
-        if (await confirmModal("delete this playlist?")) {
+        confirmModal("delete playlist", "delete this playlist?", "delete", async () => {
           await api.call("/api/playlists/" + pid, { method: "DELETE" });
           playlistsSection(v);
           toast("deleted");
-        }
+        });
       }
     };
   });
