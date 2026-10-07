@@ -1,1 +1,75 @@
-{"redirects": [{"destination": "/engagement", "permanent": true, "source": "/engagement/"}, {"destination": "/type", "permanent": true, "source": "/type/"}, {"destination": "/sportsphere", "permanent": true, "source": "/sportsphere/"}, {"source": "/play/", "destination": "/play", "permanent": true}], "rewrites": [{"destination": "https://val-lake.vercel.app/val", "source": "/val"}, {"destination": "https://val-lake.vercel.app/val/:path*", "source": "/val/:path*"}], "trailingSlash": false}
+{
+  "redirects": [
+    {
+      "destination": "/engagement",
+      "permanent": true,
+      "source": "/engagement/"
+    },
+    {
+      "destination": "/type",
+      "permanent": true,
+      "source": "/type/"
+    },
+    {
+      "destination": "/sportsphere",
+      "permanent": true,
+      "source": "/sportsphere/"
+    },
+    {
+      "source": "/play/",
+      "destination": "/play",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/assets/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "play.yoshik.xyz"
+        }
+      ],
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/play/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "play.yoshik.xyz"
+        }
+      ],
+      "destination": "/play/:path*"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "play.yoshik.xyz"
+        }
+      ],
+      "destination": "/play"
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "play.yoshik.xyz"
+        }
+      ],
+      "destination": "/play/:path*"
+    },
+    {
+      "destination": "https://val-lake.vercel.app/val",
+      "source": "/val"
+    },
+    {
+      "destination": "https://val-lake.vercel.app/val/:path*",
+      "source": "/val/:path*"
+    }
+  ],
+  "trailingSlash": false
+}
