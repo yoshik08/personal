@@ -1,4 +1,6 @@
 // vercel serverless: GET /api/lyrics?artist=&title=&duration=&mode=line|word
+import { calibrate, alignWordCount, yrcEnds } from "./_karaoke-calib.js";
+
 // Three providers queried in parallel, each with a 4s timeout.
 // mode=line  → race: first provider with synced lyrics wins.
 // mode=word  → priority: lrcmux word > netease word > wordSync:false.
@@ -99,11 +101,20 @@ export default async function handler(req, res) {
         if (!text) return;
         const textWords = text.split(/\s+/);
         let wordStarts = null;
+        let wordEnds = null;
         if (isWord) {
-          const ws = (ln.words || []).filter((w) => w.text && w.text.trim()).map((w) => w.start);
-          wordStarts = ws.length === textWords.length ? ws : null;
+          const aligned = alignWordCount(textWords, ln.words || []);
+          if (aligned) {
+            wordStarts = aligned.starts;
+            wordEnds = aligned.ends;
+            for (let i = 0; i < wordEnds.length; i++) {
+              if (wordEnds[i] == null || wordEnds[i] <= wordStarts[i]) {
+                wordEnds[i] = i < wordEnds.length - 1 ? wordStarts[i + 1] : wordStarts[i] + 300;
+              }
+            }
+          }
         }
-        lines.push({ time: ln.start, text, words: wordStarts });
+        lines.push({ time: ln.start, text, words: wordStarts, ends: wordEnds });
       });
       if (!lines.length) return null;
 
@@ -111,7 +122,7 @@ export default async function handler(req, res) {
       if (duration > 0 && lines[lines.length - 1].time > (duration + 2) * 1000) return null;
 
       const hasWord = lines.some((l) => l.words);
-      return { source: "lrcmux", wordSync: hasWord, lines };
+      return { source: "lrcmux", wordSync: hasWord, lines, provider: d.meta?.source?.id };
     } catch { return null; }
   }
 
@@ -237,16 +248,93 @@ export default async function handler(req, res) {
     return true;
   }
 
+  async function fetchLrclibSync(queryTitle) {
+    try {
+      const qTitle = encodeURIComponent(queryTitle);
+      const qArtist = encodeURIComponent(artist.split(",")[0]);
+      let r = await fetch(`https://lrclib.net/api/get?artist_name=${qArtist}&track_name=${qTitle}&duration=${Math.round(duration)}`, {
+        headers: { "User-Agent": "yoshik.xyz/lyrics" }, signal: ac(TIMEOUT)
+      });
+      if (r.status === 404) {
+        r = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(queryTitle + " " + artist.split(",")[0])}`, {
+           headers: { "User-Agent": "yoshik.xyz/lyrics" }, signal: ac(TIMEOUT)
+        });
+        if (!r.ok) return null;
+        const arr = await r.json();
+        const reqTitleLower = title.toLowerCase();
+        let best = null;
+        for (const x of arr || []) {
+          const tName = (x.trackName || x.name || "").toLowerCase();
+          if (LRCLIB_EXCLUDE.some((kw) => tName.includes(kw) && !reqTitleLower.includes(kw))) continue;
+          const diff = duration > 0 ? Math.abs((x.duration || 0) - duration) : 0;
+          if (duration > 0 && diff > 3) continue;
+          if (x.syncedLyrics) { best = x; break; }
+        }
+        if (!best) return null;
+        return { name: "lrclib", lines: parseLRC(best.syncedLyrics).map(l => ({ time: l.time, text: l.text })) };
+      }
+      if (!r.ok) return null;
+      const data = await r.json();
+      if (data && data.syncedLyrics) {
+        return { name: "lrclib", lines: parseLRC(data.syncedLyrics).map(l => ({ time: l.time, text: l.text })) };
+      }
+      return null;
+    } catch { return null; }
+  }
+
+  async function fetchYtMusicRef(queryTitle) {
+    try {
+      const r = await fetch(`https://api.lrcmux.dev/get?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(queryTitle)}&duration=${Math.round(duration)}&sources=ytmusic`, {
+        headers: { "User-Agent": "yoshik.xyz/lyrics" }, signal: ac(TIMEOUT)
+      });
+      if (!r.ok) return null;
+      const d = await r.json();
+      if (!d || !d.lines || !d.lines.length || d.meta?.source?.id !== "ytmusic") return null;
+      const lines = d.lines.map(ln => ({ time: ln.start, text: (ln.text || "").trim() })).filter(ln => ln.text);
+      return { name: "ytmusic", lines };
+    } catch { return null; }
+  }
+
   async function queryProviders(queryTitle) {
     if (mode === "word") {
-      // Priority: lrcmux word → netease word → wordSync:false
-      const [lrcmux, netease] = await Promise.all([
+      const [lrcmux, netease, lrclibRef, ytmusicRef] = await Promise.all([
         fetchLrcmux(queryTitle),
         fetchNetease(queryTitle),
+        fetchLrclibSync(queryTitle),
+        fetchYtMusicRef(queryTitle)
       ]);
-      if (lrcmux && lrcmux.wordSync && isValid(lrcmux)) return lrcmux;
-      if (netease && netease.wordSync && isValid(netease)) return netease;
-      return null;
+      const candidates = [lrcmux, netease].filter(c => c && c.wordSync && isValid(c));
+      const rawRefs = [lrclibRef, ytmusicRef].filter(Boolean);
+      
+      let bestRes = null;
+      for (let i = 0; i < candidates.length; i++) {
+        const cand = candidates[i];
+        const candProvider = cand.source === "lrcmux" ? (cand.provider || "lrcmux") : "netease";
+        const validRefs = rawRefs.filter(r => r.name !== candProvider);
+        const res = calibrate(cand, validRefs, { provider: candProvider });
+        
+        if (res.rejected) continue;
+        
+        if (!bestRes) {
+          bestRes = { ...cand, lines: res.lines, calib: res.calib };
+          continue;
+        }
+        
+        const confScores = { high: 3, medium: 2, prior: 1, none: 0 };
+        const sCurrent = confScores[res.calib.confidence] || 0;
+        const sBest = confScores[bestRes.calib.confidence] || 0;
+        const madCurrent = res.calib.mad ?? Infinity;
+        const madBest = bestRes.calib.mad ?? Infinity;
+        
+        let isBetter = false;
+        if (sCurrent >= 2 && sBest < 2) isBetter = true;
+        else if (sCurrent >= 2 && sBest >= 2) isBetter = madCurrent < madBest;
+        
+        if (isBetter) {
+          bestRes = { ...cand, lines: res.lines, calib: res.calib };
+        }
+      }
+      return bestRes;
     } else {
       const [lrcmux, lrclib, netease] = await Promise.all([
         fetchLrcmux(queryTitle),
@@ -280,7 +368,10 @@ export default async function handler(req, res) {
       if (winner && winner.wordSync) return res.json(winner);
       return res.json({ source: "none", wordSync: false, lines: [] });
     } else {
-      if (winner && winner.lines && winner.lines.length) return res.json(winner);
+      if (winner && winner.lines && winner.lines.length) {
+        winner.lines.forEach(l => delete l.ends);
+        return res.json(winner);
+      }
       if (winner && winner.plain) return res.json(winner);
       if (winner && winner.rateLimited) return res.status(429).json({ error: "rate-limited" });
       return res.json({ source: "none", lines: [] });
@@ -309,7 +400,7 @@ function parseYRC(yrc) {
     let m;
     while ((m = re.exec(raw))) {
       const text = m[3];
-      if (text) chunks.push({ start: parseInt(m[1]), text });
+      if (text) chunks.push({ start: parseInt(m[1]), dur: parseInt(m[2]), text });
     }
     if (!chunks.length) return;
     // join all text
@@ -318,35 +409,41 @@ function parseYRC(yrc) {
     // skip credit/metadata lines
     if (CREDIT.test(fullText)) return;
 
-    // Merge chunks into words: when consecutive chunks have no space between them,
-    // they're syllables of the same word. Use first chunk's start for the word.
-    const words = []; // { text, start }
-    let curWord = { text: chunks[0].text, start: chunks[0].start };
+    const chunkEnds = yrcEnds(chunks);
+    const words = []; // { text, start, end }
+    let curWord = { text: chunks[0].text, start: chunks[0].start, end: chunkEnds[0] };
     for (let i = 1; i < chunks.length; i++) {
       const prev = curWord.text;
       const chunk = chunks[i];
-      // if previous chunk ended with space or this chunk starts with space, new word
       if (prev.endsWith(" ") || chunk.text.startsWith(" ")) {
-        words.push({ text: curWord.text.trim(), start: curWord.start });
-        curWord = { text: chunk.text.trimStart(), start: chunk.start };
+        words.push({ text: curWord.text.trim(), start: curWord.start, end: curWord.end });
+        curWord = { text: chunk.text.trimStart(), start: chunk.start, end: chunkEnds[i] };
       } else {
         curWord.text += chunk.text;
+        curWord.end = chunkEnds[i];
       }
     }
-    if (curWord.text.trim()) words.push({ text: curWord.text.trim(), start: curWord.start });
-    // filter empty
+    if (curWord.text.trim()) words.push({ text: curWord.text.trim(), start: curWord.start, end: curWord.end });
+    
     const filtered = words.filter((w) => w.text);
     if (!filtered.length) return;
 
-    // Build our output: text from joined words, starts array
     const text = filtered.map((w) => w.text).join(" ");
     const textWords = text.split(/\s+/);
     const starts = filtered.map((w) => w.start);
+    const ends = filtered.map((w) => w.end);
+    
+    for (let i = 0; i < ends.length; i++) {
+      if (ends[i] == null || ends[i] <= starts[i]) {
+        ends[i] = i < ends.length - 1 ? starts[i + 1] : starts[i] + 300;
+      }
+    }
 
     lines.push({
       time: lineStart,
       text,
       words: starts.length === textWords.length ? starts : null,
+      ends: starts.length === textWords.length ? ends : null,
     });
   });
   return lines;
