@@ -54,14 +54,14 @@ export default async function handler(req, res) {
     const spSend = performance.now();
     let now = await fetch(
       "https://api.spotify.com/v1/me/player",
-      { headers: auth }
+      { headers: auth, cache: "no-store" }
     );
     let spRecv = performance.now();
     
     if (now.status === 401 || now.status === 403) {
       now = await fetch(
         "https://api.spotify.com/v1/me/player/currently-playing",
-        { headers: auth }
+        { headers: auth, cache: "no-store" }
       );
       spRecv = performance.now();
     }
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
     // nothing playing right now: fall back to last played
     const recent = await fetch(
       "https://api.spotify.com/v1/me/player/recently-played?limit=1",
-      { headers: auth }
+      { headers: auth, cache: "no-store" }
     );
     const r = await recent.json();
     if (r.items && r.items.length)

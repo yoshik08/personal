@@ -442,7 +442,8 @@ function envelopeTarget(win, now) {
       spState.deviceType = d.deviceType || "Device";
       try {
         var saved = localStorage.getItem("lyrLead:" + d.deviceId);
-        lyrLeadMs = saved ? parseInt(saved, 10) : 400;
+        var _p = saved ? parseInt(saved, 10) : NaN;
+        lyrLeadMs = isNaN(_p) ? 400 : _p;
       } catch (e) { lyrLeadMs = 400; }
       var sl = document.getElementById("syncLabel");
       if (sl) {
@@ -529,7 +530,7 @@ function envelopeTarget(win, now) {
       return "stop";
     }
     var key = s.d.trackId || (s.d.title + " :: " + s.d.artist);
-    var epoch = key + "|" + s.d.spotifyTs + "|" + !!s.d.playing;
+    var epoch = key + "|" + !!s.d.playing;
     var newTrack = key !== spClockKey;
     spClockKey = key;
     if (hard || newTrack || !s.d.playing || !playbackClock.isPlaying()) {
