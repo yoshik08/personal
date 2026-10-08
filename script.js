@@ -1999,23 +1999,27 @@ function envelopeTarget(win, now) {
       fgx.clearRect(0, 0, W, H);
       if (finePointer && trail.length > 1) {
         trail = trail.filter(function (p) { return now - p.t < 450; });
-        fgx.lineCap = "round"; fgx.lineJoin = "round";
-        for (var m = 1; m < trail.length; m++) {
-          var p0 = trail[m - 1], p1 = trail[m];
-          var age = (now - p1.t) / 450;
-          fgx.strokeStyle = col;
-          fgx.globalAlpha = (1 - age) * 0.5;
-          fgx.lineWidth = 0.6 + 3 * (1 - age);
-          fgx.beginPath();
-          fgx.moveTo(p0.x, p0.y);
-          fgx.lineTo(p1.x, p1.y);
-          fgx.stroke();
+        if (trail.length >= 2) {
+          fgx.lineCap = "round"; fgx.lineJoin = "round";
+          for (var m = 1; m < trail.length; m++) {
+            var p0 = trail[m - 1], p1 = trail[m];
+            var age = (now - p1.t) / 450;
+            fgx.strokeStyle = col;
+            fgx.globalAlpha = (1 - age) * 0.5;
+            fgx.lineWidth = 0.6 + 3 * (1 - age);
+            fgx.beginPath();
+            fgx.moveTo(p0.x, p0.y);
+            fgx.lineTo(p1.x, p1.y);
+            fgx.stroke();
+          }
         }
         var head = trail[trail.length - 1];
-        fgx.globalAlpha = 0.85;
-        fgx.fillStyle = col;
-        fgx.beginPath(); fgx.arc(head.x, head.y, 2.2, 0, Math.PI * 2); fgx.fill();
-        fgx.globalAlpha = 1;
+        if (head) {
+          fgx.globalAlpha = 0.85;
+          fgx.fillStyle = col;
+          fgx.beginPath(); fgx.arc(head.x, head.y, 2.2, 0, Math.PI * 2); fgx.fill();
+          fgx.globalAlpha = 1;
+        }
       }
       for (var qi = ripples.length - 1; qi >= 0; qi--) {
         var rp = ripples[qi];
