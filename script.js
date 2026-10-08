@@ -453,9 +453,12 @@ function envelopeTarget(win, now) {
           lyrLeadMs = parseInt(savedLyr, 10);
           lTrackHasCustomLead = true;
         } else {
+          var entry = lyrStore.get(key);
+          var s = entry ? entry.source : null;
           var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
           var _p = devSaved ? parseInt(devSaved, 10) : NaN;
-          lyrLeadMs = isNaN(_p) ? 400 : _p;
+          if (s === "apple") lyrLeadMs = 0;
+          else lyrLeadMs = isNaN(_p) ? 400 : _p;
           lTrackHasCustomLead = false;
         }
 
@@ -1173,9 +1176,12 @@ function envelopeTarget(win, now) {
           kTrackHasCustomLead = false;
         } else {
           localStorage.removeItem("lLead:" + spState.key);
+          var entry = lyrStore.get(spState.key);
+          var s = entry ? entry.source : null;
           var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
           var _p = devSaved ? parseInt(devSaved, 10) : NaN;
-          lyrLeadMs = isNaN(_p) ? 400 : _p;
+          if (s === "apple") lyrLeadMs = 0;
+          else lyrLeadMs = isNaN(_p) ? 400 : _p;
           lTrackHasCustomLead = false;
         }
         updateSyncLabel();
@@ -1203,9 +1209,12 @@ function envelopeTarget(win, now) {
           kTrackHasCustomLead = false;
         } else {
           localStorage.removeItem("lLead:" + spState.key);
+          var entry = lyrStore.get(spState.key);
+          var s = entry ? entry.source : null;
           var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
           var _p = devSaved ? parseInt(devSaved, 10) : NaN;
-          lyrLeadMs = isNaN(_p) ? 400 : _p;
+          if (s === "apple") lyrLeadMs = 0;
+          else lyrLeadMs = isNaN(_p) ? 400 : _p;
           lTrackHasCustomLead = false;
         }
         updateSyncLabel();
@@ -1383,7 +1392,7 @@ function envelopeTarget(win, now) {
     var base = "/api/lyrics?artist=" + encodeURIComponent((artist || "").split(",")[0]) +
       "&title=" + encodeURIComponent(title) +
       "&duration=" + Math.round((durationMs || 0) / 1000) + 
-      (spState.isrc ? "&isrc=" + encodeURIComponent(spState.isrc) : "") + "&v=5";
+      (spState.isrc ? "&isrc=" + encodeURIComponent(spState.isrc) : "") + "&v=6";
       
     Promise.all([
       fetch(base + "&mode=line").then(function(r) { return r.ok ? r.json() : null; }),
@@ -1396,6 +1405,7 @@ function envelopeTarget(win, now) {
       var entry = { empty: true };
       if (dLine && dLine.lines && dLine.lines.length) {
         entry.lines = dLine.lines;
+        entry.source = dLine.source;
       } else if (dLine && dLine.plain) {
         entry.plain = dLine.plain;
       }

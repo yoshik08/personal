@@ -354,7 +354,7 @@ export default async function handler(req, res) {
     } catch { return null; }
   }
 
-  async function fetchApple(queryTitle) {
+  async function fetchApple(queryTitle, reqMode = "word") {
     const acObj = new AbortController();
     const to = setTimeout(() => acObj.abort(), 8000);
     const signal = acObj.signal;
@@ -448,14 +448,14 @@ export default async function handler(req, res) {
         const ttml = attrs.ttmlLocalizations || attrs.ttml;
         if (!ttml) continue;
         
-        const lines = parseAppleTTML(ttml);
-        if (!lines || !lines.length) continue; // null if line-only, [] if empty
+        const lines = parseAppleTTML(ttml, reqMode);
+        if (!lines || !lines.length) continue; // null if line-only and mode="word", [] if empty
         
         return { 
           source: "apple", 
-          wordSync: true, 
+          wordSync: reqMode === "word", 
           lines, 
-          calib: { offsetMs: 0, mad: null, pairs: 0, ref: null, confidence: "reference", provider: "apple" }
+          calib: reqMode === "word" ? { offsetMs: 0, mad: null, pairs: 0, ref: null, confidence: "reference", provider: "apple" } : undefined
         };
       }
       
@@ -500,12 +500,18 @@ export default async function handler(req, res) {
   }
 
   async function queryProvidersLine(queryTitle) {
-    const [lrclib, lrcmux, netease] = await Promise.all([
+    const [apple, lrclib, lrcmux, netease] = await Promise.all([
+      fetchApple(queryTitle, "line"),
       fetchLrclib(queryTitle),
       fetchLrcmux(queryTitle, "&level=line&sources=!kugou"),
       fetchNetease(queryTitle)
     ]);
     
+    if (apple && isValid(apple)) {
+      apple.wordSync = false;
+      if (apple.lines) apple.lines.forEach(l => { delete l.words; delete l.ends; });
+      return apple;
+    }
     if (lrclib && isValid(lrclib) && !lrclib.plain && !lrclib.rateLimited) return lrclib;
     if (lrcmux && isValid(lrcmux)) {
       lrcmux.wordSync = false;

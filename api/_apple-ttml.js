@@ -21,9 +21,9 @@ function decodeEnt(str) {
             .replace(/&gt;/g, ">");
 }
 
-export function parseAppleTTML(xml) {
+export function parseAppleTTML(xml, mode = "word") {
   if (!xml) return [];
-  if (!xml.includes('itunes:timing="Word"')) return null;
+  if (mode === "word" && !xml.includes('itunes:timing="Word"')) return null;
 
   const lines = [];
   const pRegex = /<p\s+[^>]*begin="([^"]+)"[^>]*>([\s\S]*?)<\/p>/gi;
@@ -33,8 +33,24 @@ export function parseAppleTTML(xml) {
     const pBegin = ttmlTime(pMatch[1]);
     let inner = pMatch[2];
 
+    let translation = null;
+    const transMatch = inner.match(/<span[^>]*ttm:role="x-translation"[^>]*>([\s\S]*?)<\/span>/i);
+    if (transMatch) {
+       translation = decodeEnt(transMatch[1].replace(/<[^>]+>/g, "").trim());
+    }
+
     inner = inner.replace(/<span[^>]*(?:ttm:role="x-translation"|ttm:role="x-roman"|ttm:role="x-bg")[^>]*>[\s\S]*?<\/span>/gi, "");
     
+    if (mode === "line") {
+       const text = decodeEnt(inner.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+       if (text) {
+          const lObj = { time: pBegin, text, words: null };
+          if (translation) lObj.translation = translation;
+          lines.push(lObj);
+       }
+       continue;
+    }
+
     const chunks = [];
     const spanRegex = /<span\s+[^>]*begin="([^"]+)"\s+[^>]*end="([^"]+)"[^>]*>([\s\S]*?)<\/span>/gi;
     
