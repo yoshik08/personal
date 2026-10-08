@@ -57,6 +57,7 @@
       <a href="#contact" data-hover>contact</a>
     </nav>
     <div class="controls">
+      <button id="cmdBtn" class="ctl cmdk-trigger magnetic" data-hover title="command palette (cmd+k / ctrl+k)"><span class="kbd-hint">⌘K</span></button>
       <button id="themeBtn" class="ctl magnetic" data-hover title="toggle theme">◐</button>
       <button id="motionBtn" class="ctl magnetic" data-hover title="toggle motion">≋</button>
     </div>
@@ -308,7 +309,14 @@
     <h2 data-reveal>right now</h2>
     <div class="cards" data-reveal style="--d:.06s">
       <div class="card" data-hover>
-        <p class="card-title">♪ now playing <span class="live-dot" id="spDot"></span><button class="lyrics-btn" id="lyricsBtn" data-hover style="display:none">lyrics</button></p>
+        <p class="card-title">
+          ♪ now playing
+          <span class="live-dot" id="spDot"></span>
+          <span class="audio-bars" id="audioBars" aria-hidden="true">
+            <i></i><i></i><i></i><i></i>
+          </span>
+          <button class="lyrics-btn" id="lyricsBtn" data-hover style="display:none">lyrics</button>
+        </p>
         <div class="np-body">
           <div class="np-art" id="spArt">♪</div>
           <div class="np-meta">
@@ -399,6 +407,36 @@
   <p class="lyrics-hint" id="lyricsHint"></p>
 </div>
 
-<script src="script.js?v=lyrics16"></script>
+<!-- command palette modal (cmd+k) -->
+<div class="cmdk-backdrop" id="cmdkBackdrop" aria-hidden="true">
+  <div class="cmdk-dialog" role="dialog" aria-modal="true" aria-label="Command Palette">
+    <div class="cmdk-search-wrap">
+      <svg class="cmdk-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="cmdkInput" class="cmdk-input" placeholder="type a command, project, or section..." autocomplete="off" spellcheck="false">
+      <kbd class="cmdk-esc-hint">esc</kbd>
+    </div>
+    <div class="cmdk-list" id="cmdkList" role="listbox"></div>
+    <div class="cmdk-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> select</span>
+      <span><kbd>esc</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+<!-- floating project preview on hover -->
+<div class="proj-preview" id="projPreview" aria-hidden="true">
+  <div class="proj-preview-in">
+    <div class="proj-preview-bar">
+      <span class="proj-preview-dot"></span>
+      <span class="proj-preview-tag" id="ppTag">web app</span>
+    </div>
+    <h3 class="proj-preview-title" id="ppTitle">sportsphere</h3>
+    <p class="proj-preview-desc" id="ppDesc">sports venue & booking</p>
+    <div class="proj-preview-chips" id="ppChips"></div>
+  </div>
+</div>
+
+<script src="script.js?v=awe1"></script>
 </body>
 </html>
