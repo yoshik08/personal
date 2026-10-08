@@ -459,7 +459,9 @@ html[data-motion="off"] .sync-btn.spinning svg { animation: none; }
   position: absolute; top: 0; left: 0; right: 0;
   display: flex; flex-direction: column; align-items: center;
   gap: 20px; padding: 50vh 20px;
-  transition: transform 60ms linear;
+  transition: transform 220ms cubic-bezier(.22,1,.36,1);
+  will-change: transform;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
 }
 .k-tape-word {
   font-family: "Bagel Fat One", "Black Han Sans", sans-serif;
