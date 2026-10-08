@@ -447,9 +447,9 @@ function envelopeTarget(win, now) {
       } catch (e) { lyrLeadMs = 400; }
       var sl = document.getElementById("syncLabel");
       if (sl) {
-        sl.textContent = spState.deviceType + " " + (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
+        sl.textContent = (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
         if (typeof nudgeTimer !== "undefined" && nudgeTimer) clearTimeout(nudgeTimer);
-        setTimeout(function() { sl.textContent = "Sync"; }, 2500);
+        nudgeTimer = setTimeout(function() { sl.textContent = "Sync"; }, 2500);
       }
     } else if (d && !d.deviceId) {
       spState.deviceId = null;
@@ -1101,7 +1101,7 @@ function envelopeTarget(win, now) {
       localStorage.setItem("lyrLeadMs", lyrLeadMs);
       if (spState.deviceId) localStorage.setItem("lyrLead:" + spState.deviceId, lyrLeadMs);
     } catch(e) {}
-    syncLabel.textContent = (spState.deviceType || "Device") + " " + (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
+    syncLabel.textContent = (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
     if (nudgeTimer) clearTimeout(nudgeTimer);
     nudgeTimer = setTimeout(function() { syncLabel.textContent = "Sync"; }, 1200);
   }

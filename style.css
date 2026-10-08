@@ -384,14 +384,36 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .karaoke-toggle.disabled {
   opacity: 0.4; cursor: not-allowed; pointer-events: none;
 }
-.sync-group { display: flex; align-items: center; gap: 6px; }
-.sync-btn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #fff; height: 38px; border-radius: 99px; font-size: 13px; font-family: "Hanken Grotesk", sans-serif; font-weight: 500; padding: 0 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; backdrop-filter: blur(8px); transition: background .2s ease, transform .2s ease; pointer-events: auto; min-width: 74px; justify-content: center; }
-.sync-btn:hover { background: rgba(255,255,255,.18); transform: scale(1.05); }
-.sync-btn:active { transform: scale(.95); }
+.sync-group {
+  display: flex; align-items: center; gap: 0;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  border-radius: 99px; height: 38px;
+  backdrop-filter: blur(8px); overflow: hidden;
+  pointer-events: auto;
+  transition: transform .2s ease;
+}
+.sync-group:hover { transform: scale(1.05); }
+.sync-group:active { transform: scale(.95); }
+.sync-btn {
+  background: transparent; border: none; color: #fff; height: 100%;
+  border-left: 1px solid rgba(255,255,255,.14);
+  border-right: 1px solid rgba(255,255,255,.14);
+  font-size: 13px; font-family: "Hanken Grotesk", sans-serif; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  padding: 0 14px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: background .2s ease; pointer-events: auto; min-width: 74px; justify-content: center;
+}
+.sync-btn:hover { background: rgba(255,255,255,.12); }
 .sync-btn.spinning svg { animation: syncSpin .6s linear infinite; }
 .sync-btn.done { background: #fff; color: #000; border-color: #fff; }
-.sync-nudge { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #fff; font-size: 15px; line-height: 1; cursor: pointer; pointer-events: auto; transition: background .15s ease; }
-.sync-nudge:hover { background: rgba(255,255,255,.18); }
+.sync-nudge {
+  width: 32px; height: 100%; border-radius: 0;
+  background: transparent; border: none; color: #fff;
+  font-size: 15px; line-height: 1; cursor: pointer; pointer-events: auto;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s ease;
+}
+.sync-nudge:hover { background: rgba(255,255,255,.12); }
 @keyframes syncSpin { to { transform: rotate(360deg); } }
 html[data-motion="off"] .sync-btn.spinning svg { animation: none; }
 
