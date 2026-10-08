@@ -272,8 +272,8 @@
      corrects drift: tiny drift is ignored, moderate drift is absorbed
      gradually over ~5s (no visible jump), large drift/seek hard-resets. */
 /* core math, pasted into script.js section 10b (ES5) */
-var SYNC = { POLL_MS: 3000, BURST_N: 3, BURST_GAP: 250, MANUAL_N: 5, MANUAL_GAP: 150,
-             SNAP_MS: 120, IGNORE_MS: 15, SLEW_MS: 150, WINDOW: 5 };
+var SYNC = { POLL_MS: 3500, OPEN_POLL_MS: 2000,
+             SNAP_MS: 120, IGNORE_MS: 15, SLEW_MS: 150, WINDOW: 4 };
 function createPlaybackClock(nowFn) {
   nowFn = nowFn || function () { return performance.now(); };
   var baseMs = 0, basePerf = 0, playing = false, corrMs = 0, corrStart = 0;
@@ -438,10 +438,17 @@ function envelopeTarget(win, now) {
     spState.progressMs = d.progressMs;
     spState.durationMs = d.durationMs;
 
-    if (document.getElementById("lyricsOverlay") && document.getElementById("lyricsOverlay").classList.contains("open") && isNewTrack) {
+    if (document.getElementById("lyricsOverlay") && document.getElementById("lyricsOverlay").classList.contains("open")) {
       setLyricsHeader();
-      if (!lyrStore.has(key) && !lyrInflight[key]) {
-        fetchLyrics(title, artist, d.durationMs);
+      if (isNewTrack) {
+        lyrActiveIdx = -1;
+        kActiveIdx = -1;
+        lyrRenderedKey = null;
+        if (lyrStore.has(key)) {
+          renderLyrEntry(key, d.durationMs);
+        } else if (!lyrInflight[key]) {
+          fetchLyrics(title, artist, d.durationMs);
+        }
       }
     }
 
@@ -463,7 +470,7 @@ function envelopeTarget(win, now) {
         spProg.style.width = Math.min(100, (p / d.durationMs) * 100) + "%";
         if (p >= d.durationMs) {
           if (spTimer) { clearInterval(spTimer); spTimer = null; }
-          startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {}); /* track ended */
+          pollSpotify(true); /* track ended */
         }
       };
       draw();
@@ -471,43 +478,47 @@ function envelopeTarget(win, now) {
     }
   }
 
-  function syncActive(){ return document.visibilityState === "visible" && document.hasFocus(); }
-  var spPollTimer = null, spInflight = false, spRtts = [], spWin = [], spEpoch = null, spClockKey = null;
-  var spBurst = { left: 0, gap: 0, best: null, hard: false, force: false, done: null };
-  function median(arr) { var s = arr.slice().sort(function(a,b){return a-b;}); return s[Math.floor(s.length/2)] || 0; }
-  
-  function startBurst(n, gap, opts) {
-    if (spPollTimer) clearTimeout(spPollTimer);
-    spBurst = { left: n, gap: gap, best: null, hard: !!opts.hard, force: !!opts.force, done: opts.done || null };
-    pollSpotify();
-  }
+  var spPollTimer = null, spInflight = false, spWin = [], spEpoch = null, spClockKey = null;
   function scheduleNext(ms) {
     if (spPollTimer) clearTimeout(spPollTimer);
-    if (!syncActive() && !(spBurst.left > 0 && spBurst.force)) return;
-    spPollTimer = setTimeout(pollSpotify, ms);
+    var delay = ms != null ? ms : ((lyricsOverlay && lyricsOverlay.classList.contains("open")) ? SYNC.OPEN_POLL_MS : SYNC.POLL_MS);
+    if (document.hidden) delay = Math.max(delay, 15000);
+    spPollTimer = setTimeout(function() { pollSpotify(false); }, delay);
   }
-  function pollSpotify() {
-    if (spInflight) return;
+  function pollSpotify(hardSync, doneCb) {
+    if (spInflight) {
+      if (doneCb) doneCb();
+      return;
+    }
     spInflight = true;
+    if (spPollTimer) { clearTimeout(spPollTimer); spPollTimer = null; }
     var tSend = performance.now();
-    fetch("/api/now-playing", { cache: "no-store" })
+    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var abortTimer = ctrl ? setTimeout(function() { ctrl.abort(); }, 6000) : null;
+    fetch("/api/now-playing", { cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) {
+        if (abortTimer) clearTimeout(abortTimer);
         var tArr = performance.now();
         return r.json().then(function(d) { return {d: d, tSend: tSend, tArr: tArr}; });
       })
       .then(function (res) {
         spInflight = false;
-        handleSample(res.d, res.tSend, res.tArr);
+        handleSample(res.d, res.tSend, res.tArr, hardSync);
+        if (doneCb) doneCb();
       })
       .catch(function () {
+        if (abortTimer) clearTimeout(abortTimer);
         spInflight = false;
-        scheduleNext(SYNC.POLL_MS);
+        scheduleNext();
+        if (doneCb) doneCb();
       });
   }
   function applySample(s, hard) {
     if (!s.d || !s.d.title) {
-      playbackClock.hardSet(playbackClock.getProgressMs(), performance.now(), false);
-      return;
+      playbackClock.hardSet(0, performance.now(), false);
+      spClockKey = null;
+      spWin = [];
+      return "stop";
     }
     var key = s.d.trackId || (s.d.title + " :: " + s.d.artist);
     var epoch = key + "|" + s.d.spotifyTs + "|" + !!s.d.playing;
@@ -517,7 +528,7 @@ function envelopeTarget(win, now) {
       playbackClock.hardSet(s.pos, s.at, !!s.d.playing);
       spWin = s.d.playing ? [s] : [];
       spEpoch = epoch;
-      return newTrack && !hard ? "newtrack" : "reset";
+      return newTrack ? "newtrack" : "reset";
     }
     if (epoch !== spEpoch) { spWin = []; spEpoch = epoch; }
     spWin.push(s);
@@ -525,45 +536,29 @@ function envelopeTarget(win, now) {
     var now = performance.now();
     return playbackClock.correct(envelopeTarget(spWin, now));
   }
-  function handleSample(d, tSend, tArr) {
-    if (d.rateLimited) { scheduleNext(Math.max(10000, (d.retryAfter || 10) * 1000)); return; }
+  function handleSample(d, tSend, tArr, hardSync) {
+    if (!d) { scheduleNext(); return; }
+    if (d.rateLimited) { scheduleNext(Math.max(6000, (d.retryAfter || 6) * 1000)); return; }
     var s = sampleFrom(d, tSend, tArr);
-    var med = median(spRtts);
-    spRtts.push(s.rtt);
-    if (spRtts.length > 15) spRtts.shift();
-    var outlier = spRtts.length >= 4 && s.rtt > 2 * med;
-    
-    if (spBurst.left > 0) {
-      if (!outlier && (!spBurst.best || s.unc < spBurst.best.unc)) spBurst.best = s;
-      spBurst.left--;
-      if (spBurst.left > 0) { scheduleNext(spBurst.gap); return; }
-      var best = spBurst.best || s;
-      renderSpotify(best.d);
-      applySample(best, spBurst.hard);
-      if (spBurst.done) spBurst.done();
-      spBurst.left = 0;
-      scheduleNext(SYNC.POLL_MS);
-      return;
-    }
+    var key = d.trackId || (d.title ? (d.title + " :: " + d.artist) : null);
+    var isNewTrack = key !== spClockKey;
+    var curPos = playbackClock.getProgressMs();
+    var seeked = Math.abs(s.pos - curPos) > 2000;
     renderSpotify(d);
-    var r = outlier ? null : applySample(s, false);
-    if (r === "newtrack") startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {});
-    else scheduleNext(SYNC.POLL_MS);
+    applySample(s, !!(hardSync || isNewTrack || seeked));
+    scheduleNext();
   }
-  function onActive() {
-    if (!syncActive()) return;
-    startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {});
-    if (lyricsOverlay.classList.contains("open") && !lyrRaf) { lyrRaf = requestAnimationFrame(lyrLoop); }
-  }
-  function onInactive() {
-    if (!syncActive()) {
-      clearTimeout(spPollTimer); spPollTimer = null; spBurst.left = 0;
+  document.addEventListener("visibilitychange", function() {
+    if (!document.hidden) {
+      pollSpotify(true);
     }
-  }
-  document.addEventListener("visibilitychange", function() { document.hidden ? onInactive() : onActive(); });
-  window.addEventListener("focus", onActive);
-  window.addEventListener("blur", onInactive);
-  startBurst(SYNC.BURST_N, SYNC.BURST_GAP, { force: true });
+  });
+  window.addEventListener("focus", function() {
+    if (!document.hidden) {
+      pollSpotify(false);
+    }
+  });
+  pollSpotify(true);
 
   /* ---------- 11b. synced lyrics overlay (verci-style) + karaoke ---------- */
   var lyricsOverlay = document.getElementById("lyricsOverlay"),
@@ -833,17 +828,15 @@ function envelopeTarget(win, now) {
   function doSync() {
     if (syncBtn.classList.contains("spinning")) return;
     syncBtn.classList.add("spinning");
-    startBurst(SYNC.MANUAL_N, SYNC.MANUAL_GAP, {
-      hard: true, force: true,
-      done: function() {
-        syncBtn.classList.remove("spinning");
-        syncBtn.classList.add("done");
-        syncLabel.textContent = "✓";
-        setTimeout(function() {
-          syncBtn.classList.remove("done");
-          syncLabel.textContent = "Sync";
-        }, 900);
-      }
+    spInflight = false;
+    pollSpotify(true, function() {
+      syncBtn.classList.remove("spinning");
+      syncBtn.classList.add("done");
+      syncLabel.textContent = "✓";
+      setTimeout(function() {
+        syncBtn.classList.remove("done");
+        syncLabel.textContent = "Sync";
+      }, 900);
     });
   }
   syncBtn.addEventListener("click", doSync);
@@ -1012,6 +1005,7 @@ function envelopeTarget(win, now) {
     lyrLastQuery = { title: title, artist: artist, durationMs: durationMs, retried: false };
     lyrActiveIdx = -1; kActiveIdx = -1; lyrRenderedKey = null;
     lyricsLines.innerHTML = "";
+    if (kTapeCol) kTapeCol.innerHTML = "";
     lyricsHint.textContent = "finding lyrics…";
     lyricsHint.style.cursor = "";
     lyricsHint.onclick = null;
@@ -1231,11 +1225,11 @@ function envelopeTarget(win, now) {
     lyricsClassicView.style.display = karaokeMode ? "none" : "";
     lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
     resetKIdle();
-    startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {force:true});
     if (spState.key) {
       if (lyrStore.has(spState.key)) renderLyrEntry(spState.key, spState.durationMs);
       else if (!lyrInflight[spState.key]) fetchLyrics(spState.title, spState.artist, spState.durationMs);
     }
+    pollSpotify(true);
     if (!lyrRaf) lyrRaf = requestAnimationFrame(lyrLoop);
   }
   function closeLyrics() {
