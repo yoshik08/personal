@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
     const spSend = performance.now();
     const now = await fetch(
-      "https://api.spotify.com/v1/me/player/currently-playing",
+      "https://api.spotify.com/v1/me/player",
       { headers: auth }
     );
     const spRecv = performance.now();
@@ -73,6 +73,8 @@ export default async function handler(req, res) {
         return res.status(200).json({
           playing: d.is_playing,
           timestamp: Date.now(),
+          deviceId: d.device ? d.device.id : null,
+          deviceType: d.device ? d.device.type : null,
           ...pick(d.item, d),
           spotifyTs: d.timestamp || null,
           spotifyRtt: Math.round(spRecv - spSend),
