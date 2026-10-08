@@ -4,10 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SportSphere — Sports Subscription</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=Instrument+Serif:ital,wght@1,400&display=swap" rel="stylesheet">
-  <style>
+  <link rel="stylesheet" href="fonts.css">`n  <style>
 :root{
   --bg:#0a0a0b; --bg2:#101013;
   --line:rgba(244,242,237,.1); --line-soft:rgba(244,242,237,.055);
@@ -755,6 +752,7 @@ let gymDashboardCache = null;
 let socket = null;
 
 /* ---------- helpers ---------- */
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -798,7 +796,7 @@ async function loadCatalog() {
 }
 function renderSports() {
   document.getElementById('sportGrid').innerHTML = sportsData.map((s, i) => {
-    const c = programsData.filter(p => sportIdOf(p) === s._id).length;
+    const c = programsData.filter(p => sportIdOf(p) === esc(s._id)).length;
     return '<div class="sport reveal" style="transition-delay:' + Math.min(i * 60, 540) + 'ms" onclick="selectSport(\'' + s._id + '\')"><div class="icon">' + (s.icon || '🏅') +
       '</div><h3>' + s.name + '</h3><span>' + c + ' program' + (c === 1 ? '' : 's') + '</span></div>';
   }).join('');
@@ -807,7 +805,7 @@ function renderPrograms(list) {
   list = list || programsData;
   document.getElementById('programGrid').innerHTML = list.map((p, i) => {
     const sp = p.sportId || {};
-    const tag = sp.name ? ((sp.icon || '') + ' ' + sp.name) : 'General';
+    const tag = sp.name ? (esc(sp.icon || '') + ' ' + esc(sp.name)) : 'General';
     return '<article class="program reveal" style="transition-delay:' + Math.min(i * 45, 630) + 'ms" onclick="openProgram(\'' + p._id + '\')"><span class="tag">' + tag + '</span>' +
       '<h3>' + p.name + '</h3><p>⌖ ' + (p.location || '') + '</p>' +
       '<div class="schedule"><span>' + (p.day || '') + '</span><b>' + (p.startTime || '') + ' – ' + (p.endTime || '') + '</b></div>' +
@@ -820,7 +818,7 @@ function buildFilter() {
   const opts = [{ _id: 'gym', name: 'Gym' }, { _id: 'all', name: 'All sports' }].concat(sportsData);
   document.getElementById('dropdownMenu').innerHTML = opts.map(s =>
     '<button class="dropdown-item' + (s._id === currentSportFilter ? ' selected' : '') +
-    '" onclick="pickSport(\'' + s._id + '\',\'' + s.name.replace(/'/g, "\\'") + '\')">' + s.name + '</button>'
+    '" onclick="pickSport(\'' + esc(s._id) + '\',\'' + esc(s.name).replace(/'/g, "\\'") + '\')">' + esc(s.name) + '</button>'
   ).join('');
 }
 function toggleDropdown(e) {
@@ -856,12 +854,12 @@ document.addEventListener('keydown', e => {
 function renderPlans() {
   const grid = document.getElementById('planGrid');
   if (!grid) return;
-  grid.innerHTML = (plansData || []).filter(p => (p.name || '').trim().toLowerCase() !== 'all-access').map(p =>
-    '<div class="member-card"><div class="member-info"><h3>' + p.name + '</h3>' +
-    '<p class="sec-sub">' + (p.description || '') + '</p></div>' +
+  grid.innerHTML = (plansData || []).filter(p => (esc(p.name) || '').trim().toLowerCase() !== 'all-access').map(p =>
+    '<div class="member-card"><div class="member-info"><h3>' + esc(p.name) + '</h3>' +
+    '<p class="sec-sub">' + (esc(p.description) || '') + '</p></div>' +
     '<div class="member-buy"><p class="member-price">\u20b9' + Number(p.priceInr || 0).toLocaleString('en-IN') +
-    '<span>/' + (p.billingCycle || 'month') + '</span></p>' +
-    '<button class="primary-btn" onclick="choosePlan(\'' + p._id + '\')">choose plan \u2192</button></div></div>'
+    '<span>/' + (esc(p.billingCycle) || 'month') + '</span></p>' +
+    '<button class="primary-btn" onclick="choosePlan(\'' + esc(p._id) + '\')">choose plan \u2192</button></div></div>'
   ).join('');
 }
 function goSubscribe() {
@@ -1106,14 +1104,14 @@ async function refreshAdmin() {
     document.querySelector('#admin-users .portal-table').innerHTML =
       '<div class="table-row table-header"><span>name</span><span>email</span><span>role</span><span>joined</span></div>' +
       users.slice(0, 30).map(u =>
-        '<div class="table-row"><span>' + u.fullName + '</span><span>' + u.email + '</span><span>' + badge(u.role) +
+        '<div class="table-row"><span>' + esc(u.fullName) + '</span><span>' + esc(u.email) + '</span><span>' + badge(u.role) +
         '</span><span>' + fmtDate(u.createdAt) + '</span></div>').join('');
 
     document.querySelector('#admin-subscriptions .portal-table').innerHTML =
       '<div class="table-row cols5 table-header"><span>subscription</span><span>user</span><span>plan</span><span>program</span><span>status</span></div>' +
       subs.slice(0, 30).map(s =>
-        '<div class="table-row cols5"><span>#SUB-' + shortId(s._id) + '</span><span>' + (s.userId ? s.userId.email : '-') +
-        '</span><span>' + (s.planId ? s.planId.name : '-') + '</span><span>' + (s.programId ? s.programId.name : '-') + '</span>' + badge(s.status) + '</div>').join('');
+        '<div class="table-row cols5"><span>#SUB-' + shortId(esc(s._id)) + '</span><span>' + (s.userId ? s.userId.email : '-') +
+        '</span><span>' + (s.planId ? esc(s.planId.name) : '-') + '</span><span>' + (s.programId ? s.programId.name : '-') + '</span>' + badge(s.status) + '</div>').join('');
 
     renderAdminInvoices(invoices);
     renderAdminPrograms();
@@ -1172,7 +1170,6 @@ function openFormModal(opts) {
     document.getElementById('formTitle').textContent = opts.title || 'form';
     document.getElementById('formSubmitBtn').textContent = opts.submitText || 'save';
     document.getElementById('formError').textContent = '';
-    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     document.getElementById('formFields').innerHTML = formFields.map((f, i) => {
       let input;
       if (f.type === 'select') {
@@ -1560,9 +1557,9 @@ function renderBookPrograms() {
   const list = bookPrograms.filter(p => sportNameOf(p) === bookSportSel);
   if (!bookProgSel || !list.find(p => String(p._id) === String(bookProgSel))) bookProgSel = list.length ? list[0]._id : null;
   document.getElementById('bkPrograms').innerHTML = list.map(p =>
-    '<button class="book-prog' + (String(p._id) === String(bookProgSel) ? ' active' : '') + '" onclick="pickBookProg(\'' + p._id + '\')">' +
-    '<span style="text-align:left"><strong>' + p.name + '</strong><span>' + venueNameOf(p) + ' · ' + (p.day || '') + ' ' + (p.startTime || '') + '–' + (p.endTime || '') + '</span></span>' +
-    '<b>' + inr(p.priceInr) + '<small>' + (p.pricePer || '/month') + '</small></b></button>').join('');
+    '<button class="book-prog' + (String(esc(p._id)) === String(bookProgSel) ? ' active' : '') + '" onclick="pickBookProg(\'' + esc(p._id) + '\')">' +
+    '<span style="text-align:left"><strong>' + esc(p.name) + '</strong><span>' + venueNameOf(p) + ' · ' + (esc(p.day) || '') + ' ' + (esc(p.startTime) || '') + '–' + (esc(p.endTime) || '') + '</span></span>' +
+    '<b>' + inr(p.priceInr) + '<small>' + (esc(p.pricePer) || '/month') + '</small></b></button>').join('');
   updateBookTotal();
 }
 function pickBookProg(id) {
@@ -1620,8 +1617,8 @@ function bookContinue() {
   document.getElementById('coName').textContent = p.name;
   document.getElementById('coPlace').textContent = '⌖ ' + venueNameOf(p);
   document.getElementById('coRows').innerHTML =
-    '<div class="pm-row"><span>Program</span><span>' + p.name + '</span></div>' +
-    '<div class="pm-row"><span>Schedule</span><span>' + (p.day || '') + ' ' + (p.startTime || '') + ' – ' + (p.endTime || '') + '</span></div>' +
+    '<div class="pm-row"><span>Program</span><span>' + esc(p.name) + '</span></div>' +
+    '<div class="pm-row"><span>Schedule</span><span>' + (esc(p.day) || '') + ' ' + (esc(p.startTime) || '') + ' – ' + (esc(p.endTime) || '') + '</span></div>' +
     '<div class="pm-row"><span>Billing</span><span>' + (per === '/year' ? 'annual' : 'monthly') + '</span></div>';
   document.getElementById('coTotal').textContent = inr(amt) + per;
   const payBtn = document.getElementById('coPay');
@@ -1776,7 +1773,7 @@ function exploreGyms() {
   const gyms = fitnessGyms();
   document.getElementById('gymListLabel').innerHTML = '\u{1F4AA} Fitness Gyms' +
     ' <a href="javascript:void(0)" onclick="renderExplore()" style="float:right;letter-spacing:0;text-transform:none;font-size:12px">\u2190 all</a>';
-  document.getElementById('gymList').innerHTML = gyms.map((g, i) => exploreItem('gym', g._id, g.name, g.area || '', i)).join('') ||
+  document.getElementById('gymList').innerHTML = gyms.map((g, i) => exploreItem('gym', esc(g._id), esc(g.name), esc(g.area) || '', i)).join('') ||
     '<div><strong>no gyms yet</strong></div>';
   if (gyms[0]) previewPlace('gym', gyms[0]._id);
 }
@@ -1784,9 +1781,9 @@ function exploreSport(sportId) {
   exploreSportId = String(sportId);
   const s = sportsData.find(x => String(x._id) === exploreSportId);
   const venues = venuesOfSport(exploreSportId);
-  document.getElementById('gymListLabel').innerHTML = ((s ? (s.icon || '') + ' ' + s.name : '') + ' venues') +
+  document.getElementById('gymListLabel').innerHTML = ((s ? (esc(s.icon) || '') + ' ' + esc(s.name) : '') + ' venues') +
     ' <a href="javascript:void(0)" onclick="renderExplore()" style="float:right;letter-spacing:0;text-transform:none;font-size:12px">\u2190 all</a>';
-  document.getElementById('gymList').innerHTML = venues.map((g, i) => exploreItem('gym', g._id, g.name, g.area || '', i)).join('') ||
+  document.getElementById('gymList').innerHTML = venues.map((g, i) => exploreItem('gym', esc(g._id), esc(g.name), esc(g.area) || '', i)).join('') ||
     '<div><strong>no venues yet</strong></div>';
   if (venues[0]) previewPlace('gym', venues[0]._id);
 }
@@ -1848,17 +1845,17 @@ async function refreshGym() {
     document.getElementById('gymStatSubs').textContent = d.stats.activeSubscriptions;
     document.getElementById('gymStatRevenue').textContent = inr(d.stats.revenueInr);
     document.getElementById('gymVenueList').innerHTML = d.gyms.map(g =>
-      '<div><strong>' + g.name + '</strong><span>' + (g.address || '') + (g.phone ? ' · ' + g.phone : '') + '</span></div>'
+      '<div><strong>' + esc(g.name) + '</strong><span>' + (g.address || '') + (g.phone ? ' · ' + g.phone : '') + '</span></div>'
     ).join('') || '<div><strong>no venues assigned</strong></div>';
     document.getElementById('gymProgramsTable').innerHTML =
       '<div class="table-row table-header"><span>program</span><span>day</span><span>time</span><span>coach</span></div>' +
-      (d.programs.map(p => '<div class="table-row"><span>' + p.name + '</span><span>' + (p.day || '') + '</span><span>' +
-        (p.startTime || '') + '–' + (p.endTime || '') + '</span><span>' + (p.coach || '-') + '</span></div>').join('') ||
+      (d.programs.map(p => '<div class="table-row"><span>' + esc(p.name) + '</span><span>' + (esc(p.day) || '') + '</span><span>' +
+        (esc(p.startTime) || '') + '–' + (esc(p.endTime) || '') + '</span><span>' + (p.coach || '-') + '</span></div>').join('') ||
         '<div class="table-row"><span>no programs yet</span><span></span><span></span><span></span></div>');
     document.getElementById('gymMembersTable').innerHTML =
       '<div class="table-row table-header"><span>member</span><span>program</span><span>plan</span><span>status</span></div>' +
       (d.subscriptions.map(s => '<div class="table-row"><span>' + (s.userId ? s.userId.fullName : '-') + '</span><span>' +
-        (s.programId ? s.programId.name : '-') + '</span><span>' + (s.planId ? s.planId.name : '-') + '</span>' + badge(s.status) + '</div>').join('') ||
+        (s.programId ? s.programId.name : '-') + '</span><span>' + (s.planId ? esc(s.planId.name) : '-') + '</span>' + badge(s.status) + '</div>').join('') ||
         '<div class="table-row"><span>no members yet</span><span></span><span></span><span></span></div>');
     document.getElementById('gymBillingTable').innerHTML =
       '<div class="table-row table-header"><span>invoice</span><span>date</span><span>amount</span><span>status</span></div>' +

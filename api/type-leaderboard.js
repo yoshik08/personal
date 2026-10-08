@@ -33,16 +33,26 @@ function cleanName(raw) {
     .trim();
 }
 
+const ipMap = new Map();
+
 export default async function handler(req, res) {
   try {
     const c = await col();
 
     if (req.method === "POST") {
+      const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+      const now = Date.now();
+      if (ipMap.has(ip) && now - ipMap.get(ip) < 10000) {
+        return res.status(429).json({ error: "rate limited" });
+      }
+      ipMap.set(ip, now);
+      if (ipMap.size > 1000) ipMap.clear(); // simple eviction
+
       const body = req.body || {};
       const name = cleanName(body.name);
       const wpm = Math.round(Number(body.wpm));
       const acc = Math.round(Number(body.acc));
-      if (!name || !(wpm >= 0 && wpm <= 300) || !(acc >= 0 && acc <= 100))
+      if (!name || !(wpm >= 0 && wpm <= 250) || !(acc >= 0 && acc <= 100))
         return res.status(400).json({ error: "bad score" });
       const existing = await c.findOne({ name }, { projection: { wpm: 1 } });
       if (!existing || wpm > existing.wpm) {

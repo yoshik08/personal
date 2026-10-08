@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>venues map</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   html, body { margin: 0; height: 100%; background: #0a0a0b; }
   #map { height: 100%; width: 100%; }
@@ -15,7 +15,7 @@
 </head>
 <body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (function () {
   var pins = (new URLSearchParams(location.search).get('pins') || '').split('|').filter(Boolean).map(function (s) {
@@ -31,7 +31,7 @@
   pins.forEach(function (p) {
     L.circleMarker([p.lat, p.lng], {
       radius: 7, color: '#0a0a0b', weight: 2, fillColor: '#d8ff3f', fillOpacity: 1
-    }).addTo(map).bindPopup(p.name);
+    }).addTo(map).bindPopup(document.createTextNode(p.name));
     pts.push([p.lat, p.lng]);
   });
   if (pts.length > 1) map.fitBounds(pts, { padding: [40, 40] });

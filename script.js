@@ -45,7 +45,6 @@
     st.gen++;
   }
   var startFxLoop = null; /* assigned by the fx module below */
-  window.__loopState = loopState; /* debug: lets automation check loop health */
 
   /* ---------- 1. boot ---------- */
   var boot = document.getElementById("boot");
@@ -53,17 +52,19 @@
   function finishBoot() {
     if (bootDone) return;
     bootDone = true;
+    sessionStorage.setItem("yk-booted", "1");
     boot.classList.add("done");
     setTimeout(function () { boot.style.display = "none"; }, 600);
   }
-  if (motionOK()) {
+  if (motionOK() && !sessionStorage.getItem("yk-booted")) {
     Array.prototype.forEach.call(boot.querySelectorAll(".boot-line"), function (ln) {
       setTimeout(function () { ln.classList.add("show"); }, +ln.getAttribute("data-t"));
     });
     setTimeout(finishBoot, 1150);
     boot.addEventListener("click", finishBoot);
   } else {
-    finishBoot();
+    boot.style.display = "none";
+    bootDone = true;
   }
 
   /* ---------- 2. cursor (spring physics) ---------- */
@@ -112,7 +113,7 @@
   var typedEl = document.getElementById("typed");
   var ri = 0, ci = 0, deleting = false;
   function typeTick() {
-    if (!motionOK()) { typedEl.textContent = roles[0]; return; }
+    if (!motionOK()) { typedEl.textContent = roles[0]; return setTimeout(typeTick, 500); }
     var word = roles[ri];
     if (!deleting) {
       ci++;
@@ -346,8 +347,7 @@ function envelopeTarget(win, now) {
       spHeroLink = document.getElementById("spHeroLink"),
       spHeroArtists = document.getElementById("spHeroArtists"),
       spLabel = document.getElementById("spLabel"),
-      lyricsBtn = document.getElementById("lyricsBtn"),
-      spTimer = null;
+      lyricsBtn = document.getElementById("lyricsBtn");
   var spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null };
   var playbackClock = createPlaybackClock();
   function renderHeroArtists(list) {
@@ -411,7 +411,6 @@ function envelopeTarget(win, now) {
       lyricsBtn.style.display = "none";
       spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null, deviceId: null, deviceType: null };
       playbackClock.hardSet(0, performance.now(), false);
-      if (spTimer) { clearInterval(spTimer); spTimer = null; }
       return;
     }
     spTrack.textContent = title;
@@ -481,7 +480,6 @@ function envelopeTarget(win, now) {
         }
       });
     }
-    if (spTimer) { clearInterval(spTimer); spTimer = null; }
   }
 
   var spPollTimer = null, spInflight = false, spWin = [], spEpoch = null, spClockKey = null;
@@ -583,7 +581,6 @@ function envelopeTarget(win, now) {
       lyricsProg = document.getElementById("lyricsProg"),
       karaokeToggle = document.getElementById("karaokeToggle"),
       lyricsClassicView = document.getElementById("lyricsClassicView"),
-      lyricsKaraokeView = document.getElementById("lyricsKaraokeView"),
       lyricsKaraokeView = document.getElementById("lyricsKaraokeView"),
       kTopCover = document.getElementById("kTopCover"),
       kTopTitle = document.getElementById("kTopTitle"),
@@ -760,10 +757,6 @@ function envelopeTarget(win, now) {
     if (lyrStore.size > 24) lyrStore.delete(lyrStore.keys().next().value);
   }
 
-  function seededRandom(seed) {
-    var x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-  }
 
   function rgbToHsl(r, g, b) {
     r /= 255; g /= 255; b /= 255;
@@ -1083,7 +1076,10 @@ function envelopeTarget(win, now) {
     });
   }
 
+  var lastHeaderKey = null;
   function setLyricsHeader() {
+    if (lastHeaderKey === spState.key) return;
+    lastHeaderKey = spState.key;
     lyricsTitle.textContent = spState.title || "";
     if (spState.trackUrl) {
       lyricsTitle.setAttribute("href", spState.trackUrl);
@@ -1258,8 +1254,16 @@ function envelopeTarget(win, now) {
     })();
   }
   startSyncLoop();
+  var karaokeFontsLoaded = false;
   function openLyrics() {
     if (!spState.title) return;
+    if (!karaokeFontsLoaded) {
+      karaokeFontsLoaded = true;
+      var ln = document.createElement("link");
+      ln.rel = "stylesheet";
+      ln.href = "karaoke-fonts.css";
+      document.head.appendChild(ln);
+    }
     setLyricsHeader();
     lyricsOverlay.classList.add("open");
     lyricsOverlay.setAttribute("aria-hidden", "false");
@@ -1285,7 +1289,10 @@ function envelopeTarget(win, now) {
   lyricsBtn.addEventListener("click", openLyrics);
   document.getElementById("lyricsClose").addEventListener("click", closeLyrics);
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && lyricsOverlay.classList.contains("open")) closeLyrics();
+    var tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+    if (e.key === "Escape" && lyricsOverlay.classList.contains("open")) { closeLyrics(); return; }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
     if ((e.key === "k" || e.key === "K") && lyricsOverlay.classList.contains("open")) toggleKaraokeMode();
     if ((e.key === "s" || e.key === "S") && lyricsOverlay.classList.contains("open")) doSync();
   });
@@ -1330,7 +1337,7 @@ function envelopeTarget(win, now) {
       setTimeout(function () { b.classList.remove("ok"); }, 1200);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText("x04_").then(function () { done(true); }, function () { done(false); });
+      navigator.clipboard.writeText(DISCORD_USERNAME).then(function () { done(true); }, function () { done(false); });
     } else { done(false); }
   });
   document.getElementById("dcOpen").addEventListener("click", function (e) {
@@ -1449,14 +1456,17 @@ function envelopeTarget(win, now) {
 
     /* theme toggle: 100 pokemon burst from the button */
     var pokeIds = [1,4,7,152,155,158,252,255,258,387,390,393,495,498,501,650,653,656,722,725,728,810,813,816,906,909,912,25,35,37,39,52,54,58,77,100,113,133,151,172,173,174,175,183,196,197,209,216,220,231,251,270,280,298,300,309,325,333,351,358,360,403,406,417,420,425,427,439,440,447,492,546,572,587,607,610,613,633,636,677,684,686,700,702,704,719,742,744,775,777,778,789,800,808,831,835,872,915,921,926];
-    var pokeImgs = pokeIds.map(function (id) {
-      var im = new Image();
-      im.src = "assets/pokemon/" + id + ".png";
-      return im;
-    });
+    var pokeImgs = null;
     var popBalls = [];
     window.ykThemePop = function () {
       if (!motionOK()) return;
+      if (!pokeImgs) {
+        pokeImgs = pokeIds.map(function (id) {
+          var im = new Image();
+          im.src = "assets/pokemon/" + id + ".png";
+          return im;
+        });
+      }
       var btn = document.getElementById("themeBtn");
       if (!btn) return;
       var r = btn.getBoundingClientRect();
