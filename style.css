@@ -508,7 +508,9 @@ html[data-motion="off"] .sync-btn.spinning svg { animation: none; }
 .lyr-line.active .w .ch { transition: color .08s ease; }
 .lyr-line.active .w .ch.lit { color: #fff; }
 .lyr-line.past { color: rgba(255,255,255,.45); }
-.emo { display: inline-block; margin-left: .25em; }
+.emo { display: inline-block; margin-left: .25em; font-size: 1em; line-height: 1; }
+.ios-emo { height: 1em; width: 1em; vertical-align: -0.12em; display: inline-block; }
+.k-tape-word .emo .ios-emo { height: 1em; width: 1em; vertical-align: -0.12em; }
 .k-tape-word.active .emo { animation: emoPop .35s cubic-bezier(.2,1.6,.4,1); }
 @keyframes emoPop { 0% { transform: scale(.4) rotate(-15deg); } 60% { transform: scale(1.35) rotate(8deg); } 100% { transform: scale(1); } }
 html[data-motion="off"] .k-tape-word.active .emo { animation: none; }

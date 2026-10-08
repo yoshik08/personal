@@ -696,9 +696,15 @@ function envelopeTarget(win, now) {
   surprise:"🎁",candle:"🕯️",balloons:"🎈",confetti:"🎊",ribbon:"🎀",bow:"🎀",doll:"🪆",teddy:"🧸",toy:"🧸",fairy:"🧚",
   fairytale:"🧚",hero:"🦸",superhero:"🦸",villain:"🦹",ninja:"🥷",pirate:"☠️",cowboy:"🤠",zombie:"🧟",vampire:"🧛",
   medicine:"💊",pill:"💊",pills:"💊",doctor:"🩺",hospital:"🏥",sick:"🤒",fever:"🤒",poison:"☠️",bitter:"🍋",sour:"🍋",
-  salty:"🧂",fireproof:"🧯",alarm:"🚨",bell:"🔔",tick:"⏱️"
+  salty:"🧂",fireproof:"🧯",alarm:"🚨",bell:"🔔",tick:"⏱️",
+  you:"👉",u:"👉",ya:"👉",yall:"👥","y'all":"👥",your:"👉",yours:"👉",yourself:"👉",
+  bruh:"😑",opp:"🎯",ops:"🎯",dripping:"💧",iced:"🧊",goated:"🐐",rollie:"⌚",psycho:"🤪",
+  lunatic:"🤪",lowkey:"🤫",highkey:"📢",lmao:"😂",nocap:"🚫🧢",fr:"💯",real:"💯",sus:"🤨",
+  thick:"🍑",booty:"🍑",shorty:"💃",ex:"💔",ghosted:"👻",pop:"💥",popping:"💥",poppin:"💥",
+  lean:"🥤",drank:"🥤",turn:"🔄",ig:"📸",gram:"📸",pull:"🧲",slide:"🛝",glock:"🔫",
+  trigger:"🔫",damn:"😳",woah:"😮",whoa:"😮",oops:"🙊"
 };
-  var EMOJI_STOP = {"a":1,"the":1,"i":1,"you":1,"me":1,"it":1,"oh":1,"la":1,"na":1};
+  var EMOJI_STOP = {"a":1,"the":1,"i":1,"me":1,"it":1,"oh":1,"la":1,"na":1};
   function emojiFor(word) {
     var w = word.toLowerCase().replace(/[’‘]/g, "'").replace(/^[^a-z0-9']+|[^a-z0-9']+$/g, "").replace(/^'+|'+$/g, "");
     if (!w || EMOJI_STOP[w]) return null;
@@ -706,6 +712,198 @@ function envelopeTarget(win, now) {
                  w.replace(/ies$/, "y"), w.replace(/es$/, ""), w.replace(/s$/, ""), w.replace(/ed$/, "")];
     for (var i = 0; i < tries.length; i++) if (tries[i] && EMOJI_MAP[tries[i]]) return EMOJI_MAP[tries[i]];
     return null;
+  }
+
+  /* ---------- apple (iOS) emojis ---------- */
+  var APPLE_EMOJI_BASE = "https://cdn.jsdelivr.net/npm/emoji-datasource-apple@16.0.0/img/apple/64/";
+  var EMOJI_REGEX;
+  try {
+    EMOJI_REGEX = new RegExp("\\p{Extended_Pictographic}(\\uFE0F|\\u200D\\p{Extended_Pictographic}|\\p{Emoji_Modifier})*", "gu");
+  } catch (e) {
+    EMOJI_REGEX = null;
+  }
+
+  var appleEmojiCache = (typeof Map !== "undefined") ? new Map() : {
+    _d: {},
+    get: function (k) { return this._d[k]; },
+    set: function (k, v) { this._d[k] = v; },
+    has: function (k) { return Object.prototype.hasOwnProperty.call(this._d, k); }
+  };
+
+  function getEmojiVariants(str) {
+    var codes = [];
+    if (Array.from) {
+      var chars = Array.from(str);
+      for (var i = 0; i < chars.length; i++) {
+        codes.push(chars[i].codePointAt(0).toString(16).toLowerCase());
+      }
+    } else {
+      for (var j = 0; j < str.length;) {
+        var cp = str.codePointAt(j);
+        codes.push(cp.toString(16).toLowerCase());
+        j += cp > 0xffff ? 2 : 1;
+      }
+    }
+    var raw = codes.join("-");
+    var list = [raw];
+
+    // 2. retry with every "-fe0f" removed
+    var noFe0f = raw.replace(/-fe0f/g, "");
+    if (noFe0f !== raw && list.indexOf(noFe0f) === -1) {
+      list.push(noFe0f);
+    }
+
+    // 3. retry with "-fe0f" appended to the first codepoint
+    var parts = raw.split("-");
+    if (parts.length > 0 && parts[0].indexOf("fe0f") === -1) {
+      var withFe0f = (parts.length > 1 && parts[1] === "fe0f")
+        ? raw
+        : (parts[0] + "-fe0f" + (parts.length > 1 ? "-" + parts.slice(1).join("-") : ""));
+      if (withFe0f !== raw && list.indexOf(withFe0f) === -1) {
+        list.push(withFe0f);
+      }
+    }
+    return list;
+  }
+
+  function toAppleEmoji(char) {
+    if (appleEmojiCache.has(char)) {
+      var cached = appleEmojiCache.get(char);
+      if (!cached) {
+        return document.createTextNode(char);
+      }
+      var imgCached = document.createElement("img");
+      imgCached.className = "ios-emo";
+      imgCached.alt = char;
+      imgCached.draggable = false;
+      imgCached.decoding = "async";
+      imgCached.src = APPLE_EMOJI_BASE + cached + ".png";
+      imgCached.onerror = function () {
+        if (imgCached.parentNode) {
+          imgCached.parentNode.replaceChild(document.createTextNode(char), imgCached);
+        }
+      };
+      return imgCached;
+    }
+
+    var variants = getEmojiVariants(char);
+    var img = document.createElement("img");
+    img.className = "ios-emo";
+    img.alt = char;
+    img.draggable = false;
+    img.decoding = "async";
+
+    var step = 0;
+    img.onerror = function () {
+      step++;
+      if (step < variants.length) {
+        img.src = APPLE_EMOJI_BASE + variants[step] + ".png";
+      } else {
+        appleEmojiCache.set(char, null);
+        if (img.parentNode) {
+          img.parentNode.replaceChild(document.createTextNode(char), img);
+        }
+      }
+    };
+    img.onload = function () {
+      appleEmojiCache.set(char, variants[step]);
+    };
+    img.src = APPLE_EMOJI_BASE + variants[0] + ".png";
+    return img;
+  }
+
+  function preloadEmoji(char) {
+    if (appleEmojiCache.has(char)) {
+      var cached = appleEmojiCache.get(char);
+      if (cached) {
+        var p = new Image();
+        p.src = APPLE_EMOJI_BASE + cached + ".png";
+      }
+      return;
+    }
+    var variants = getEmojiVariants(char);
+    var pImg = new Image();
+    var step = 0;
+    pImg.onload = function () {
+      appleEmojiCache.set(char, variants[step]);
+    };
+    pImg.onerror = function () {
+      step++;
+      if (step < variants.length) {
+        pImg.src = APPLE_EMOJI_BASE + variants[step] + ".png";
+      } else {
+        appleEmojiCache.set(char, null);
+      }
+    };
+    pImg.src = APPLE_EMOJI_BASE + variants[0] + ".png";
+  }
+
+  function replaceEmojisInTree(rootEl) {
+    if (!rootEl || !EMOJI_REGEX) return;
+    try {
+      var walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          if (!n || !n.nodeValue) return NodeFilter.FILTER_REJECT;
+          var p = n.parentNode;
+          if (!p) return NodeFilter.FILTER_REJECT;
+          var tag = p.nodeName.toUpperCase();
+          if (tag === "SCRIPT" || tag === "STYLE" || tag === "TEXTAREA" || tag === "INPUT") {
+            return NodeFilter.FILTER_REJECT;
+          }
+          EMOJI_REGEX.lastIndex = 0;
+          return EMOJI_REGEX.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      }, false);
+
+      var nodes = [];
+      while (walker.nextNode()) {
+        nodes.push(walker.currentNode);
+      }
+
+      for (var i = 0; i < nodes.length; i++) {
+        var textNode = nodes[i];
+        var text = textNode.nodeValue;
+        EMOJI_REGEX.lastIndex = 0;
+        var match;
+        var lastIdx = 0;
+        var frag = document.createDocumentFragment();
+        var hasMatch = false;
+
+        while ((match = EMOJI_REGEX.exec(text)) !== null) {
+          hasMatch = true;
+          if (match.index > lastIdx) {
+            frag.appendChild(document.createTextNode(text.slice(lastIdx, match.index)));
+          }
+          frag.appendChild(toAppleEmoji(match[0]));
+          lastIdx = match.index + match[0].length;
+        }
+
+        if (hasMatch) {
+          if (lastIdx < text.length) {
+            frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+          }
+          if (textNode.parentNode) {
+            textNode.parentNode.replaceChild(frag, textNode);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  function runEmojiWalker() {
+    try {
+      if (!EMOJI_REGEX) return;
+      var header = document.querySelector("header");
+      var main = document.querySelector("main");
+      if (header) replaceEmojisInTree(header);
+      if (main) replaceEmojisInTree(main);
+    } catch (e) {}
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runEmojiWalker);
+  } else {
+    runEmojiWalker();
   }
   var lyrLeadMs = 400;
   try {
@@ -930,6 +1128,17 @@ function envelopeTarget(win, now) {
     });
 
     if (kTapeCol) kTapeCol.innerHTML = "";
+    var seenSongEmojis = {};
+    karaokeWordList.forEach(function(kw) {
+      var se = emojiFor(kw.text);
+      if (se && !seenSongEmojis[se]) {
+        seenSongEmojis[se] = true;
+        var sMatches = (EMOJI_REGEX && se.match(EMOJI_REGEX)) || [se];
+        for (var smi = 0; smi < sMatches.length; smi++) {
+          preloadEmoji(sMatches[smi]);
+        }
+      }
+    });
     var kFrag2 = document.createDocumentFragment();
     var seed = 42;
     var kPrev = [], kCurr = [], kLastLine = -1;
@@ -947,7 +1156,10 @@ function envelopeTarget(win, now) {
          kCurr.push(e);
          var emo = document.createElement("span");
          emo.className = "emo";
-         emo.textContent = e;
+         var eMatches = (EMOJI_REGEX && e.match(EMOJI_REGEX)) || [e];
+         for (var emi = 0; emi < eMatches.length; emi++) {
+           emo.appendChild(toAppleEmoji(eMatches[emi]));
+         }
          div.appendChild(emo);
        }
        seed = (seed * 9301 + 49297) % 233280; var rand1 = seed / 233280;
