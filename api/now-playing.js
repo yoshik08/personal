@@ -35,7 +35,7 @@ export default async function handler(req, res) {
         url: a.external_urls ? a.external_urls.spotify : null,
       })),
       image: t.album && t.album.images && t.album.images.length
-        ? (t.album.images[1] || t.album.images[0]).url
+        ? t.album.images[0].url
         : null,
       url: t.external_urls ? t.external_urls.spotify : null,
       progressMs: outer ? outer.progress_ms : null,

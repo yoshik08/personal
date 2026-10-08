@@ -272,66 +272,61 @@
      corrects drift: tiny drift is ignored, moderate drift is absorbed
      gradually over ~5s (no visible jump), large drift/seek hard-resets. */
   function createPlaybackClock() {
-    var baseMs = 0;      /* estimated progress at basePerf */
-    var basePerf = 0;    /* performance.now() corresponding to baseMs */
+    var baseMs = 0;
+    var basePerf = 0;
     var playing = false;
-    var corrMs = 0;      /* drift currently being absorbed gradually */
-    var corrStart = 0;   /* performance.now() when gradual correction began */
-    var CORR_WINDOW = 5000;
-    var IGNORE_MS = 120; /* below this: drift is noise, ignore */
-    var RESET_MS = 2500; /* above this: treat as seek, hard reset */
-
-    function corrApplied() {
-      if (!corrMs) return 0;
-      var t = (performance.now() - corrStart) / CORR_WINDOW;
-      if (t < 0) t = 0; else if (t > 1) t = 1;
-      return corrMs * t;
-    }
-    /* fold a finished gradual correction into the base values */
-    function fold() {
-      if (!corrMs) return;
-      var now = performance.now();
-      if (now - corrStart >= CORR_WINDOW) {
-        baseMs = baseMs + (playing ? now - basePerf : 0) + corrMs;
-        basePerf = now;
-        corrMs = 0;
-      }
-    }
+    var corrMs = 0;
+    var corrStart = 0;
+    var BLEND_DUR = 250;
+    
     function getProgressMs() {
-      fold();
       var pos = baseMs;
       if (playing) pos += performance.now() - basePerf;
-      pos += corrApplied();
+      if (corrMs !== 0) {
+        var elapsed = performance.now() - corrStart;
+        if (elapsed >= BLEND_DUR) {
+           corrMs = 0;
+        } else {
+           pos += corrMs * (1 - (elapsed / BLEND_DUR));
+        }
+      }
       return pos;
     }
     return {
       getProgressMs: getProgressMs,
       isPlaying: function () { return playing; },
-      /* hard anchor: trust this position completely (track change, seek, resume) */
-      setAnchor: function (p) {
-        baseMs = p; basePerf = performance.now(); corrMs = 0;
+      setAnchor: function (p, perfNow) {
+        perfNow = perfNow || performance.now();
+        baseMs = p; basePerf = perfNow; corrMs = 0;
       },
-      setPlaying: function (p) {
+      setPlaying: function (p, perfNow) {
+        perfNow = perfNow || performance.now();
         p = !!p;
-        if (playing && !p) { /* pausing: snapshot so the clock freezes */
-          baseMs = getProgressMs(); corrMs = 0; basePerf = performance.now();
+        if (playing && !p) {
+          baseMs = getProgressMs(); corrMs = 0; basePerf = perfNow;
         } else if (!playing && p) {
-          basePerf = performance.now();
+          basePerf = perfNow;
         }
         playing = p;
       },
-      /* reconcile a fresh server anchor with the local estimate */
-      correctDrift: function (serverMs) {
-        var drift = serverMs - getProgressMs();
-        var ad = Math.abs(drift);
-        if (ad < IGNORE_MS) return "ignored";
-        if (ad > RESET_MS) { this.setAnchor(serverMs); return "reset"; }
-        /* absorb gradually: rebase on the current smooth estimate, then
-           run the clock slightly fast/slow until the drift is gone */
-        var now = getProgressMs();
-        baseMs = now; basePerf = performance.now();
-        corrMs = drift * 0.5; corrStart = performance.now();
-        return "nudged";
+      correctDrift: function (serverMs, perfNow) {
+        perfNow = perfNow || performance.now();
+        var predictedAtMidpoint = baseMs + (playing ? (perfNow - basePerf) : 0);
+        var drift = serverMs - predictedAtMidpoint;
+        if (Math.abs(drift) > 1500) {
+          this.setAnchor(serverMs, perfNow);
+          return "seek";
+        } else if (Math.abs(drift) > 300) {
+          this.setAnchor(serverMs, perfNow);
+          return "snap";
+        } else {
+          var currentDisplay = getProgressMs();
+          baseMs = serverMs + (playing ? (performance.now() - perfNow) : 0);
+          basePerf = performance.now();
+          corrMs = currentDisplay - baseMs;
+          corrStart = performance.now();
+          return "blend";
+        }
       }
     };
   }
@@ -368,14 +363,6 @@
       spTimer = null;
   var spState = { key: null, title: null, artist: "", artists: [], trackUrl: null, image: null, playing: false, progressMs: null, durationMs: null };
   var playbackClock = createPlaybackClock();
-  /* server timestamp -> browser position: account for the time playback
-     kept running between Spotify's snapshot and this browser receiving it */
-  function spotifyAnchorMs(d) {
-    var ts = d.timestamp || Date.now();
-    var transit = Date.now() - ts;
-    if (transit < 0) transit = 0;
-    return Math.max(0, (d.progressMs || 0) + transit);
-  }
   function renderHeroArtists(list) {
     spHeroArtists.textContent = "";
     if (!list || !list.length) return;
@@ -473,22 +460,27 @@
         }
       });
     }
-    /* reconcile the local clock with the fresh server anchor (track change
-       and resume hard-reset; pause freezes; otherwise drift is absorbed) */
+    /* reconcile the local clock with the fresh server anchor */
     (function () {
       var key = d.trackId || (title + " :: " + artist);
       var isNewTrack = spState.key !== null && key !== spState.key;
       var wasPlaying = playbackClock.isPlaying();
       spState.key = key;
+      var mid = d._fetchMidpoint || performance.now();
+      
       if (!live) {
-        playbackClock.setPlaying(false);
-        playbackClock.setAnchor(d.progressMs || 0);
+        playbackClock.setPlaying(false, mid);
+        playbackClock.setAnchor(d.progressMs || 0, mid);
       } else if (isNewTrack || !wasPlaying) {
-        playbackClock.setAnchor(spotifyAnchorMs(d));
-        playbackClock.setPlaying(true);
+        playbackClock.setAnchor(d.progressMs || 0, mid);
+        playbackClock.setPlaying(true, mid);
+        spFastPollUntil = performance.now() + 5000;
       } else {
-        playbackClock.setPlaying(true);
-        playbackClock.correctDrift(spotifyAnchorMs(d));
+        playbackClock.setPlaying(true, mid);
+        var action = playbackClock.correctDrift(d.progressMs || 0, mid);
+        if (action === "seek" || action === "snap") {
+          spFastPollUntil = performance.now() + 5000;
+        }
       }
     })();
     if (spTimer) { clearInterval(spTimer); spTimer = null; }
@@ -498,23 +490,45 @@
         spProg.style.width = Math.min(100, (p / d.durationMs) * 100) + "%";
         if (p >= d.durationMs) {
           if (spTimer) { clearInterval(spTimer); spTimer = null; }
-          pollSpotify(); /* track ended — grab the next one right away */
+          spFastPollUntil = performance.now() + 5000;
+          schedulePoll(); /* track ended */
         }
       };
       draw();
       spTimer = setInterval(draw, 1000);
     }
   }
+
+  var spPollTimer = null;
+  var spFastPollUntil = performance.now() + 5000;
+  function schedulePoll() {
+    if (spPollTimer) clearTimeout(spPollTimer);
+    var intv = (performance.now() < spFastPollUntil) ? 1000 : 5000;
+    spPollTimer = setTimeout(function() {
+      if (!document.hidden) pollSpotify();
+      else schedulePoll();
+    }, intv);
+  }
   function pollSpotify() {
+    if (spPollTimer) clearTimeout(spPollTimer);
+    var reqStart = performance.now();
     fetch("/api/now-playing", { cache: "no-store" })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(renderSpotify)
-      .catch(function () {});
+      .then(function(d) {
+        if(d) d._fetchMidpoint = reqStart + (performance.now() - reqStart) / 2;
+        renderSpotify(d);
+      })
+      .catch(function () {})
+      .finally(function() {
+        schedulePoll();
+      });
   }
   pollSpotify();
-  setInterval(function () { if (!document.hidden) pollSpotify(); }, 5000);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) pollSpotify(); /* refresh the second you're back */
+    if (!document.hidden) {
+      spFastPollUntil = performance.now() + 5000;
+      pollSpotify(); /* refresh instantly */
+    }
   });
 
   /* ---------- 11b. synced lyrics overlay (verci-style) + karaoke ---------- */
@@ -529,10 +543,13 @@
       karaokeToggle = document.getElementById("karaokeToggle"),
       lyricsClassicView = document.getElementById("lyricsClassicView"),
       lyricsKaraokeView = document.getElementById("lyricsKaraokeView"),
-      kwMain = document.getElementById("kwMain"),
-      kwNext = document.getElementById("kwNext"),
-      kwDots = document.getElementById("kwDots"),
-      karaokeStage = document.getElementById("karaokeStage");
+      lyricsKaraokeView = document.getElementById("lyricsKaraokeView"),
+      kTopCover = document.getElementById("kTopCover"),
+      kTopTitle = document.getElementById("kTopTitle"),
+      kTopArtist = document.getElementById("kTopArtist"),
+      kTopProg = document.getElementById("kTopProg"),
+      karaokeStage = document.getElementById("karaokeStage"),
+      kTapeCol = document.getElementById("kTapeCol");
 
   var EMOJI_MAP = { "look": "👀", "cars": "🚘", "girl": "💅", "yeah": "🔥", "love": "❤️", "money": "💸", "time": "⏳", "god": "🙏", "plan": "📝", "bad": "😈", "good": "😇", "night": "🌙" };
   var OFFSET_MS = 0;
@@ -548,14 +565,26 @@
   function resetKIdle() {
     if (kIdleTimer) clearTimeout(kIdleTimer);
     lyricsOverlay.classList.remove("idle");
-    if (karaokeMode) {
+    if (karaokeMode && lyricsOverlay.classList.contains("open")) {
       kIdleTimer = setTimeout(function() {
-        lyricsOverlay.classList.add("idle");
+        if (karaokeMode && lyricsOverlay.classList.contains("open")) {
+          lyricsOverlay.classList.add("idle");
+        }
       }, 3000);
     }
   }
-  lyricsOverlay.addEventListener("mousemove", resetKIdle);
-  lyricsOverlay.addEventListener("click", resetKIdle);
+  window.addEventListener("mousemove", resetKIdle);
+  window.addEventListener("click", resetKIdle);
+  window.addEventListener("touchstart", resetKIdle);
+  window.addEventListener("resize", function() {
+    if (karaokeMode && kActiveIdx >= 0 && karaokeWordList[kActiveIdx]) {
+       var word = karaokeWordList[kActiveIdx];
+       if (karaokeStage && kTapeCol) {
+         var offset = word.el.offsetTop + word.el.offsetHeight / 2 - karaokeStage.offsetHeight / 2;
+         kTapeCol.style.transform = "translateY(" + (-offset) + "px)";
+       }
+    }
+  });
 
   function lyrPos() { return playbackClock.getProgressMs(); }
   function lyrPut(key, val) {
@@ -603,11 +632,15 @@
       if(count > 0) {
         r = Math.floor(r/count); g = Math.floor(g/count); b = Math.floor(b/count);
         var hsl = rgbToHsl(r,g,b);
-        var c1 = "hsla(" + hsl[0] + ", " + Math.min(hsl[1]*1.2, 100) + "%, " + Math.max(hsl[2]*0.8, 15) + "%, 0.8)";
-        var c2 = "hsla(" + ((hsl[0]+30)%360) + ", " + Math.min(hsl[1]*1.2, 100) + "%, " + Math.max(hsl[2]*0.5, 10) + "%, 0.9)";
-        lyricsBg.style.setProperty("--lyr-bg-gradient", "linear-gradient(135deg, " + c1 + ", " + c2 + ", #000)");
-        var c3 = "hsla(" + hsl[0] + ", " + Math.min(hsl[1]*1.2, 100) + "%, 65%, 0.4)";
-        lyricsOverlay.style.setProperty("--k-accent", c3);
+        var bgHue = hsl[0];
+        var bgSat = Math.max(30, Math.min(hsl[1] * 1.2, 90));
+        var bgLum = Math.max(15, Math.min(hsl[2] * 0.8, 25));
+        var bgLighter = Math.min(bgLum + 12, 40);
+        lyricsBg.style.setProperty("--lyr-bg-gradient", "linear-gradient(135deg, hsla(" + bgHue + ", " + bgSat + "%, " + bgLum + "%, 0.8), hsla(" + ((bgHue+30)%360) + ", " + bgSat + "%, " + Math.max(5, bgLum-5) + "%, 0.9), #000)");
+        lyricsOverlay.style.setProperty("--k-bg", "linear-gradient(135deg, hsl(" + bgHue + "," + bgSat + "%," + bgLum + "%), hsl(" + ((bgHue+15)%360) + "," + bgSat + "%," + Math.max(5, bgLum-8) + "%))");
+        lyricsOverlay.style.setProperty("--k-inactive", "hsl(" + bgHue + "," + Math.max(10, bgSat - 20) + "%," + Math.min(bgLum + 15, 60) + "%)");
+        var accHue = (bgHue + 180) % 360;
+        lyricsOverlay.style.setProperty("--k-accent", "hsl(" + accHue + ", 100%, 65%)");
       }
     };
     img.src = imgSrc;
@@ -616,7 +649,7 @@
   function updateKaraokeToggle(hasWords) {
     if (!hasWords) {
       karaokeToggle.classList.add("disabled");
-      if (karaokeMode) toggleKaraokeMode(false);
+      toggleKaraokeMode(false);
     } else {
       karaokeToggle.classList.remove("disabled");
       if (karaokeMode) toggleKaraokeMode(true);
@@ -624,15 +657,22 @@
   }
 
   function toggleKaraokeMode(force) {
-    if (karaokeToggle.classList.contains("disabled") && force !== false) return;
-    karaokeMode = typeof force === "boolean" ? force : !karaokeMode;
+    var isBool = typeof force === "boolean";
+    var nextMode = isBool ? force : !karaokeMode;
+    if (nextMode && (karaokeToggle.classList.contains("disabled") || !karaokeWordList.length)) {
+      nextMode = false;
+    }
+    karaokeMode = nextMode;
     try { localStorage.setItem("karaokeMode", karaokeMode); } catch(e) {}
     karaokeToggle.classList.toggle("active", karaokeMode);
+    lyricsOverlay.classList.toggle("karaoke-mode", karaokeMode);
     resetKIdle();
     lyricsClassicView.style.display = karaokeMode ? "none" : "";
     lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
-    if (karaokeMode && lyricsKaraokeView.style.display !== "none") {
+    if (!karaokeMode) {
       setLyricsPadding();
+    } else {
+      kActiveIdx = -1;
     }
   }
   karaokeToggle.addEventListener("click", toggleKaraokeMode);
@@ -640,7 +680,6 @@
   function renderSynced(lines, wordLines, durationMs) {
     lyricsHint.textContent = "";
     lyricsLines.innerHTML = "";
-    kwMain.textContent = ""; kwNext.textContent = "";
     karaokeWordList = [];
     var frag = document.createDocumentFragment();
     var anyHasWords = false;
@@ -690,6 +729,41 @@
       });
     });
 
+    if (kTapeCol) kTapeCol.innerHTML = "";
+    var kFrag2 = document.createDocumentFragment();
+    var seed = 42;
+    karaokeWordList.forEach(function(word, idx) {
+       var div = document.createElement("div");
+       div.className = "k-tape-word";
+       var wText = word.text;
+       if (EMOJI_MAP[wText.toLowerCase()]) wText += " " + EMOJI_MAP[wText.toLowerCase()];
+       div.textContent = wText;
+       seed = (seed * 9301 + 49297) % 233280; var rand1 = seed / 233280;
+       seed = (seed * 9301 + 49297) % 233280; var rand2 = seed / 233280;
+       var rot = -3 + rand1 * 6;
+       div.style.setProperty("--rot", rot + "deg");
+       if (rand2 < 0.16) div.classList.add("font-bubbly");
+       
+       var tl_x = rand1 * 4, tl_y = rand2 * 4;
+       seed = (seed * 9301 + 49297) % 233280; var r3 = seed / 233280;
+       seed = (seed * 9301 + 49297) % 233280; var r4 = seed / 233280;
+       var tr_x = 100 - r3 * 4, tr_y = r4 * 4;
+       seed = (seed * 9301 + 49297) % 233280; var r5 = seed / 233280;
+       seed = (seed * 9301 + 49297) % 233280; var r6 = seed / 233280;
+       var br_x = 100 - r5 * 4, br_y = 100 - r6 * 4;
+       seed = (seed * 9301 + 49297) % 233280; var r7 = seed / 233280;
+       seed = (seed * 9301 + 49297) % 233280; var r8 = seed / 233280;
+       var bl_x = r7 * 4, bl_y = 100 - r8 * 4;
+       var clip = "polygon(" + tl_x + "% " + tl_y + "%, " + tr_x + "% " + tr_y + "%, " + br_x + "% " + br_y + "%, " + bl_x + "% " + bl_y + "%)";
+       div.style.setProperty("--clip", clip);
+       word.el = div;
+       kFrag2.appendChild(div);
+    });
+    if (kTapeCol) {
+      kTapeCol.appendChild(kFrag2);
+      kTapeCol.style.transform = "translateY(0px)";
+    }
+
     updateKaraokeToggle(anyHasWords);
     setLyricsPadding();
   }
@@ -697,7 +771,6 @@
   function renderPlain(plain) {
     lyricsHint.textContent = "unsynced lyrics";
     lyricsLines.innerHTML = "";
-    kwMain.textContent = ""; kwNext.textContent = "";
     karaokeWordList = [];
     updateKaraokeToggle(false);
     var frag = document.createDocumentFragment();
@@ -715,7 +788,6 @@
 
   function renderNoLyrics() {
     lyricsLines.innerHTML = "";
-    kwMain.textContent = ""; kwNext.textContent = "";
     karaokeWordList = [];
     updateKaraokeToggle(false);
     lyricsHint.textContent = "no lyrics found for this one";
@@ -738,7 +810,7 @@
     lyrInflight[key] = true;
     lyrLastQuery = { title: title, artist: artist, durationMs: durationMs, retried: false };
     lyrActiveIdx = -1; kActiveIdx = -1; lyrRenderedKey = null;
-    lyricsLines.innerHTML = ""; kwMain.textContent = ""; kwNext.textContent = "";
+    lyricsLines.innerHTML = "";
     lyricsHint.textContent = "finding lyrics…";
     lyricsHint.style.cursor = "";
     lyricsHint.onclick = null;
@@ -780,7 +852,7 @@
         }, 2500);
         return;
       }
-      lyricsLines.innerHTML = ""; kwMain.textContent = "";
+      lyricsLines.innerHTML = "";
       lyricsHint.textContent = err.rate ? "too many requests — tap to retry" : "couldn't load lyrics — tap to retry";
       lyricsHint.style.cursor = "pointer";
       lyricsHint.onclick = function () {
@@ -811,6 +883,9 @@
     if (spState.image) {
       lyricsArt.src = spState.image;
       lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
+      if (kTopCover) kTopCover.src = spState.image;
+      if (kTopTitle) kTopTitle.textContent = spState.title || "";
+      if (kTopArtist) kTopArtist.textContent = spState.artist || "";
       extractDominantColors(spState.image);
     }
   }
@@ -820,18 +895,13 @@
     var pos = Math.min(lyrPos(), spState.durationMs);
     var p = (pos / spState.durationMs * 100) + "%";
     lyricsProg.style.width = p;
+    if (kTopProg) kTopProg.style.width = p;
   }
 
   function setLyricsPadding() {
     var h = lyricsLines.clientHeight / 2;
     lyricsLines.style.paddingTop = h + "px";
     lyricsLines.style.paddingBottom = h + "px";
-
-    if (karaokeWords && karaokeWords.parentNode) {
-      var kh = karaokeWords.parentNode.clientHeight / 2;
-      karaokeWords.style.paddingTop = kh + "px";
-      karaokeWords.style.paddingBottom = kh + "px";
-    }
   }
 
   function findKaraokeIndex(pos, hint) {
@@ -868,6 +938,7 @@
       renderLyrEntry(key, spState.durationMs);
       lyrRenderedKey = key;
       karaokeToggle.classList.toggle("active", karaokeMode);
+      lyricsOverlay.classList.toggle("karaoke-mode", karaokeMode);
       lyricsClassicView.style.display = karaokeMode ? "none" : "";
       lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
       return;
@@ -879,50 +950,28 @@
     if (karaokeMode && karaokeWordList.length > 0) {
       var kidx = findKaraokeIndex(pos, kActiveIdx);
       if (kidx !== kActiveIdx) {
-        if (kidx >= 0 && karaokeWordList[kidx]) {
-          var word = karaokeWordList[kidx];
-          
-          // Glitch / pulse effect
-          lyricsOverlay.classList.remove("pulse", "glitch");
-          void lyricsOverlay.offsetWidth; // trigger reflow
-          lyricsOverlay.classList.add("pulse", "glitch");
-          setTimeout(function() { lyricsOverlay.classList.remove("glitch"); }, 120);
-          
-          // Set text and handle shrink
-          kwMain.textContent = word.text;
-          kwMain.style.animation = "none";
-          kwMain.style.transform = "";
-          void kwMain.offsetWidth; // trigger reflow to restart animation
-          kwMain.style.animation = "";
-          var mainW = kwMain.offsetWidth;
-          var maxW = window.innerWidth * 0.9;
-          if (mainW > maxW) {
-            kwMain.style.transform = "scale(" + (maxW / mainW) + ")";
-          }
-          
-          // Next word stacking
-          var nextWord = karaokeWordList[kidx + 1];
-          if (nextWord && nextWord.lineIdx === word.lineIdx && (nextWord.start - word.end) <= 250) {
-            kwNext.textContent = nextWord.text;
-          } else {
-            kwNext.textContent = "";
-          }
-          
-          // Dots for gap > 4s
-          if (nextWord && (nextWord.start - word.end) > 4000) {
-            setTimeout(function() {
-              if (kActiveIdx === kidx && karaokeMode) kwDots.classList.add("show");
-            }, 1000); // show dots 1s after word ends
-          } else {
-            kwDots.classList.remove("show");
-          }
-        } else {
-          kwMain.textContent = "";
-          kwNext.textContent = "";
-          kwDots.classList.remove("show");
+        if (kActiveIdx >= 0 && karaokeWordList[kActiveIdx] && karaokeWordList[kActiveIdx].el) {
+          karaokeWordList[kActiveIdx].el.classList.remove("active");
         }
         kActiveIdx = kidx;
+        if (kidx >= 0 && karaokeWordList[kidx] && karaokeWordList[kidx].el) {
+          var word = karaokeWordList[kidx];
+          word.el.classList.add("active");
+          if (karaokeStage && kTapeCol) {
+            var offset = word.el.offsetTop + word.el.offsetHeight / 2 - karaokeStage.offsetHeight / 2;
+            kTapeCol.style.transform = "translateY(" + (-offset) + "px)";
+            var wW = word.el.scrollWidth;
+            var maxW = window.innerWidth * 0.9;
+            if (wW > maxW) {
+              word.el.style.setProperty("--scale", (maxW / wW));
+            } else {
+              word.el.style.setProperty("--scale", "1");
+            }
+          }
+        }
       }
+    } else if (karaokeMode && karaokeWordList.length === 0) {
+      toggleKaraokeMode(false);
     } else if (!karaokeMode && entry.lines) {
       var lines = entry.lines;
       var idx = findLyricIndex(lines, pos, lyrActiveIdx);
@@ -978,10 +1027,18 @@
     lyricsOverlay.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
     lyrRenderedKey = null;
+    karaokeToggle.classList.toggle("active", karaokeMode);
+    lyricsOverlay.classList.toggle("karaoke-mode", karaokeMode);
+    lyricsClassicView.style.display = karaokeMode ? "none" : "";
+    lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
+    resetKIdle();
+    spFastPollUntil = performance.now() + 5000;
+    if (karaokeMode) schedulePoll();
     if (!lyrRaf) lyrRaf = requestAnimationFrame(lyrLoop);
   }
   function closeLyrics() {
-    lyricsOverlay.classList.remove("open");
+    if (kIdleTimer) clearTimeout(kIdleTimer);
+    lyricsOverlay.classList.remove("open", "idle", "karaoke-mode");
     lyricsOverlay.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
     if (lyrRaf) { cancelAnimationFrame(lyrRaf); lyrRaf = 0; }

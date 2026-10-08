@@ -8,8 +8,9 @@
 <link rel="preload" href="assets/fonts/HankenGrotesk-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Black+Han+Sans&family=Rubik+Bubbles&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=awe2">
+<link rel="stylesheet" href="style.css?v=awe5">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yoshik.xyz/">
 <meta property="og:title" content="yoshik — developer">
@@ -418,10 +419,14 @@
 
   <!-- karaoke view -->
   <div class="lyrics-karaoke" id="lyricsKaraokeView" style="display: none;">
-    <div class="karaoke-stage" id="karaokeStage">
-      <div class="kw-main" id="kwMain"></div>
-      <div class="kw-next" id="kwNext"></div>
-      <div class="kw-dots" id="kwDots"><span></span><span></span><span></span></div>
+    <div class="k-top">
+      <img class="k-top-cover" id="kTopCover" alt="">
+      <div class="k-top-title" id="kTopTitle"></div>
+      <div class="k-top-artist" id="kTopArtist"></div>
+      <div class="k-top-prog"><i id="kTopProg"></i></div>
+    </div>
+    <div class="k-tape-stage" id="karaokeStage">
+      <div class="k-tape-col" id="kTapeCol"></div>
     </div>
   </div>
 
@@ -458,6 +463,6 @@
   </div>
 </div>
 
-<script src="script.js?v=awe2"></script>
+<script src="script.js?v=awe5"></script>
 </body>
 </html>
