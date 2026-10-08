@@ -1,30 +1,38 @@
 // vercel serverless: GET /api/now-playing
 // env needed: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REFRESH_TOKEN
+let cachedToken = null;
+let tokenExpiresAt = 0;
+
 export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
   const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REFRESH_TOKEN } =
     process.env;
   if (!SPOTIFY_CLIENT_ID || !SPOTIFY_REFRESH_TOKEN) {
     return res.status(200).json({});
   }
   try {
-    const basic = Buffer.from(
-      `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
-    ).toString("base64");
+    if (!cachedToken || Date.now() > tokenExpiresAt - 60000) {
+      const basic = Buffer.from(
+        `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
+      ).toString("base64");
 
-    const tok = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${basic}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: SPOTIFY_REFRESH_TOKEN,
-      }),
-    });
-    const { access_token } = await tok.json();
-    if (!access_token) return res.status(200).json({});
-    const auth = { Authorization: `Bearer ${access_token}` };
+      const tok = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${basic}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: SPOTIFY_REFRESH_TOKEN,
+        }),
+      });
+      const data = await tok.json();
+      if (!data.access_token) return res.status(200).json({});
+      cachedToken = data.access_token;
+      tokenExpiresAt = Date.now() + (data.expires_in || 3600) * 1000;
+    }
+    const auth = { Authorization: `Bearer ${cachedToken}` };
 
     const pick = (t, outer) => ({
       trackId: t.id || null,
@@ -48,8 +56,6 @@ export default async function handler(req, res) {
     );
     if (now.status === 200) {
       const d = await now.json();
-      /* timestamp anchors progressMs: the client adds (now - timestamp) so the
-         local clock accounts for transit time between Spotify and the browser */
       if (d && d.item) return res.status(200).json({ playing: d.is_playing, timestamp: Date.now(), ...pick(d.item, d) });
     }
     // nothing playing right now: fall back to last played

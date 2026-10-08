@@ -59,7 +59,9 @@ html[data-theme="dark"] {
 
 /* ---------- base ---------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar, .cmdk-list::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.cmdk-list { scrollbar-width: none; }
 html[data-motion="off"] { scroll-behavior: auto; }
 body {
   background: var(--bg); color: var(--ink);
@@ -426,7 +428,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   position: absolute; top: 0; left: 0; right: 0;
   display: flex; flex-direction: column; align-items: center;
   gap: 20px; padding: 50vh 20px;
-  transition: transform 0.2s ease-out;
+  transition: transform 60ms linear;
 }
 .k-tape-word {
   font-family: "Bagel Fat One", "Black Han Sans", sans-serif;
@@ -435,7 +437,6 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   text-align: center;
   max-width: 90vw;
   line-height: 1.2;
-  transition: color 0.1s ease;
   position: relative;
   z-index: 1;
   padding: 8px 16px;
@@ -490,13 +491,17 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-weight: 700; letter-spacing: -0.015em;
   font-size: clamp(22px, 2.9vw, 34px); line-height: 1.35; margin: 0; padding: 16px 0;
-  transition: color .3s ease;
+  transition: color .12s ease;
 }
 .lyr-line.active { color: #fff; font-size: clamp(30px, 4vw, 48px); }
 .lyr-line.active .w { color: rgba(255,255,255,.35); }
-.lyr-line.active .w .ch { transition: color .45s ease; }
+.lyr-line.active .w .ch { transition: color .08s ease; }
 .lyr-line.active .w .ch.lit { color: #fff; }
 .lyr-line.past { color: rgba(255,255,255,.45); }
+.emo { display: inline-block; margin-left: .25em; }
+.lyr-line.active .emo, .k-tape-word.active .emo { animation: emoPop .35s cubic-bezier(.2,1.6,.4,1); }
+@keyframes emoPop { 0% { transform: scale(.4) rotate(-15deg); } 60% { transform: scale(1.35) rotate(8deg); } 100% { transform: scale(1); } }
+html[data-motion="off"] .lyr-line.active .emo, html[data-motion="off"] .k-tape-word.active .emo { animation: none; }
 .lyrics-hint { position: relative; z-index: 2; text-align: center; color: rgba(255,255,255,.4); font-size: 12px; padding: 0 20px 26px; margin: 0; min-height: 18px; }
 .lyrics-side-text { min-width: 0; }
 @media (max-width: 700px) {

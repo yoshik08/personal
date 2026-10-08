@@ -551,7 +551,53 @@
       karaokeStage = document.getElementById("karaokeStage"),
       kTapeCol = document.getElementById("kTapeCol");
 
-  var EMOJI_MAP = { "look": "👀", "cars": "🚘", "girl": "💅", "yeah": "🔥", "love": "❤️", "money": "💸", "time": "⏳", "god": "🙏", "plan": "📝", "bad": "😈", "good": "😇", "night": "🌙" };
+  var EMOJI_MAP = {
+    yeah:"🔥",yea:"🔥",fire:"🔥",lit:"🔥",hot:"🥵",heat:"🥵",burn:"🔥",flame:"🔥",
+    money:"💸",cash:"💵",bands:"💵",racks:"💰",rich:"🤑",paid:"💰",dollar:"💲",bank:"🏦",check:"💳",bag:"💰",
+    ice:"🧊",diamond:"💎",diamonds:"💎",drip:"💧",chain:"⛓️",gold:"🥇",rolex:"⌚",watch:"⌚",ring:"💍",
+    love:"❤️",heart:"💖",kiss:"💋",lips:"💋",hug:"🫂",crush:"😍",baby:"🍼",babe:"😘",darling:"🥰",honey:"🍯",sweet:"🍬",cute:"🥺",
+    cry:"😭",tears:"😢",sad:"😔",lonely:"🥀",broken:"💔",heartbreak:"💔",hurt:"🤕",pain:"🩹",alone:"🥀",miss:"🥺",sorry:"🙏",
+    happy:"😊",smile:"😁",laugh:"😂",fun:"🥳",party:"🎉",dance:"💃",club:"🪩",drink:"🍹",shots:"🥃",wine:"🍷",champagne:"🍾",bottle:"🍾",
+    smoke:"💨",high:"🌿",weed:"🌿",cloud:"☁️",clouds:"☁️",sky:"🌌",star:"⭐",stars:"✨",shine:"✨",glow:"✨",light:"💡",
+    moon:"🌙",night:"🌙",midnight:"🌃",dark:"🌑",sun:"☀️",sunshine:"🌞",summer:"🏖️",rain:"🌧️",storm:"⛈️",thunder:"⚡",lightning:"⚡",
+    snow:"❄️",cold:"🥶",winter:"❄️",ocean:"🌊",sea:"🌊",wave:"🌊",beach:"🏝️",island:"🏝️",river:"🏞️",hills:"⛰️",mountain:"🏔️",
+    flower:"🌸",roses:"🌹",rose:"🌹",garden:"🌷",tree:"🌳",
+    car:"🏎️",cars:"🚘",ride:"🚗",drive:"🚗",whip:"🏎️",benz:"🚘",road:"🛣️",highway:"🛣️",fast:"💨",speed:"💨",run:"🏃",
+    plane:"✈️",fly:"🕊️",jet:"🛩️",wings:"🪽",
+    crown:"👑",king:"👑",queen:"👸",prince:"🤴",princess:"👸",boss:"😎",goat:"🐐",legend:"🏆",win:"🏆",champion:"🏆",
+    devil:"😈",bad:"😈",sin:"😈",hell:"🔥",evil:"👿",angel:"😇",good:"😇",heaven:"☁️",god:"🙏",pray:"🙏",prayer:"🙏",bless:"🙌",blessed:"🙌",
+    soul:"🫀",ghost:"👻",dead:"💀",die:"💀",kill:"💀",skull:"💀",grave:"🪦",
+    phone:"📱",call:"📞",text:"💬",message:"💌",letter:"💌",camera:"📸",photo:"📸",picture:"🖼️",tv:"📺",radio:"📻",
+    music:"🎶",song:"🎵",sing:"🎤",beat:"🥁",guitar:"🎸",piano:"🎹",melody:"🎶",
+    eyes:"👀",look:"👀",see:"👀",
+    girl:"💅",girls:"💅",boy:"🧢",man:"🧔",woman:"👩",friend:"🤝",homie:"🤝",gang:"🤝",squad:"👯",family:"👨👩👧",mama:"👩👧",
+    time:"⏳",clock:"⏰",forever:"♾️",tonight:"🌃",today:"📅",tomorrow:"🌅",morning:"🌅",
+    home:"🏠",house:"🏡",city:"🏙️",world:"🌍",earth:"🌎",
+    game:"🎮",play:"🎮",ball:"🏀",gun:"💥",shot:"💥",bang:"💥",boom:"💥",bomb:"💣",war:"⚔️",fight:"🥊",
+    food:"🍔",pizza:"🍕",candy:"🍭",sugar:"🍬",cherry:"🍒",peach:"🍑",apple:"🍎",
+    dog:"🐶",cat:"🐱",snake:"🐍",lion:"🦁",wolf:"🐺",butterfly:"🦋",bee:"🐝",
+    crazy:"🤪",wild:"🐆",mad:"😤",angry:"😠",scared:"😱",shock:"😳",shy:"🙈",
+    secret:"🤫",lie:"🤥",lies:"🤥",truth:"🗝️",key:"🔑",door:"🚪",
+    sleep:"😴",dream:"💭",dreams:"💭",wake:"⏰",bed:"🛏️",
+    plan:"📝",gift:"🎁",birthday:"🎂",wedding:"💒",
+    cool:"😎",fresh:"🆕",new:"🆕",young:"🧒",old:"👴",
+    hands:"👐",clap:"👏",peace:"☮️",hello:"👋",bye:"👋",goodbye:"👋",
+    bitter:"🍋",sour:"🍋",poison:"☠️",medicine:"💊",pill:"💊",
+    magic:"🪄",luck:"🍀",lucky:"🍀"
+  };
+  var EMOJI_STOP = {"a":1,"the":1,"i":1,"you":1,"me":1,"it":1,"oh":1,"la":1,"na":1};
+  function emojiFor(word) {
+    var w = word.toLowerCase().replace(/^[^a-z0-9]+/, "").replace(/[^a-z0-9]+$/, "");
+    if (!w || EMOJI_STOP[w]) return null;
+    if (EMOJI_MAP[w]) return EMOJI_MAP[w];
+    var s1 = w.replace(/ing$/, "").replace(/in$/, "");
+    if (s1 !== w && EMOJI_MAP[s1]) return EMOJI_MAP[s1];
+    var s2 = w.replace(/s$/, "");
+    if (s2 !== w && EMOJI_MAP[s2]) return EMOJI_MAP[s2];
+    var s3 = w.replace(/ies$/, "y");
+    if (s3 !== w && EMOJI_MAP[s3]) return EMOJI_MAP[s3];
+    return null;
+  }
   var OFFSET_MS = 0;
   var karaokeMode = false;
   try { karaokeMode = localStorage.getItem("karaokeMode") === "true"; } catch(e) {}
@@ -685,7 +731,9 @@
     var anyHasWords = false;
 
     // Classic view uses 'lines'
+      var prevEmo = [];
     lines.forEach(function (ln, i) {
+      var currEmo = [];
       var words = ln.text.split(/\s+/).filter(Boolean);
       var hasWords = !!(ln.words && ln.words.length === words.length);
       ln.hasWords = hasWords;
@@ -704,12 +752,29 @@
             ws.appendChild(ls);
           }
           div.appendChild(ws);
+          var e = emojiFor(w);
+          if (e && currEmo.length < 2 && currEmo.indexOf(e) === -1 && prevEmo.indexOf(e) === -1) {
+            currEmo.push(e);
+            var emo = document.createElement("span");
+            emo.className = "emo";
+            emo.setAttribute("aria-hidden", "true");
+            emo.textContent = e;
+            div.appendChild(emo);
+          }
           if (j < words.length - 1) div.appendChild(document.createTextNode(" "));
         });
       } else {
         div.textContent = ln.text;
+        words.forEach(function (w) {
+          var e = emojiFor(w);
+          if (e && currEmo.length < 2 && currEmo.indexOf(e) === -1 && prevEmo.indexOf(e) === -1) {
+            currEmo.push(e);
+            div.textContent += " " + e;
+          }
+        });
       }
       frag.appendChild(div);
+      prevEmo = currEmo;
     });
     lyricsLines.appendChild(frag);
 
@@ -732,12 +797,24 @@
     if (kTapeCol) kTapeCol.innerHTML = "";
     var kFrag2 = document.createDocumentFragment();
     var seed = 42;
+    var kPrev = [], kCurr = [], kLastLine = -1;
     karaokeWordList.forEach(function(word, idx) {
+       if (word.lineIdx !== kLastLine) {
+         kPrev = kCurr;
+         kCurr = [];
+         kLastLine = word.lineIdx;
+       }
        var div = document.createElement("div");
        div.className = "k-tape-word";
-       var wText = word.text;
-       if (EMOJI_MAP[wText.toLowerCase()]) wText += " " + EMOJI_MAP[wText.toLowerCase()];
-       div.textContent = wText;
+       div.textContent = word.text;
+       var e = emojiFor(word.text);
+       if (e && kCurr.length < 2 && kCurr.indexOf(e) === -1 && kPrev.indexOf(e) === -1) {
+         kCurr.push(e);
+         var emo = document.createElement("span");
+         emo.className = "emo";
+         emo.textContent = e;
+         div.appendChild(emo);
+       }
        seed = (seed * 9301 + 49297) % 233280; var rand1 = seed / 233280;
        seed = (seed * 9301 + 49297) % 233280; var rand2 = seed / 233280;
        var rot = -3 + rand1 * 6;
@@ -816,7 +893,7 @@
     lyricsHint.onclick = null;
     var base = "/api/lyrics?artist=" + encodeURIComponent((artist || "").split(",")[0]) +
       "&title=" + encodeURIComponent(title) +
-      "&duration=" + Math.round((durationMs || 0) / 1000);
+      "&duration=" + Math.round((durationMs || 0) / 1000) + "&v=2";
       
     Promise.all([
       fetch(base + "&mode=line").then(function(r) { return r.ok ? r.json() : null; }),
@@ -977,16 +1054,14 @@
       var idx = findLyricIndex(lines, pos, lyrActiveIdx);
       if (idx !== lyrActiveIdx) {
         var kids = lyricsLines.children;
-        var scrollTarget = null;
-        if (idx >= 0 && kids[idx] && Date.now() - lyrUserScrollAt > 3000) {
-          var _el = kids[idx];
-          scrollTarget = _el.offsetTop + _el.offsetHeight / 2 - lyricsLines.clientHeight / 2;
-        }
         if (lyrActiveIdx >= 0 && kids[lyrActiveIdx]) kids[lyrActiveIdx].className = "lyr-line past";
         if (idx >= 0 && kids[idx]) {
           kids[idx].className = "lyr-line active";
-          if (scrollTarget !== null)
+          if (Date.now() - lyrUserScrollAt > 3000) {
+            var _el = kids[idx];
+            var scrollTarget = _el.offsetTop + _el.offsetHeight / 2 - lyricsLines.clientHeight / 2;
             lyricsLines.scrollTo({ top: Math.max(0, scrollTarget), behavior: "smooth" });
+          }
         }
         lyrActiveIdx = idx;
       }
@@ -1033,7 +1108,7 @@
     lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
     resetKIdle();
     spFastPollUntil = performance.now() + 5000;
-    if (karaokeMode) schedulePoll();
+    pollSpotify();
     if (!lyrRaf) lyrRaf = requestAnimationFrame(lyrLoop);
   }
   function closeLyrics() {

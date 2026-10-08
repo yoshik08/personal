@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   res.setHeader(
     "Cache-Control",
-    "s-maxage=86400, stale-while-revalidate=604800"
+    "s-maxage=3600, stale-while-revalidate=86400"
   );
 
   const TIMEOUT = 4000;
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
         const score = durMs > 0 ? Math.abs(sDur - durMs) : 0;
         if (score < bestScore) { bestScore = score; bestId = s.id; }
       }
-      if (!bestId || (durMs > 0 && bestScore > 15000)) return null;
+      if (!bestId || (durMs > 0 && bestScore > 3000)) return null;
 
       // fetch lyrics
       const lr = await fetch(
@@ -125,7 +125,9 @@ export default async function handler(req, res) {
       const arr = r.ok ? await r.json() : [];
       let best = null, bestScore = Infinity;
       (arr || []).forEach((x) => {
-        const score = Math.abs((x.duration || 0) - duration) + (x.syncedLyrics ? 0 : 1e9);
+        const diff = duration > 0 ? Math.abs((x.duration || 0) - duration) : 0;
+        if (duration > 0 && diff > 3) return;
+        const score = diff + (x.syncedLyrics ? 0 : 1e9);
         if (score < bestScore) { bestScore = score; best = x; }
       });
       if (best && best.syncedLyrics) {
@@ -148,52 +150,17 @@ export default async function handler(req, res) {
       if (netease && netease.wordSync) return res.json(netease);
       return res.json({ source: "none", wordSync: false, lines: [] });
     } else {
-      // mode=line: race — first usable synced lyrics wins
-      const result = await raceProviders([fetchLrcmux(), fetchNetease(), fetchLrclib()]);
-      if (result) {
-        if (result.rateLimited) return res.status(429).json({ error: "rate-limited" });
-        return res.json(result);
-      }
-      // all failed — try lrclib plain as final fallback
-      // (it may have already returned above, but if race resolved null, try once more)
+      const [lrcmux, netease, lrclib] = await Promise.all([fetchLrcmux(), fetchNetease(), fetchLrclib()]);
+      if (lrcmux && lrcmux.lines && lrcmux.lines.length) return res.json(lrcmux);
+      if (lrclib && lrclib.lines && lrclib.lines.length) return res.json(lrclib);
+      if (netease && netease.lines && netease.lines.length) return res.json(netease);
+      if (lrclib && lrclib.plain) return res.json(lrclib);
+      if (lrclib && lrclib.rateLimited) return res.status(429).json({ error: "rate-limited" });
       return res.json({ source: "none", lines: [] });
     }
   } catch {
     return res.status(502).json({ error: "lyrics upstream failed" });
   }
-}
-
-// Race: resolve as soon as any promise returns usable synced lines
-async function raceProviders(promises) {
-  return new Promise((resolve) => {
-    let settled = false;
-    let pending = promises.length;
-    let plainFallback = null;
-    promises.forEach((p) => {
-      p.then((result) => {
-        if (settled) return;
-        if (result && result.lines && result.lines.length) {
-          settled = true;
-          resolve(result);
-        } else if (result && result.plain) {
-          plainFallback = result;
-        } else if (result && result.rateLimited) {
-          // don't resolve with this, keep waiting
-        }
-        pending--;
-        if (pending === 0 && !settled) {
-          settled = true;
-          resolve(plainFallback || null);
-        }
-      }).catch(() => {
-        pending--;
-        if (pending === 0 && !settled) {
-          settled = true;
-          resolve(plainFallback || null);
-        }
-      });
-    });
-  });
 }
 
 // Parse NetEase YRC word-level format
@@ -260,6 +227,10 @@ function parseYRC(yrc) {
 
 function parseLRC(lrc) {
   const lines = [];
+  let offset = 0;
+  const offsetMatch = lrc.match(/\[offset:(-?\d+)\]/i);
+  if (offsetMatch) offset = parseInt(offsetMatch[1]) || 0;
+
   lrc.split("\n").forEach((raw) => {
     const times = [];
     const re = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
@@ -267,7 +238,9 @@ function parseLRC(lrc) {
     while ((m = re.exec(raw))) {
       const frac = m[3] || "0";
       const mult = frac.length === 3 ? 1 : frac.length === 2 ? 10 : 100;
-      times.push(+m[1] * 60000 + +m[2] * 1000 + +frac * mult);
+      let t = +m[1] * 60000 + +m[2] * 1000 + +frac * mult;
+      t -= offset;
+      times.push(t);
     }
     const text = raw.replace(/\[.*?\]/g, "").replace(/<[^>]*>/g, "").trim();
     if (!text || !times.length) return;
