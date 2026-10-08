@@ -529,10 +529,6 @@
       karaokeToggle = document.getElementById("karaokeToggle"),
       lyricsClassicView = document.getElementById("lyricsClassicView"),
       lyricsKaraokeView = document.getElementById("lyricsKaraokeView"),
-      karaokeArt = document.getElementById("karaokeArt"),
-      karaokeTitle = document.getElementById("karaokeTitle"),
-      karaokeArtist = document.getElementById("karaokeArtist"),
-      karaokeProg = document.getElementById("karaokeProg"),
       kwMain = document.getElementById("kwMain"),
       kwNext = document.getElementById("kwNext"),
       kwDots = document.getElementById("kwDots"),
@@ -797,30 +793,23 @@
 
   function setLyricsHeader() {
     lyricsTitle.textContent = spState.title || "";
-    karaokeTitle.textContent = spState.title || "";
     if (spState.trackUrl) {
       lyricsTitle.setAttribute("href", spState.trackUrl);
-      karaokeTitle.setAttribute("href", spState.trackUrl);
     } else {
       lyricsTitle.removeAttribute("href");
-      karaokeTitle.removeAttribute("href");
     }
     lyricsArtist.textContent = "";
-    karaokeArtist.textContent = "";
     (spState.artists || []).forEach(function (a, i) {
       if (i > 0) {
         lyricsArtist.appendChild(document.createTextNode(", "));
-        karaokeArtist.appendChild(document.createTextNode(", "));
       }
       var link = document.createElement("a");
       link.textContent = a.name;
       if (a.url) { link.href = a.url; link.target = "_blank"; link.rel = "noopener"; }
       lyricsArtist.appendChild(link);
-      karaokeArtist.appendChild(link.cloneNode(true));
     });
     if (spState.image) {
       lyricsArt.src = spState.image;
-      karaokeArt.src = spState.image;
       lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
       extractDominantColors(spState.image);
     }
@@ -831,7 +820,6 @@
     var pos = Math.min(lyrPos(), spState.durationMs);
     var p = (pos / spState.durationMs * 100) + "%";
     lyricsProg.style.width = p;
-    karaokeProg.style.width = p;
   }
 
   function setLyricsPadding() {
