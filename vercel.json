@@ -113,12 +113,6 @@
     },
     {
       "source": "/",
-      "missing": [
-        {
-          "type": "host",
-          "value": "play.yoshik.xyz"
-        }
-      ],
       "headers": [
         {
           "key": "Content-Security-Policy",
@@ -128,12 +122,6 @@
     },
     {
       "source": "/index.html",
-      "missing": [
-        {
-          "type": "host",
-          "value": "play.yoshik.xyz"
-        }
-      ],
       "headers": [
         {
           "key": "Content-Security-Policy",
