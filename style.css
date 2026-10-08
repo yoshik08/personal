@@ -459,7 +459,7 @@ html[data-motion="off"] .sync-btn.spinning svg { animation: none; }
   position: absolute; top: 0; left: 0; right: 0;
   display: flex; flex-direction: column; align-items: center;
   gap: 20px; padding: 50vh 20px;
-  transition: transform 220ms cubic-bezier(.22,1,.36,1);
+  transition: none;
   will-change: transform;
   -webkit-backface-visibility: hidden; backface-visibility: hidden;
 }
@@ -488,6 +488,11 @@ html[data-motion="off"] .sync-btn.spinning svg { animation: none; }
   clip-path: var(--clip, polygon(0 0, 100% 0, 100% 100%, 0 100%));
   animation: kTapePop 120ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
 }
+  .k-tape-word.k-rest {
+    opacity: 0.2;
+    filter: grayscale(1);
+    transform: rotate(0deg) scale(0.9);
+  }
 @keyframes kTapePop {
   0% { transform: rotate(var(--rot, 0deg)) scale(calc(var(--scale, 1) * 1)); }
   50% { transform: rotate(var(--rot, 0deg)) scale(calc(var(--scale, 1) * 1.08)); }

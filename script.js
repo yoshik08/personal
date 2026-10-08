@@ -444,13 +444,8 @@ function envelopeTarget(win, now) {
         var saved = localStorage.getItem("lyrLead:" + d.deviceId);
         var _p = saved ? parseInt(saved, 10) : NaN;
         lyrLeadMs = isNaN(_p) ? 400 : _p;
-      } catch (e) { lyrLeadMs = 400; }
-      var sl = document.getElementById("syncLabel");
-      if (sl) {
-        sl.textContent = (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
-        if (typeof nudgeTimer !== "undefined" && nudgeTimer) clearTimeout(nudgeTimer);
-        nudgeTimer = setTimeout(function() { sl.textContent = "Sync"; }, 2500);
-      }
+      } catch (e) {}
+      if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
     } else if (d && !d.deviceId) {
       spState.deviceId = null;
       spState.deviceType = null;
@@ -459,6 +454,19 @@ function envelopeTarget(win, now) {
     if (document.getElementById("lyricsOverlay") && document.getElementById("lyricsOverlay").classList.contains("open")) {
       setLyricsHeader();
       if (isNewTrack) {
+        kSnapNext = true;
+        try {
+          var saved = localStorage.getItem("kLead:" + key);
+          if (saved !== null) {
+            kLeadMs = parseInt(saved, 10);
+            kTrackHasCustomLead = true;
+          } else {
+            kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+            kTrackHasCustomLead = false;
+          }
+        } catch (e) {}
+        if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
+        
         lyrActiveIdx = -1;
         kActiveIdx = -1;
         lyrRenderedKey = null;
@@ -938,6 +946,7 @@ function envelopeTarget(win, now) {
     runEmojiWalker();
   }
   var lyrLeadMs = 400;
+  var kLeadMs = 150;
   try {
     var _v = localStorage.getItem("lyrLeadV");
     if (_v !== "2") {
@@ -947,6 +956,9 @@ function envelopeTarget(win, now) {
     }
     var _l2 = localStorage.getItem("lyrLeadMs");
     if (_l2 !== null) lyrLeadMs = parseInt(_l2, 10) || 0;
+    
+    var _k = localStorage.getItem("kLeadMs");
+    if (_k !== null) kLeadMs = parseInt(_k, 10) || 150;
   } catch (e) {}
   var karaokeMode = false;
   try { karaokeMode = localStorage.getItem("karaokeMode") === "true"; } catch(e) {}
@@ -956,6 +968,11 @@ function envelopeTarget(win, now) {
   var karaokeWordList = [];
   var kActiveIdx = -1;
   var kIdleTimer = null;
+  var kCamY = 0;
+  var kSnapNext = true;
+  var kLastFrameTime = 0;
+  var kLastLyrPos = 0;
+  var kTrackHasCustomLead = false;
 
   function resetKIdle() {
     if (kIdleTimer) clearTimeout(kIdleTimer);
@@ -972,13 +989,7 @@ function envelopeTarget(win, now) {
   window.addEventListener("click", resetKIdle);
   window.addEventListener("touchstart", resetKIdle);
   window.addEventListener("resize", function() {
-    if (karaokeMode && kActiveIdx >= 0 && karaokeWordList[kActiveIdx]) {
-       var word = karaokeWordList[kActiveIdx];
-       if (karaokeStage && kTapeCol) {
-         var offset = word.el.offsetTop + word.el.offsetHeight / 2 - karaokeStage.offsetHeight / 2;
-         kTapeCol.style.transform = "translateY(" + (-offset) + "px)";
-       }
-    }
+    kSnapNext = true;
   });
 
   function lyrPos() { return playbackClock.getProgressMs(); }
@@ -1054,6 +1065,7 @@ function envelopeTarget(win, now) {
     }
     karaokeMode = nextMode;
     try { localStorage.setItem("karaokeMode", karaokeMode); } catch(e) {}
+    kSnapNext = true;
     karaokeToggle.classList.toggle("active", karaokeMode);
     lyricsOverlay.classList.toggle("karaoke-mode", karaokeMode);
     resetKIdle();
@@ -1064,6 +1076,7 @@ function envelopeTarget(win, now) {
     } else {
       kActiveIdx = -1;
     }
+    if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
   }
   karaokeToggle.addEventListener("click", toggleKaraokeMode);
 
@@ -1093,18 +1106,76 @@ function envelopeTarget(win, now) {
   document.getElementById("syncMinus").addEventListener("click", function() { nudgeSync(-50); });
   
   var nudgeTimer = null;
-  function nudgeSync(delta) {
-    lyrLeadMs += delta;
-    if (lyrLeadMs > 2000) lyrLeadMs = 2000;
-    if (lyrLeadMs < -2000) lyrLeadMs = -2000;
-    try {
-      localStorage.setItem("lyrLeadMs", lyrLeadMs);
-      if (spState.deviceId) localStorage.setItem("lyrLead:" + spState.deviceId, lyrLeadMs);
-    } catch(e) {}
-    syncLabel.textContent = (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
+  function updateSyncLabel() {
+    var sl = document.getElementById("syncLabel");
+    if (!sl) return;
+    if (karaokeMode) {
+      sl.textContent = "K " + (kLeadMs >= 0 ? "+" : "") + kLeadMs + "ms";
+    } else {
+      sl.textContent = (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
+    }
     if (nudgeTimer) clearTimeout(nudgeTimer);
-    nudgeTimer = setTimeout(function() { syncLabel.textContent = "Sync"; }, 1200);
+    nudgeTimer = setTimeout(function() { sl.textContent = karaokeMode ? "K Sync" : "Sync"; }, 2500);
   }
+
+  function nudgeSync(delta) {
+    if (karaokeMode) {
+      kLeadMs += delta > 0 ? 25 : -25;
+      if (kLeadMs > 1000) kLeadMs = 1000;
+      if (kLeadMs < -1000) kLeadMs = -1000;
+      try {
+        localStorage.setItem("kLead:" + spState.key, kLeadMs);
+        if (!kTrackHasCustomLead) {
+          localStorage.setItem("kLeadMs", kLeadMs);
+        }
+        kTrackHasCustomLead = true;
+      } catch(e) {}
+    } else {
+      lyrLeadMs += delta;
+      if (lyrLeadMs > 2000) lyrLeadMs = 2000;
+      if (lyrLeadMs < -2000) lyrLeadMs = -2000;
+      try {
+        localStorage.setItem("lyrLeadMs", lyrLeadMs);
+        if (spState.deviceId) localStorage.setItem("lyrLead:" + spState.deviceId, lyrLeadMs);
+      } catch(e) {}
+    }
+    updateSyncLabel();
+  }
+  
+  var syncPressTimer = null;
+  syncBtn.addEventListener("mousedown", function() {
+    if (!karaokeMode) return;
+    syncPressTimer = setTimeout(function() {
+      syncPressTimer = null;
+      try {
+        localStorage.removeItem("kLead:" + spState.key);
+        kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+        kTrackHasCustomLead = false;
+        updateSyncLabel();
+      } catch(e) {}
+    }, 600);
+  });
+  syncBtn.addEventListener("mouseup", function() {
+    if (syncPressTimer) { clearTimeout(syncPressTimer); syncPressTimer = null; }
+  });
+  syncBtn.addEventListener("mouseleave", function() {
+    if (syncPressTimer) { clearTimeout(syncPressTimer); syncPressTimer = null; }
+  });
+  syncBtn.addEventListener("touchstart", function() {
+    if (!karaokeMode) return;
+    syncPressTimer = setTimeout(function() {
+      syncPressTimer = null;
+      try {
+        localStorage.removeItem("kLead:" + spState.key);
+        kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+        kTrackHasCustomLead = false;
+        updateSyncLabel();
+      } catch(e) {}
+    }, 600);
+  }, {passive: true});
+  syncBtn.addEventListener("touchend", function() {
+    if (syncPressTimer) { clearTimeout(syncPressTimer); syncPressTimer = null; }
+  });
 
   function renderSynced(lines, wordLines, durationMs) {
     lyricsHint.textContent = "";
@@ -1152,7 +1223,7 @@ function envelopeTarget(win, now) {
       var nextLnTime = kLines[i + 1] ? kLines[i + 1].time : (ln.time + 8000);
       words.forEach(function (w, j) {
         var wStart = ln.words[j];
-        var wEnd = (j + 1 < ln.words.length) ? ln.words[j + 1] : nextLnTime;
+        var wEnd = (ln.ends && ln.ends.length === ln.words.length) ? ln.ends[j] : ((j + 1 < ln.words.length) ? ln.words[j + 1] : nextLnTime);
         if (wEnd <= wStart) wEnd = wStart + 1;
         karaokeWordList.push({ start: wStart, end: wEnd, text: w, lineIdx: i });
       });
@@ -1272,7 +1343,7 @@ function envelopeTarget(win, now) {
     lyricsHint.onclick = null;
     var base = "/api/lyrics?artist=" + encodeURIComponent((artist || "").split(",")[0]) +
       "&title=" + encodeURIComponent(title) +
-      "&duration=" + Math.round((durationMs || 0) / 1000) + "&v=3";
+      "&duration=" + Math.round((durationMs || 0) / 1000) + "&v=4";
       
     Promise.all([
       fetch(base + "&mode=line").then(function(r) { return r.ok ? r.json() : null; }),
@@ -1382,6 +1453,11 @@ function envelopeTarget(win, now) {
 
   function lyrTick() {
     if (!lyricsOverlay.classList.contains("open")) return;
+    
+    var now = performance.now();
+    var dt = Math.max(0, Math.min(now - (kLastFrameTime || now), 100));
+    kLastFrameTime = now;
+    
     lyrProgress();
     var key = spState.key;
     if (!key) return;
@@ -1403,22 +1479,35 @@ function envelopeTarget(win, now) {
       return;
     }
 
-    var pos = lyrPos() + lyrLeadMs;
+    var pos = lyrPos() + (karaokeMode ? kLeadMs : lyrLeadMs);
     var entry = lyrStore.get(key);
 
+    if (Math.abs(lyrPos() - kLastLyrPos) > 1500) kSnapNext = true;
+    kLastLyrPos = lyrPos();
+
     if (karaokeMode && karaokeWordList.length > 0) {
+      if (entry && entry.calib && !entry._logged) {
+        console.info("[karaoke] provider=" + entry.calib.provider + " ref=" + entry.calib.ref + " offset=" + entry.calib.offsetMs + "ms mad=" + entry.calib.mad + " conf=" + entry.calib.confidence + " kLead=" + kLeadMs);
+        entry._logged = true;
+        var dbg = document.getElementById("kDebugLabel");
+        if (!dbg) {
+          dbg = document.createElement("div");
+          dbg.id = "kDebugLabel";
+          dbg.style.cssText = "position:fixed;bottom:10px;right:10px;font-size:10px;color:rgba(255,255,255,0.5);z-index:9999;display:none;pointer-events:none;";
+          document.body.appendChild(dbg);
+        }
+        dbg.textContent = "[karaoke] p=" + entry.calib.provider + " r=" + entry.calib.ref + " off=" + entry.calib.offsetMs + " mad=" + entry.calib.mad + " conf=" + entry.calib.confidence + " lead=" + kLeadMs;
+      }
+    
       var kidx = findKaraokeIndex(pos, kActiveIdx);
       if (kidx !== kActiveIdx) {
         if (kActiveIdx >= 0 && karaokeWordList[kActiveIdx] && karaokeWordList[kActiveIdx].el) {
-          karaokeWordList[kActiveIdx].el.classList.remove("active");
+          karaokeWordList[kActiveIdx].el.classList.remove("active", "k-rest");
         }
         kActiveIdx = kidx;
         if (kidx >= 0 && karaokeWordList[kidx] && karaokeWordList[kidx].el) {
           var word = karaokeWordList[kidx];
-          word.el.classList.add("active");
           if (karaokeStage && kTapeCol) {
-            var offset = word.el.offsetTop + word.el.offsetHeight / 2 - karaokeStage.offsetHeight / 2;
-            kTapeCol.style.transform = "translateY(" + (-offset) + "px)";
             var wW = word.el.scrollWidth;
             var maxW = window.innerWidth * 0.9;
             if (wW > maxW) {
@@ -1429,6 +1518,36 @@ function envelopeTarget(win, now) {
           }
         }
       }
+      
+      if (kidx >= 0 && karaokeWordList[kidx] && karaokeWordList[kidx].el) {
+         var cw = karaokeWordList[kidx];
+         var nw = karaokeWordList[kidx + 1];
+         var nStart = nw ? nw.start : Infinity;
+         var inGap = pos >= cw.end + 120 && (nStart - cw.end) > 400;
+         cw.el.classList.toggle("active", !inGap);
+         cw.el.classList.toggle("k-rest", inGap);
+      }
+      
+      if (karaokeStage && kTapeCol) {
+         var lookPos = pos + 60;
+         var lookIdx = findKaraokeIndex(lookPos, kActiveIdx);
+         if (lookIdx >= 0 && karaokeWordList[lookIdx] && karaokeWordList[lookIdx].el) {
+             var tgtWord = karaokeWordList[lookIdx];
+             var targetY = tgtWord.el.offsetTop + tgtWord.el.offsetHeight / 2 - karaokeStage.offsetHeight / 2;
+             
+             if (Math.abs(targetY - kCamY) > 1.5 * karaokeStage.offsetHeight) kSnapNext = true;
+             if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) kSnapNext = true;
+             
+             if (kSnapNext) {
+               kCamY = targetY;
+               kSnapNext = false;
+             } else {
+               kCamY += (targetY - kCamY) * (1 - Math.exp(-dt / 45));
+             }
+             kTapeCol.style.transform = "translate3d(0, " + (-kCamY) + "px, 0)";
+         }
+      }
+
     } else if (karaokeMode && karaokeWordList.length === 0) {
       toggleKaraokeMode(false);
     } else if (!karaokeMode && entry.lines) {
@@ -1538,6 +1657,10 @@ function envelopeTarget(win, now) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if ((e.key === "k" || e.key === "K") && lyricsOverlay.classList.contains("open")) toggleKaraokeMode();
     if ((e.key === "s" || e.key === "S") && lyricsOverlay.classList.contains("open")) doSync();
+    if ((e.key === "d" || e.key === "D") && lyricsOverlay.classList.contains("open")) {
+       var dbg = document.getElementById("kDebugLabel");
+       if (dbg) dbg.style.display = dbg.style.display === "none" ? "block" : "none";
+    }
   });
   lyricsLines.addEventListener("wheel", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
   lyricsLines.addEventListener("touchmove", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
