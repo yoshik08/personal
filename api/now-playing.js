@@ -52,16 +52,24 @@ export default async function handler(req, res) {
     });
 
     const spSend = performance.now();
-    const now = await fetch(
+    let now = await fetch(
       "https://api.spotify.com/v1/me/player",
       { headers: auth }
     );
-    const spRecv = performance.now();
+    let spRecv = performance.now();
     
+    if (now.status === 401 || now.status === 403) {
+      now = await fetch(
+        "https://api.spotify.com/v1/me/player/currently-playing",
+        { headers: auth }
+      );
+      spRecv = performance.now();
+    }
+
     if (now.status === 429) {
       return res.status(200).json({ rateLimited: true, retryAfter: +now.headers.get("retry-after") || 10 });
     }
-    if (now.status === 401) {
+    if (now.status === 401 || now.status === 403) {
       cachedToken = null;
       return res.status(200).json({});
     }
