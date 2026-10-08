@@ -703,7 +703,38 @@ function envelopeTarget(win, now) {
   lunatic:"🤪",lowkey:"🤫",highkey:"📢",lmao:"😂",nocap:"🚫🧢",fr:"💯",real:"💯",sus:"🤨",
   thick:"🍑",booty:"🍑",shorty:"💃",ex:"💔",ghosted:"👻",pop:"💥",popping:"💥",poppin:"💥",
   lean:"🥤",drank:"🥤",turn:"🔄",ig:"📸",gram:"📸",pull:"🧲",slide:"🛝",glock:"🔫",
-  trigger:"🔫",damn:"😳",woah:"😮",whoa:"😮",oops:"🙊"
+  trigger:"🔫",damn:"😳",woah:"😮",whoa:"😮",oops:"🙊",
+  // --- taste-based additions (mined from library lyrics) ---
+  // money / luxury / brands
+  thousand:"💵",mil:"🤑",miles:"🛣️",hunnid:"💯",commas:"💰",dough:"💰",bill:"💵",card:"💳",buy:"🛒",count:"🧮",
+  pocket:"👖",tiffany:"💎",birkin:"👜",mink:"🧥",nike:"👟",vip:"🥂",plug:"🔌",
+  // cars / rides
+  rari:"🏎️",corvette:"🏎️",wraith:"🚘",phantom:"👻",rover:"🚙",backseat:"🚘",seat:"💺",ridin:"🚗",riding:"🚗",driving:"🚗",
+  metro:"🚇",
+  // drugs / drinks / smoke
+  drug:"💊",molly:"💊",ecstasy:"💊",percocet:"💊",needle:"💉",codeine:"🥤",wock:"🥤",syrup:"🥤",pint:"🥤",sippin:"🥤",
+  sipping:"🥤",pour:"🫗",henny:"🥃",hennessy:"🥃",weed:"🌿",kush:"🍃",blunt:"🍃",hotbox:"💨",smoking:"💨",cigarette:"🚬",
+  cocaine:"❄️",wasted:"🥴",faded:"🥴",geeked:"🤪",trippin:"🤪",tripping:"🤪",
+  // guns / street
+  pistol:"🔫",strapped:"🔫",uzi:"🔫",chopper:"🚁",choppa:"🚁",draco:"🐉",knife:"🔪",kill:"🔪",block:"🧱",stop:"🛑",
+  // body / flirt
+  ass:"🍑",dick:"🍆",sex:"🔞",naked:"🫣",bite:"🫦",lick:"👅",taste:"👅",nose:"👃",knees:"🧎",arms:"💪",breath:"😮💨",
+  sweat:"💦",freak:"😜",freaky:"😜",
+  // love / feels
+  ring:"💍",ringing:"📞",girlfriend:"💞",boyfriend:"💞",true:"💯",mind:"🧠",lost:"🧭",hide:"🙈",scream:"😱",lame:"🥱",
+  drama:"🎭",lying:"🤥",loving:"❤️",save:"🛟",free:"🕊️",
+  // places / home
+  crib:"🏠",hotel:"🏨",motel:"🏩",bedroom:"🛏️",sheets:"🛏️",booth:"🎙️",paradise:"🏝️",
+  // party / music / play
+  dancing:"💃",shake:"🫨",rock:"🤘",rockstar:"🤘",play:"🎮",game:"🎮",ball:"🏀",swimming:"🏊",running:"🏃",top:"🔝",
+  crash:"💥",mustard:"🌭",
+  // light / vibes / fun
+  light:"💡",shining:"✨",woke:"⏰",chick:"🐥",
+  // romanized hindi / punjabi
+  dil:"❤️",yaar:"🤝",pyaar:"💕",pyar:"💕",jaan:"💖",raat:"🌙",taare:"✨",badal:"☁️",duniya:"🌍",aankhon:"👀",saath:"🫂",
+  // spanish (normalizer only trims edge accents: bebé -> beb; inner accents stay: corazón)
+  mami:"💃",noche:"🌙",amor:"❤️",fiesta:"🎉",baila:"💃",bailando:"💃",loco:"🤪",loca:"🤪",beb:"👶",bebe:"👶",
+  fuego:"🔥",dinero:"💸",corazon:"❤️","corazón":"❤️"
 };
   var EMOJI_STOP = {"a":1,"the":1,"i":1,"me":1,"it":1,"oh":1,"la":1,"na":1};
   function emojiFor(word) {
