@@ -393,6 +393,33 @@
     });
     if (list.length > 2) spHeroArtists.appendChild(document.createTextNode(", …"));
   }
+
+  var itunesArtCache = new Map();
+  function upgradeArtwork(title, artist, trackId, fallback, callback) {
+    var key = trackId || (title + " :: " + artist);
+    if (itunesArtCache.has(key)) return callback(itunesArtCache.get(key));
+    var term = encodeURIComponent(title + " " + artist.split(",")[0]);
+    fetch("https://itunes.apple.com/search?term=" + term + "&entity=song&limit=1")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var highRes = fallback;
+        if (data.results && data.results.length > 0) {
+          var res = data.results[0];
+          var a1 = res.artistName.toLowerCase();
+          var a2 = artist.split(",")[0].toLowerCase().trim();
+          if (a1.indexOf(a2) !== -1 || a2.indexOf(a1) !== -1) {
+            highRes = res.artworkUrl100.replace("100x100bb", "1500x1500bb");
+          }
+        }
+        itunesArtCache.set(key, highRes);
+        callback(highRes);
+      })
+      .catch(function() {
+        itunesArtCache.set(key, fallback);
+        callback(fallback);
+      });
+  }
+
   function renderSpotify(d) {
     var title = d && d.title ? d.title : null;
     var artist = d && d.artist ? d.artist : "";
@@ -424,6 +451,8 @@
     if (audioBars) audioBars.classList.toggle("paused", !live);
     if (d.image) { spArt.style.backgroundImage = "url(" + d.image + ")"; spArt.textContent = ""; }
     lyricsBtn.style.display = "";
+    
+    var key = d.trackId || (title + " :: " + artist);
     spState.title = title;
     spState.artist = artist;
     spState.artists = d.artists || [];
@@ -432,6 +461,18 @@
     spState.playing = live;
     spState.progressMs = d.progressMs;
     spState.durationMs = d.durationMs;
+
+    if (d.image) {
+      upgradeArtwork(title, artist, key, d.image, function(bestImg) {
+        if (spState.key === key) {
+          spState.image = bestImg;
+          spArt.style.backgroundImage = "url(" + bestImg + ")";
+          if (document.getElementById("lyricsOverlay").classList.contains("open")) {
+            setLyricsHeader();
+          }
+        }
+      });
+    }
     /* reconcile the local clock with the fresh server anchor (track change
        and resume hard-reset; pause freezes; otherwise drift is absorbed) */
     (function () {
@@ -476,7 +517,7 @@
     if (!document.hidden) pollSpotify(); /* refresh the second you're back */
   });
 
-  /* ---------- 11b. synced lyrics overlay (verci-style) ---------- */
+  /* ---------- 11b. synced lyrics overlay (verci-style) + karaoke ---------- */
   var lyricsOverlay = document.getElementById("lyricsOverlay"),
       lyricsBg = document.getElementById("lyricsBg"),
       lyricsLines = document.getElementById("lyricsLines"),
@@ -484,29 +525,139 @@
       lyricsTitle = document.getElementById("lyricsTitle"),
       lyricsArtist = document.getElementById("lyricsArtist"),
       lyricsArt = document.getElementById("lyricsArt"),
-      lyricsProg = document.getElementById("lyricsProg");
-  /* L1 lyric cache: track key -> { lines } | { plain } | { empty }.
-     L2 is the 24h edge cache on /api/lyrics, so each track hits the
-     network at most once per day per browser. */
+      lyricsProg = document.getElementById("lyricsProg"),
+      karaokeToggle = document.getElementById("karaokeToggle"),
+      lyricsClassicView = document.getElementById("lyricsClassicView"),
+      lyricsKaraokeView = document.getElementById("lyricsKaraokeView"),
+      karaokeArt = document.getElementById("karaokeArt"),
+      karaokeTitle = document.getElementById("karaokeTitle"),
+      karaokeArtist = document.getElementById("karaokeArtist"),
+      karaokeProg = document.getElementById("karaokeProg"),
+      kwMain = document.getElementById("kwMain"),
+      kwNext = document.getElementById("kwNext"),
+      kwDots = document.getElementById("kwDots"),
+      karaokeStage = document.getElementById("karaokeStage");
+
+  var EMOJI_MAP = { "look": "👀", "cars": "🚘", "girl": "💅", "yeah": "🔥", "love": "❤️", "money": "💸", "time": "⏳", "god": "🙏", "plan": "📝", "bad": "😈", "good": "😇", "night": "🌙" };
+  var OFFSET_MS = 0;
+  var karaokeMode = false;
+  try { karaokeMode = localStorage.getItem("karaokeMode") === "true"; } catch(e) {}
   var lyrStore = new Map();
-  var lyrInflight = {}; /* key -> true while a fetch is in flight */
+  var lyrInflight = {};
   var lyrRaf = 0, lyrActiveIdx = -1, lyrUserScrollAt = 0, lyrRenderedKey = null;
+  var karaokeWordList = [];
+  var kActiveIdx = -1;
+  var kIdleTimer = null;
+
+  function resetKIdle() {
+    if (kIdleTimer) clearTimeout(kIdleTimer);
+    lyricsOverlay.classList.remove("idle");
+    if (karaokeMode) {
+      kIdleTimer = setTimeout(function() {
+        lyricsOverlay.classList.add("idle");
+      }, 3000);
+    }
+  }
+  lyricsOverlay.addEventListener("mousemove", resetKIdle);
+  lyricsOverlay.addEventListener("click", resetKIdle);
+
   function lyrPos() { return playbackClock.getProgressMs(); }
   function lyrPut(key, val) {
     lyrStore.set(key, val);
     if (lyrStore.size > 24) lyrStore.delete(lyrStore.keys().next().value);
   }
-  function renderSynced(lines, durationMs) {
+
+  function seededRandom(seed) {
+    var x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var h, s, l = (max + min) / 2;
+    if (max == min) { h = s = 0; }
+    else {
+      var d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+  }
+
+  function extractDominantColors(imgSrc) {
+    var img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = function() {
+      var cvs = document.createElement("canvas");
+      var ctx = cvs.getContext("2d", { willReadFrequently: true });
+      cvs.width = 16; cvs.height = 16;
+      ctx.drawImage(img, 0, 0, 16, 16);
+      var data = ctx.getImageData(0, 0, 16, 16).data;
+      var r=0, g=0, b=0, count=0;
+      for(var i=0; i<data.length; i+=4) {
+        if(data[i+3] < 100) continue;
+        r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+      }
+      if(count > 0) {
+        r = Math.floor(r/count); g = Math.floor(g/count); b = Math.floor(b/count);
+        var hsl = rgbToHsl(r,g,b);
+        var c1 = "hsla(" + hsl[0] + ", " + Math.min(hsl[1]*1.2, 100) + "%, " + Math.max(hsl[2]*0.8, 15) + "%, 0.8)";
+        var c2 = "hsla(" + ((hsl[0]+30)%360) + ", " + Math.min(hsl[1]*1.2, 100) + "%, " + Math.max(hsl[2]*0.5, 10) + "%, 0.9)";
+        lyricsBg.style.setProperty("--lyr-bg-gradient", "linear-gradient(135deg, " + c1 + ", " + c2 + ", #000)");
+        var c3 = "hsla(" + hsl[0] + ", " + Math.min(hsl[1]*1.2, 100) + "%, 65%, 0.4)";
+        lyricsOverlay.style.setProperty("--k-accent", c3);
+      }
+    };
+    img.src = imgSrc;
+  }
+
+  function updateKaraokeToggle(hasWords) {
+    if (!hasWords) {
+      karaokeToggle.classList.add("disabled");
+      if (karaokeMode) toggleKaraokeMode(false);
+    } else {
+      karaokeToggle.classList.remove("disabled");
+      if (karaokeMode) toggleKaraokeMode(true);
+    }
+  }
+
+  function toggleKaraokeMode(force) {
+    if (karaokeToggle.classList.contains("disabled") && force !== false) return;
+    karaokeMode = typeof force === "boolean" ? force : !karaokeMode;
+    try { localStorage.setItem("karaokeMode", karaokeMode); } catch(e) {}
+    karaokeToggle.classList.toggle("active", karaokeMode);
+    resetKIdle();
+    lyricsClassicView.style.display = karaokeMode ? "none" : "";
+    lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
+    if (karaokeMode && lyricsKaraokeView.style.display !== "none") {
+      setLyricsPadding();
+    }
+  }
+  karaokeToggle.addEventListener("click", toggleKaraokeMode);
+
+  function renderSynced(lines, wordLines, durationMs) {
     lyricsHint.textContent = "";
     lyricsLines.innerHTML = "";
+    kwMain.textContent = ""; kwNext.textContent = "";
+    karaokeWordList = [];
     var frag = document.createDocumentFragment();
+    var anyHasWords = false;
+
+    // Classic view uses 'lines'
     lines.forEach(function (ln, i) {
       var words = ln.text.split(/\s+/).filter(Boolean);
-      /* real word timing only — line-level data gets no faked word motion */
       var hasWords = !!(ln.words && ln.words.length === words.length);
       ln.hasWords = hasWords;
+      
       var div = document.createElement("div");
       div.className = "lyr-line";
+
       if (hasWords) {
         words.forEach(function (w, j) {
           var ws = document.createElement("span");
@@ -526,11 +677,33 @@
       frag.appendChild(div);
     });
     lyricsLines.appendChild(frag);
+
+    // Karaoke view uses 'wordLines' (or lines if it has words as fallback)
+    var kLines = (wordLines && wordLines.length > 0) ? wordLines : lines;
+    kLines.forEach(function (ln, i) {
+      var words = ln.text.split(/\s+/).filter(Boolean);
+      var hasWords = !!(ln.words && ln.words.length === words.length);
+      if (!hasWords) return; // skip lines without word timings
+      anyHasWords = true;
+      var nextLnTime = kLines[i + 1] ? kLines[i + 1].time : (ln.time + 8000);
+      words.forEach(function (w, j) {
+        var wStart = ln.words[j];
+        var wEnd = (j + 1 < ln.words.length) ? ln.words[j + 1] : nextLnTime;
+        if (wEnd <= wStart) wEnd = wStart + 1;
+        karaokeWordList.push({ start: wStart, end: wEnd, text: w, lineIdx: i });
+      });
+    });
+
+    updateKaraokeToggle(anyHasWords);
     setLyricsPadding();
   }
+
   function renderPlain(plain) {
     lyricsHint.textContent = "unsynced lyrics";
     lyricsLines.innerHTML = "";
+    kwMain.textContent = ""; kwNext.textContent = "";
+    karaokeWordList = [];
+    updateKaraokeToggle(false);
     var frag = document.createDocumentFragment();
     plain.split("\n").forEach(function (t) {
       t = t.trim();
@@ -543,19 +716,24 @@
     lyricsLines.appendChild(frag);
     setLyricsPadding();
   }
+
   function renderNoLyrics() {
     lyricsLines.innerHTML = "";
+    kwMain.textContent = ""; kwNext.textContent = "";
+    karaokeWordList = [];
+    updateKaraokeToggle(false);
     lyricsHint.textContent = "no lyrics found for this one";
   }
-  /* render whatever the cache holds for key (called when entry is fresh) */
+
   function renderLyrEntry(key, durationMs) {
     var entry = lyrStore.get(key);
     if (!entry) return;
-    lyrActiveIdx = -1;
-    if (entry.lines) renderSynced(entry.lines, durationMs);
+    lyrActiveIdx = -1; kActiveIdx = -1;
+    if (entry.lines) renderSynced(entry.lines, entry.wordLines, durationMs);
     else if (entry.plain) renderPlain(entry.plain);
     else renderNoLyrics();
   }
+
   var lyrLastQuery = null;
   function fetchLyrics(title, artist, durationMs, force) {
     var key = spState.key;
@@ -563,86 +741,133 @@
     if (!force && (lyrStore.has(key) || lyrInflight[key])) return;
     lyrInflight[key] = true;
     lyrLastQuery = { title: title, artist: artist, durationMs: durationMs, retried: false };
-    lyrActiveIdx = -1; lyrRenderedKey = null;
-    lyricsLines.innerHTML = "";
+    lyrActiveIdx = -1; kActiveIdx = -1; lyrRenderedKey = null;
+    lyricsLines.innerHTML = ""; kwMain.textContent = ""; kwNext.textContent = "";
     lyricsHint.textContent = "finding lyrics…";
     lyricsHint.style.cursor = "";
     lyricsHint.onclick = null;
-    var url = "/api/lyrics?artist=" + encodeURIComponent((artist || "").split(",")[0]) +
+    var base = "/api/lyrics?artist=" + encodeURIComponent((artist || "").split(",")[0]) +
       "&title=" + encodeURIComponent(title) +
       "&duration=" + Math.round((durationMs || 0) / 1000);
-    fetch(url)
-      .then(function (r) {
-        if (r.status === 429) { var e = new Error("rate-limited"); e.rate = true; throw e; }
-        if (!r.ok) throw new Error("bad response");
-        return r.json();
-      })
-      .then(function (data) {
-        delete lyrInflight[key];
-        /* always cache the result, even if the user moved on mid-fetch */
-        if (data && data.lines && data.lines.length) lyrPut(key, { lines: data.lines });
-        else if (data && data.plain) lyrPut(key, { plain: data.plain });
-        else lyrPut(key, { empty: true });
-        if (spState.key === key && lyricsOverlay.classList.contains("open"))
-          renderLyrEntry(key, durationMs);
-      })
-      .catch(function (err) {
-        delete lyrInflight[key];
-        var lq = lyrLastQuery;
-        if (!err.rate && lq && !lq.retried && lyricsOverlay.classList.contains("open")) {
-          /* transient blip — one automatic retry */
-          lq.retried = true;
-          lyricsHint.textContent = "retrying…";
-          setTimeout(function () {
-            if (lyricsOverlay.classList.contains("open") && spState.key === key && !lyrStore.has(key))
-              fetchLyrics(title, artist, durationMs, true);
-          }, 2500);
-          return;
-        }
-        lyricsLines.innerHTML = "";
-        lyricsHint.textContent = err.rate ? "too many requests — tap to retry" : "couldn't load lyrics — tap to retry";
-        lyricsHint.style.cursor = "pointer";
-        lyricsHint.onclick = function () {
-          lyricsHint.style.cursor = "";
-          lyricsHint.onclick = null;
-          fetchLyrics(title, artist, durationMs, true);
-        };
-      });
+      
+    Promise.all([
+      fetch(base + "&mode=line").then(function(r) { return r.ok ? r.json() : null; }),
+      fetch(base + "&mode=word").then(function(r) { return r.ok ? r.json() : null; })
+    ]).then(function(results) {
+      delete lyrInflight[key];
+      var dLine = results[0], dWord = results[1];
+      if (dLine && dLine.error && dLine.error === "rate-limited") { var e = new Error("rate-limited"); e.rate = true; throw e; }
+      
+      var entry = { empty: true };
+      if (dLine && dLine.lines && dLine.lines.length) {
+        entry.lines = dLine.lines;
+      } else if (dLine && dLine.plain) {
+        entry.plain = dLine.plain;
+      }
+      
+      if (dWord && dWord.lines && dWord.lines.length && dWord.wordSync) {
+        entry.wordLines = dWord.lines;
+      }
+      
+      lyrPut(key, entry);
+      if (spState.key === key && lyricsOverlay.classList.contains("open"))
+        renderLyrEntry(key, durationMs);
+    }).catch(function (err) {
+      delete lyrInflight[key];
+      var lq = lyrLastQuery;
+      if (!err.rate && lq && !lq.retried && lyricsOverlay.classList.contains("open")) {
+        lq.retried = true;
+        lyricsHint.textContent = "retrying…";
+        setTimeout(function () {
+          if (lyricsOverlay.classList.contains("open") && spState.key === key && !lyrStore.has(key))
+            fetchLyrics(title, artist, durationMs, true);
+        }, 2500);
+        return;
+      }
+      lyricsLines.innerHTML = ""; kwMain.textContent = "";
+      lyricsHint.textContent = err.rate ? "too many requests — tap to retry" : "couldn't load lyrics — tap to retry";
+      lyricsHint.style.cursor = "pointer";
+      lyricsHint.onclick = function () {
+        lyricsHint.style.cursor = "";
+        lyricsHint.onclick = null;
+        fetchLyrics(title, artist, durationMs, true);
+      };
+    });
   }
+
   function setLyricsHeader() {
     lyricsTitle.textContent = spState.title || "";
-    if (spState.trackUrl) lyricsTitle.setAttribute("href", spState.trackUrl);
-    else lyricsTitle.removeAttribute("href");
+    karaokeTitle.textContent = spState.title || "";
+    if (spState.trackUrl) {
+      lyricsTitle.setAttribute("href", spState.trackUrl);
+      karaokeTitle.setAttribute("href", spState.trackUrl);
+    } else {
+      lyricsTitle.removeAttribute("href");
+      karaokeTitle.removeAttribute("href");
+    }
     lyricsArtist.textContent = "";
+    karaokeArtist.textContent = "";
     (spState.artists || []).forEach(function (a, i) {
-      if (i > 0) lyricsArtist.appendChild(document.createTextNode(", "));
+      if (i > 0) {
+        lyricsArtist.appendChild(document.createTextNode(", "));
+        karaokeArtist.appendChild(document.createTextNode(", "));
+      }
       var link = document.createElement("a");
       link.textContent = a.name;
       if (a.url) { link.href = a.url; link.target = "_blank"; link.rel = "noopener"; }
       lyricsArtist.appendChild(link);
+      karaokeArtist.appendChild(link.cloneNode(true));
     });
     if (spState.image) {
       lyricsArt.src = spState.image;
+      karaokeArt.src = spState.image;
       lyricsBg.style.backgroundImage = "url(" + spState.image + ")";
+      extractDominantColors(spState.image);
     }
   }
+
   function lyrProgress() {
     if (!spState.durationMs) return;
     var pos = Math.min(lyrPos(), spState.durationMs);
-    lyricsProg.style.width = (pos / spState.durationMs * 100) + "%";
+    var p = (pos / spState.durationMs * 100) + "%";
+    lyricsProg.style.width = p;
+    karaokeProg.style.width = p;
   }
-  /* pad the lyric list so the first/last lines rest at the exact middle */
+
   function setLyricsPadding() {
     var h = lyricsLines.clientHeight / 2;
     lyricsLines.style.paddingTop = h + "px";
     lyricsLines.style.paddingBottom = h + "px";
+
+    if (karaokeWords && karaokeWords.parentNode) {
+      var kh = karaokeWords.parentNode.clientHeight / 2;
+      karaokeWords.style.paddingTop = kh + "px";
+      karaokeWords.style.paddingBottom = kh + "px";
+    }
   }
+
+  function findKaraokeIndex(pos, hint) {
+    var n = karaokeWordList.length;
+    if (!n) return -1;
+    var i = hint < 0 ? 0 : hint >= n ? n - 1 : hint;
+    if (pos >= karaokeWordList[i].start) {
+      while (i + 1 < n && karaokeWordList[i + 1].start <= pos) i++;
+      return i;
+    }
+    var lo = 0, hi = n - 1, ans = -1;
+    while (lo <= hi) {
+      var mid = (lo + hi) >> 1;
+      if (karaokeWordList[mid].start <= pos) { ans = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    return ans;
+  }
+
   function lyrTick() {
     if (!lyricsOverlay.classList.contains("open")) return;
     lyrProgress();
     var key = spState.key;
     if (!key) return;
-    /* track changed while open — fetch (or pull from cache) for the new track */
     if (!lyrStore.has(key)) {
       if (!lyrInflight[key]) {
         setLyricsHeader();
@@ -650,62 +875,108 @@
       }
       return;
     }
-    /* render once per track; the rAF loop only moves the highlight after that */
     if (lyrRenderedKey !== key) {
       setLyricsHeader();
       renderLyrEntry(key, spState.durationMs);
       lyrRenderedKey = key;
+      karaokeToggle.classList.toggle("active", karaokeMode);
+      lyricsClassicView.style.display = karaokeMode ? "none" : "";
+      lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
       return;
     }
+
+    var pos = lyrPos() + OFFSET_MS;
     var entry = lyrStore.get(key);
-    if (!entry.lines) return; /* plain/unsynced: nothing to advance */
-    var lines = entry.lines;
-    var pos = lyrPos();
-    var idx = findLyricIndex(lines, pos, lyrActiveIdx);
-    if (idx !== lyrActiveIdx) {
-      var kids = lyricsLines.children, i;
-      /* read layout BEFORE mutating classes — avoids a forced reflow */
-      var scrollTarget = null;
-      if (idx >= 0 && kids[idx] && Date.now() - lyrUserScrollAt > 3000) {
-        var _el = kids[idx];
-        scrollTarget = _el.offsetTop + _el.offsetHeight / 2 - lyricsLines.clientHeight / 2;
+
+    if (karaokeMode && karaokeWordList.length > 0) {
+      var kidx = findKaraokeIndex(pos, kActiveIdx);
+      if (kidx !== kActiveIdx) {
+        if (kidx >= 0 && karaokeWordList[kidx]) {
+          var word = karaokeWordList[kidx];
+          
+          // Glitch / pulse effect
+          lyricsOverlay.classList.remove("pulse", "glitch");
+          void lyricsOverlay.offsetWidth; // trigger reflow
+          lyricsOverlay.classList.add("pulse", "glitch");
+          setTimeout(function() { lyricsOverlay.classList.remove("glitch"); }, 120);
+          
+          // Set text and handle shrink
+          kwMain.textContent = word.text;
+          kwMain.style.animation = "none";
+          kwMain.style.transform = "";
+          void kwMain.offsetWidth; // trigger reflow to restart animation
+          kwMain.style.animation = "";
+          var mainW = kwMain.offsetWidth;
+          var maxW = window.innerWidth * 0.9;
+          if (mainW > maxW) {
+            kwMain.style.transform = "scale(" + (maxW / mainW) + ")";
+          }
+          
+          // Next word stacking
+          var nextWord = karaokeWordList[kidx + 1];
+          if (nextWord && nextWord.lineIdx === word.lineIdx && (nextWord.start - word.end) <= 250) {
+            kwNext.textContent = nextWord.text;
+          } else {
+            kwNext.textContent = "";
+          }
+          
+          // Dots for gap > 4s
+          if (nextWord && (nextWord.start - word.end) > 4000) {
+            setTimeout(function() {
+              if (kActiveIdx === kidx && karaokeMode) kwDots.classList.add("show");
+            }, 1000); // show dots 1s after word ends
+          } else {
+            kwDots.classList.remove("show");
+          }
+        } else {
+          kwMain.textContent = "";
+          kwNext.textContent = "";
+          kwDots.classList.remove("show");
+        }
+        kActiveIdx = kidx;
       }
-      if (lyrActiveIdx >= 0 && kids[lyrActiveIdx]) kids[lyrActiveIdx].className = "lyr-line past";
-      if (idx >= 0 && kids[idx]) {
-        kids[idx].className = "lyr-line active";
-        if (scrollTarget !== null)
-          lyricsLines.scrollTo({ top: Math.max(0, scrollTarget), behavior: "smooth" });
+    } else if (!karaokeMode && entry.lines) {
+      var lines = entry.lines;
+      var idx = findLyricIndex(lines, pos, lyrActiveIdx);
+      if (idx !== lyrActiveIdx) {
+        var kids = lyricsLines.children;
+        var scrollTarget = null;
+        if (idx >= 0 && kids[idx] && Date.now() - lyrUserScrollAt > 3000) {
+          var _el = kids[idx];
+          scrollTarget = _el.offsetTop + _el.offsetHeight / 2 - lyricsLines.clientHeight / 2;
+        }
+        if (lyrActiveIdx >= 0 && kids[lyrActiveIdx]) kids[lyrActiveIdx].className = "lyr-line past";
+        if (idx >= 0 && kids[idx]) {
+          kids[idx].className = "lyr-line active";
+          if (scrollTarget !== null)
+            lyricsLines.scrollTo({ top: Math.max(0, scrollTarget), behavior: "smooth" });
+        }
+        lyrActiveIdx = idx;
       }
-      lyrActiveIdx = idx;
-    }
-    /* apple-style letter fade — only for lines with real word timing.
-       line-level data gets the line highlight only, no faked motion. */
-    if (idx >= 0 && lyricsLines.children[idx]) {
-      var line = lines[idx];
-      if (line.hasWords) {
-        var wordEls = lyricsLines.children[idx].querySelectorAll(".w");
-        var wt = line.words || [];
-        var _nl = lines[idx + 1];
-        var _lineEnd = _nl ? _nl.time : (line.time + 8000);
-        for (var j = 0; j < wordEls.length; j++) {
-          var wStart = wt[j] || 0;
-          var wEnd = j + 1 < wt.length ? wt[j + 1] : _lineEnd;
-          if (!(wEnd > wStart)) wEnd = wStart + 1;
-          var chEls = wordEls[j].querySelectorAll(".ch");
-          var _n = chEls.length;
-          for (var k = 0; k < _n; k++) {
-            /* each letter owns an equal slice of its word's window */
-            var _on = pos >= wStart + (wEnd - wStart) * (k / _n);
-            var _el = chEls[k];
-            if (_el.classList.contains("lit") !== _on) _el.classList.toggle("lit", _on);
+      if (idx >= 0 && lyricsLines.children[idx]) {
+        var line = lines[idx];
+        if (line.hasWords) {
+          var wordEls = lyricsLines.children[idx].querySelectorAll(".w");
+          var wt = line.words || [];
+          var _nl = lines[idx + 1];
+          var _lineEnd = _nl ? _nl.time : (line.time + 8000);
+          for (var j = 0; j < wordEls.length; j++) {
+            var wStart = wt[j] || 0;
+            var wEnd = j + 1 < wt.length ? wt[j + 1] : _lineEnd;
+            if (!(wEnd > wStart)) wEnd = wStart + 1;
+            var chEls = wordEls[j].querySelectorAll(".ch");
+            var _n = chEls.length;
+            for (var k = 0; k < _n; k++) {
+              var _on = pos >= wStart + (wEnd - wStart) * (k / _n);
+              var _el = chEls[k];
+              if (_el.classList.contains("lit") !== _on) _el.classList.toggle("lit", _on);
+            }
           }
         }
       }
     }
   }
-  /* rAF loop: pure local sync, zero network. the browser suspends rAF in
-     background tabs, so nothing burns while hidden; the 5s poll re-anchors
-     on return via visibilitychange. */
+
   function lyrLoop() {
     lyrRaf = 0;
     if (!lyricsOverlay.classList.contains("open")) return;
@@ -718,7 +989,7 @@
     lyricsOverlay.classList.add("open");
     lyricsOverlay.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
-    lyrRenderedKey = null; /* force (re)render of the current track on next frame */
+    lyrRenderedKey = null;
     if (!lyrRaf) lyrRaf = requestAnimationFrame(lyrLoop);
   }
   function closeLyrics() {
@@ -731,11 +1002,14 @@
   document.getElementById("lyricsClose").addEventListener("click", closeLyrics);
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && lyricsOverlay.classList.contains("open")) closeLyrics();
+    if ((e.key === "k" || e.key === "K") && lyricsOverlay.classList.contains("open")) toggleKaraokeMode();
   });
   lyricsLines.addEventListener("wheel", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
   lyricsLines.addEventListener("touchmove", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
   window.addEventListener("resize", function () {
-    if (lyricsOverlay.classList.contains("open") && spState.key && lyrStore.get(spState.key) && lyrStore.get(spState.key).lines) setLyricsPadding();
+    if (lyricsOverlay.classList.contains("open") && spState.key && lyrStore.get(spState.key) && lyrStore.get(spState.key).lines) {
+      setLyricsPadding();
+    }
   });
 
   /* ---------- 12. discord ---------- */
