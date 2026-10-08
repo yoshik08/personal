@@ -2,6 +2,7 @@
 // env needed: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REFRESH_TOKEN
 let cachedToken = null;
 let tokenExpiresAt = 0;
+let isrcCache = new Map();
 
 export default async function handler(req, res) {
   const tStart = performance.now();
@@ -35,22 +36,41 @@ export default async function handler(req, res) {
     }
     const auth = { Authorization: `Bearer ${cachedToken}` };
 
-    const pick = (t, outer) => ({
-      trackId: t.id || null,
-      title: t.name,
-      artist: (t.artists || []).map((a) => a.name).join(", "),
-      artists: (t.artists || []).map((a) => ({
-        name: a.name,
-        url: a.external_urls ? a.external_urls.spotify : null,
-      })),
-      image: t.album && t.album.images && t.album.images.length
-        ? t.album.images[0].url
-        : null,
-      url: t.external_urls ? t.external_urls.spotify : null,
-      progressMs: outer ? outer.progress_ms : null,
-      durationMs: t.duration_ms || null,
-      isrc: (t.external_ids && t.external_ids.isrc) || null,
-    });
+    const pick = async (t, outer) => {
+      let isrc = (t.external_ids && t.external_ids.isrc) || null;
+      if (!isrc && t.id) {
+        if (isrcCache.has(t.id)) {
+          isrc = isrcCache.get(t.id);
+        } else {
+          try {
+            const tr = await fetch("https://api.spotify.com/v1/tracks/" + t.id, { headers: auth, cache: "no-store" });
+            if (tr.ok) {
+              const td = await tr.json();
+              if (td.external_ids && td.external_ids.isrc) {
+                isrc = td.external_ids.isrc;
+              }
+            }
+          } catch {}
+          if (isrc) isrcCache.set(t.id, isrc);
+        }
+      }
+      return {
+        trackId: t.id || null,
+        title: t.name,
+        artist: (t.artists || []).map((a) => a.name).join(", "),
+        artists: (t.artists || []).map((a) => ({
+          name: a.name,
+          url: a.external_urls ? a.external_urls.spotify : null,
+        })),
+        image: t.album && t.album.images && t.album.images.length
+          ? t.album.images[0].url
+          : null,
+        url: t.external_urls ? t.external_urls.spotify : null,
+        progressMs: outer ? outer.progress_ms : null,
+        durationMs: t.duration_ms || null,
+        isrc
+      };
+    };
 
     const spSend = performance.now();
     let now = await fetch(
@@ -84,7 +104,7 @@ export default async function handler(req, res) {
           timestamp: Date.now(),
           deviceId: d.device ? d.device.id : null,
           deviceType: d.device ? d.device.type : null,
-          ...pick(d.item, d),
+          ...(await pick(d.item, d)),
           spotifyTs: d.timestamp || null,
           spotifyRtt: Math.round(spRecv - spSend),
           msSinceSpotifyResponse: Math.round(tOut - spRecv),
@@ -100,7 +120,7 @@ export default async function handler(req, res) {
     );
     const r = await recent.json();
     if (r.items && r.items.length)
-      return res.status(200).json({ playing: false, timestamp: Date.now(), ...pick(r.items[0].track) });
+      return res.status(200).json({ playing: false, timestamp: Date.now(), ...(await pick(r.items[0].track)) });
     return res.status(200).json({});
   } catch {
     return res.status(200).json({});

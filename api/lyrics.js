@@ -356,7 +356,7 @@ export default async function handler(req, res) {
 
   async function fetchApple(queryTitle) {
     const acObj = new AbortController();
-    const to = setTimeout(() => acObj.abort(), 4000);
+    const to = setTimeout(() => acObj.abort(), 8000);
     const signal = acObj.signal;
     try {
       if (process.env.APPLE_MEDIA_USER_TOKEN === undefined) return null;
@@ -373,11 +373,11 @@ export default async function handler(req, res) {
         Accept: "application/json"
       };
 
-      let bestSong = null;
+      let bestCandidates = [];
       let usedSf = null;
       
       for (const sf of ["in", "us"]) {
-        if (bestSong) break;
+        if (bestCandidates.length) break;
         let url = `https://amp-api.music.apple.com/v1/catalog/${sf}/songs?filter[isrc]=${isrc}`;
         if (!isrc) {
            const term = encodeURIComponent(cleanedTitle + " " + artist.split(",")[0]);
@@ -404,58 +404,62 @@ export default async function handler(req, res) {
         
         if (!songs.length) continue;
         
-        if (isrc) {
-          let best = songs[0];
-          let bestDiff = Infinity;
-          for (const s of songs) {
-            const dur = s.attributes?.durationInMillis || 0;
-            const diff = duration > 0 ? Math.abs(dur - duration * 1000) : 0;
-            if (diff < bestDiff) { bestDiff = diff; best = s; }
-          }
-          bestSong = best;
-          usedSf = sf;
-        } else {
-          // search fallback
-          const titleN = norm(cleanedTitle);
-          const artistN = norm(artist.split(",")[0]);
-          for (const s of songs) {
+        const titleN = norm(cleanedTitle);
+        const artistN = norm(artist.split(",")[0]);
+        
+        let matches = [];
+        for (const s of songs) {
+          if (!isrc) {
              const sTitle = norm(s.attributes?.name || "");
              const sArtist = norm(s.attributes?.artistName || "");
              if (!sTitle.includes(titleN) && !titleN.includes(sTitle)) continue;
              if (!sArtist.includes(artistN) && !artistN.includes(sArtist)) continue;
-             const dur = s.attributes?.durationInMillis || 0;
-             const diff = duration > 0 ? Math.abs(dur - duration * 1000) : 0;
-             if (duration > 0 && diff > 3000) continue;
-             bestSong = s;
-             usedSf = sf;
-             break;
           }
+          const dur = s.attributes?.durationInMillis || 0;
+          const diff = duration > 0 ? Math.abs(dur - duration * 1000) : 0;
+          if (duration > 0 && diff > 3000) continue;
+          matches.push(s);
+        }
+        
+        if (matches.length) {
+          usedSf = sf;
+          matches.sort((a, b) => {
+             const aExp = a.attributes?.contentRating === "explicit" ? 1 : 0;
+             const bExp = b.attributes?.contentRating === "explicit" ? 1 : 0;
+             return bExp - aExp;
+          });
+          bestCandidates = matches;
         }
       }
       
-      if (!bestSong) return null;
+      if (!bestCandidates.length) return null;
       
-      const lyrUrl = `https://amp-api.music.apple.com/v1/catalog/${usedSf}/songs/${bestSong.id}/syllable-lyrics?extend=ttmlLocalizations`;
-      const lr = await fetch(lyrUrl, { headers: reqHeaders, signal });
-      if (!lr.ok) return null;
-      const ld = await lr.json();
-      if (!ld || !ld.data || !ld.data.length) return null;
+      for (let i = 0; i < Math.min(bestCandidates.length, 3); i++) {
+        const song = bestCandidates[i];
+        const lyrUrl = `https://amp-api.music.apple.com/v1/catalog/${usedSf}/songs/${song.id}/syllable-lyrics?extend=ttmlLocalizations`;
+        const lr = await fetch(lyrUrl, { headers: reqHeaders, signal });
+        if (!lr.ok) continue;
+        const ld = await lr.json();
+        if (!ld || !ld.data || !ld.data.length) continue;
+        
+        const attrs = ld.data[0].attributes;
+        if (!attrs) continue;
+        
+        const ttml = attrs.ttmlLocalizations || attrs.ttml;
+        if (!ttml) continue;
+        
+        const lines = parseAppleTTML(ttml);
+        if (!lines || !lines.length) continue; // null if line-only, [] if empty
+        
+        return { 
+          source: "apple", 
+          wordSync: true, 
+          lines, 
+          calib: { offsetMs: 0, mad: null, pairs: 0, ref: null, confidence: "reference", provider: "apple" }
+        };
+      }
       
-      const attrs = ld.data[0].attributes;
-      if (!attrs) return null;
-      
-      const ttml = attrs.ttmlLocalizations || attrs.ttml;
-      if (!ttml) return null;
-      
-      const lines = parseAppleTTML(ttml);
-      if (!lines || !lines.length) return null; // null if line-only, [] if empty
-      
-      return { 
-        source: "apple", 
-        wordSync: true, 
-        lines, 
-        calib: { offsetMs: 0, mad: null, pairs: 0, ref: null, confidence: "reference", provider: "apple" }
-      };
+      return null;
       
     } catch {
       return null;
