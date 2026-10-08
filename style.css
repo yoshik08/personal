@@ -401,7 +401,6 @@ html[data-motion="off"] .sync-btn.spinning svg { animation: none; }
   display: flex; flex-direction: column;
   overflow: hidden;
   pointer-events: none;
-  background: var(--k-bg, #111);
 }
 .k-top {
   margin-top: 30px;

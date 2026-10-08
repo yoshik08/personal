@@ -997,7 +997,6 @@ function envelopeTarget(win, now) {
         var bgLum = Math.max(15, Math.min(hsl[2] * 0.8, 25));
         var bgLighter = Math.min(bgLum + 12, 40);
         lyricsBg.style.setProperty("--lyr-bg-gradient", "linear-gradient(135deg, hsla(" + bgHue + ", " + bgSat + "%, " + bgLum + "%, 0.8), hsla(" + ((bgHue+30)%360) + ", " + bgSat + "%, " + Math.max(5, bgLum-5) + "%, 0.9), #000)");
-        lyricsOverlay.style.setProperty("--k-bg", "linear-gradient(135deg, hsl(" + bgHue + "," + bgSat + "%," + bgLum + "%), hsl(" + ((bgHue+15)%360) + "," + bgSat + "%," + Math.max(5, bgLum-8) + "%))");
         lyricsOverlay.style.setProperty("--k-inactive", "hsl(" + bgHue + "," + Math.max(10, bgSat - 20) + "%," + Math.min(bgLum + 15, 60) + "%)");
         var accHue = (bgHue + 180) % 360;
         lyricsOverlay.style.setProperty("--k-accent", "hsl(" + accHue + ", 100%, 65%)");
