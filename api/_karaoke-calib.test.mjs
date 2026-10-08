@@ -246,6 +246,25 @@ describe("calibrate", () => {
     assert.equal(result.calib.offsetMs, 0);
   });
 
+  it("candidate whose lines don't match a provided reference -> calibrate rejected", () => {
+    const ref = makeSong(10, 10000, 4000); // 10 lines
+    const wrongCandLines = [
+      { time: 10000, text: "Totally different lyrics", words: [10000] },
+      { time: 14000, text: "Not even close", words: [14000] },
+      { time: 18000, text: "Wrong song", words: [18000] },
+      { time: 22000, text: "Still wrong", words: [22000] },
+      { time: 26000, text: "Blah blah", words: [26000] },
+      { time: 30000, text: "Another bad line", words: [30000] },
+    ];
+    const result = calibrate(
+      { lines: wrongCandLines },
+      [{ name: "lrclib", lines: ref }],
+      { provider: "kugou" }
+    );
+    assert.ok(result.rejected);
+    assert.equal(result.reason, "no overlap with reference (wrong song?)");
+  });
+
   it("rejects huge offset > 1500ms", () => {
     const ref = makeSong(10, 10000, 4000);
     const candLines = makeCandWithWords(ref, 1600, () => 0);

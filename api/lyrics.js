@@ -1,10 +1,45 @@
 // vercel serverless: GET /api/lyrics?artist=&title=&duration=&mode=line|word
 import { calibrate, alignWordCount, yrcEnds } from "./_karaoke-calib.js";
+import { parseAppleTTML } from "./_apple-ttml.js";
 
 // Three providers queried in parallel, each with a 4s timeout.
 // mode=line  → race: first provider with synced lyrics wins.
 // mode=word  → priority: lrcmux word > netease word > wordSync:false.
 // responses are edge-cached for a day per query+mode.
+
+let appleDevToken = process.env.APPLE_DEV_TOKEN || null;
+let appleTokenExp = 0;
+
+async function getAppleToken(ac) {
+  if (appleDevToken && Date.now() < appleTokenExp) return appleDevToken;
+  if (process.env.APPLE_DEV_TOKEN) {
+    appleDevToken = process.env.APPLE_DEV_TOKEN;
+    appleTokenExp = Date.now() + 12 * 3600 * 1000;
+    return appleDevToken;
+  }
+  try {
+    const r1 = await fetch("https://music.apple.com/in/home", {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+      signal: ac(4000)
+    });
+    if (!r1.ok) return null;
+    const text1 = await r1.text();
+    const m1 = text1.match(/\/assets\/index(?:-legacy)?[~-][^\/"]+\.js/);
+    if (!m1) return null;
+    const r2 = await fetch("https://music.apple.com" + m1[0], {
+      headers: { "User-Agent": "Mozilla/5.0" }, signal: ac(4000)
+    });
+    if (!r2.ok) return null;
+    const text2 = await r2.text();
+    const m2 = text2.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+    if (!m2) return null;
+    appleDevToken = m2[0];
+    appleTokenExp = Date.now() + 12 * 3600 * 1000;
+    return appleDevToken;
+  } catch {
+    return null;
+  }
+}
 
 const LRCLIB_EXCLUDE = [
   "music video",
@@ -51,6 +86,7 @@ export default async function handler(req, res) {
   const title = String(req.query.title || "").slice(0, 200);
   const duration = parseFloat(req.query.duration) || 0; // seconds
   const mode = req.query.mode === "word" ? "word" : "line";
+  const isrc = String(req.query.isrc || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
   if (!artist || !title)
     return res.status(400).json({ error: "artist and title required" });
 
@@ -69,13 +105,14 @@ export default async function handler(req, res) {
 
   // --- Provider fetchers (all return a normalized result or null) ---
 
-  async function fetchLrcmux(queryTitle) {
+  async function fetchLrcmux(queryTitle, sourcesParam = "") {
     try {
-      const r = await fetch(
-        "https://api.lrcmux.dev/get?artist=" +
+      let url = "https://api.lrcmux.dev/get?artist=" +
           encodeURIComponent(artist) +
           "&title=" + encodeURIComponent(queryTitle) +
-          "&duration=" + Math.round(duration),
+          "&duration=" + Math.round(duration);
+      if (sourcesParam) url += sourcesParam;
+      const r = await fetch(url,
         { headers: { "User-Agent": "yoshik.xyz/lyrics" }, signal: ac(TIMEOUT) }
       );
       if (!r.ok) return null;
@@ -170,20 +207,18 @@ export default async function handler(req, res) {
       const ld = await lr.json();
 
       // word-level: yrc
-      if (ld.yrc?.lyric) {
+      if (mode === "word" && ld.yrc && ld.yrc.lyric) {
         const lines = parseYRC(ld.yrc.lyric);
-        if (lines.length) {
-          // Fix C: length sanity check
+        if (lines && lines.length) {
           if (!(duration > 0 && lines[lines.length - 1].time > (duration + 2) * 1000)) {
             return { source: "netease", wordSync: true, lines };
           }
         }
       }
       // line-level fallback: lrc
-      if (ld.lrc?.lyric) {
+      if (ld.lrc && ld.lrc.lyric) {
         const lines = parseLRC(ld.lrc.lyric).map((l) => ({ time: l.time, text: l.text, words: null }));
-        if (lines.length) {
-          // Fix C: length sanity check
+        if (lines && lines.length) {
           if (!(duration > 0 && lines[lines.length - 1].time > (duration + 2) * 1000)) {
             return { source: "netease", wordSync: false, lines };
           }
@@ -204,35 +239,45 @@ export default async function handler(req, res) {
       const arr = r.ok ? await r.json() : [];
       let bestSynced = null, bestSyncedScore = Infinity;
       let bestPlain = null, bestPlainScore = Infinity;
+      let bestSyncedLR = null, bestSyncedLRScore = Infinity;
+      let bestPlainLR = null, bestPlainLRScore = Infinity;
       const reqTitleLower = title.toLowerCase();
 
       (arr || []).forEach((x) => {
         const tName = (x.trackName || x.name || "").toLowerCase();
-        // Fix D: skip excluded keywords unless requested title contains that word
         if (LRCLIB_EXCLUDE.some((kw) => tName.includes(kw) && !reqTitleLower.includes(kw))) return;
 
         const diff = duration > 0 ? Math.abs((x.duration || 0) - duration) : 0;
-        if (duration > 0 && diff > 3) return;
+        if (duration > 0 && diff > 10) return;
 
-        if (x.syncedLyrics && diff < bestSyncedScore) {
+        if (x.syncedLyrics) {
           const lines = parseLRC(x.syncedLyrics).map((l) => ({ time: l.time, text: l.text, words: null }));
-          if (lines.length) {
-            // Fix C: length sanity check
-            if (!(duration > 0 && lines[lines.length - 1].time > (duration + 2) * 1000)) {
+          if (lines.length && !(duration > 0 && lines[lines.length - 1].time > (duration + 2) * 1000)) {
+            if (diff <= 3 && diff < bestSyncedScore) {
               bestSyncedScore = diff;
               bestSynced = { source: "lrclib", wordSync: false, lines };
+            } else if (diff > 3 && diff < bestSyncedLRScore) {
+              bestSyncedLRScore = diff;
+              bestSyncedLR = { source: "lrclib", wordSync: false, lines };
             }
           }
         }
 
-        if (x.plainLyrics && diff < bestPlainScore) {
-          bestPlainScore = diff;
-          bestPlain = { source: "lrclib", wordSync: false, plain: x.plainLyrics };
+        if (x.plainLyrics) {
+          if (diff <= 3 && diff < bestPlainScore) {
+            bestPlainScore = diff;
+            bestPlain = { source: "lrclib", wordSync: false, plain: x.plainLyrics };
+          } else if (diff > 3 && diff < bestPlainLRScore) {
+            bestPlainLRScore = diff;
+            bestPlainLR = { source: "lrclib", wordSync: false, plain: x.plainLyrics };
+          }
         }
       });
 
       if (bestSynced) return bestSynced;
+      if (bestSyncedLR) return bestSyncedLR;
       if (bestPlain) return bestPlain;
+      if (bestPlainLR) return bestPlainLR;
       return null;
     } catch { return null; }
   }
@@ -243,6 +288,13 @@ export default async function handler(req, res) {
       const last = r.lines[r.lines.length - 1];
       if (last && typeof last.time === "number" && last.time > (duration + 2) * 1000) {
         return false;
+      }
+      if (duration > 60) {
+        const nonEmpty = r.lines.filter((l) => (l.text || "").trim() !== "").length;
+        if (nonEmpty < 12) return false;
+        if (last && typeof last.time === "number" && last.time < 0.6 * duration * 1000) {
+          return false;
+        }
       }
     }
     return true;
@@ -256,18 +308,25 @@ export default async function handler(req, res) {
         headers: { "User-Agent": "yoshik.xyz/lyrics" }, signal: ac(TIMEOUT)
       });
       if (r.status === 404) {
-        r = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(queryTitle + " " + artist.split(",")[0])}`, {
+        let arr = [];
+        let searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(queryTitle + " " + artist.split(",")[0])}`, {
            headers: { "User-Agent": "yoshik.xyz/lyrics" }, signal: ac(TIMEOUT)
         });
-        if (!r.ok) return null;
-        const arr = await r.json();
+        if (searchRes.ok) arr = await searchRes.json();
+        if (!arr || !arr.length) {
+          searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanedTitle + " " + artist.split(",")[0])}`, {
+             headers: { "User-Agent": "yoshik.xyz/lyrics" }, signal: ac(TIMEOUT)
+          });
+          if (searchRes.ok) arr = await searchRes.json();
+        }
+        if (!arr) return null;
         const reqTitleLower = title.toLowerCase();
         let best = null;
         for (const x of arr || []) {
           const tName = (x.trackName || x.name || "").toLowerCase();
           if (LRCLIB_EXCLUDE.some((kw) => tName.includes(kw) && !reqTitleLower.includes(kw))) continue;
           const diff = duration > 0 ? Math.abs((x.duration || 0) - duration) : 0;
-          if (duration > 0 && diff > 3) continue;
+          if (duration > 0 && diff > 10) continue; // Widen tolerance for refs only
           if (x.syncedLyrics) { best = x; break; }
         }
         if (!best) return null;
@@ -295,68 +354,178 @@ export default async function handler(req, res) {
     } catch { return null; }
   }
 
-  async function queryProviders(queryTitle) {
-    if (mode === "word") {
-      const [lrcmux, netease, lrclibRef, ytmusicRef] = await Promise.all([
-        fetchLrcmux(queryTitle),
-        fetchNetease(queryTitle),
-        fetchLrclibSync(queryTitle),
-        fetchYtMusicRef(queryTitle)
-      ]);
-      const candidates = [lrcmux, netease].filter(c => c && c.wordSync && isValid(c));
-      const rawRefs = [lrclibRef, ytmusicRef].filter(Boolean);
+  async function fetchApple(queryTitle) {
+    const acObj = new AbortController();
+    const to = setTimeout(() => acObj.abort(), 4000);
+    const signal = acObj.signal;
+    try {
+      if (process.env.APPLE_MEDIA_USER_TOKEN === undefined) return null;
+      const mut = process.env.APPLE_MEDIA_USER_TOKEN;
+      const dev = await getAppleToken(() => signal);
+      if (!mut || !dev) return null;
       
-      let bestRes = null;
-      for (let i = 0; i < candidates.length; i++) {
-        const cand = candidates[i];
-        const candProvider = cand.source === "lrcmux" ? (cand.provider || "lrcmux") : "netease";
-        const validRefs = rawRefs.filter(r => r.name !== candProvider);
-        const res = calibrate(cand, validRefs, { provider: candProvider });
+      const reqHeaders = {
+        Authorization: "Bearer " + dev,
+        "Media-User-Token": mut,
+        Origin: "https://music.apple.com",
+        Referer: "https://music.apple.com/",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "application/json"
+      };
+
+      let bestSong = null;
+      let usedSf = null;
+      
+      for (const sf of ["in", "us"]) {
+        if (bestSong) break;
+        let url = `https://amp-api.music.apple.com/v1/catalog/${sf}/songs?filter[isrc]=${isrc}`;
+        if (!isrc) {
+           const term = encodeURIComponent(cleanedTitle + " " + artist.split(",")[0]);
+           url = `https://amp-api.music.apple.com/v1/catalog/${sf}/search?term=${term}&types=songs&limit=10`;
+        }
+        const r = await fetch(url, { headers: reqHeaders, signal });
+        if (r.status === 401 || r.status === 403) {
+           if (!globalThis.appleAuthWarned) {
+             console.warn("[apple] auth failed", r.status);
+             globalThis.appleAuthWarned = true;
+           }
+           appleDevToken = null; // drop cache
+           return null;
+        }
+        if (!r.ok) continue;
+        const d = await r.json();
         
-        if (res.rejected) continue;
-        
-        if (!bestRes) {
-          bestRes = { ...cand, lines: res.lines, calib: res.calib };
-          continue;
+        let songs = [];
+        if (isrc) {
+          songs = d.data || [];
+        } else {
+          songs = (d.results && d.results.songs && d.results.songs.data) || [];
         }
         
-        const confScores = { high: 3, medium: 2, prior: 1, none: 0 };
-        const sCurrent = confScores[res.calib.confidence] || 0;
-        const sBest = confScores[bestRes.calib.confidence] || 0;
-        const madCurrent = res.calib.mad ?? Infinity;
-        const madBest = bestRes.calib.mad ?? Infinity;
+        if (!songs.length) continue;
         
-        let isBetter = false;
-        if (sCurrent >= 2 && sBest < 2) isBetter = true;
-        else if (sCurrent >= 2 && sBest >= 2) isBetter = madCurrent < madBest;
-        
-        if (isBetter) {
-          bestRes = { ...cand, lines: res.lines, calib: res.calib };
+        if (isrc) {
+          let best = songs[0];
+          let bestDiff = Infinity;
+          for (const s of songs) {
+            const dur = s.attributes?.durationInMillis || 0;
+            const diff = duration > 0 ? Math.abs(dur - duration * 1000) : 0;
+            if (diff < bestDiff) { bestDiff = diff; best = s; }
+          }
+          bestSong = best;
+          usedSf = sf;
+        } else {
+          // search fallback
+          const titleN = norm(cleanedTitle);
+          const artistN = norm(artist.split(",")[0]);
+          for (const s of songs) {
+             const sTitle = norm(s.attributes?.name || "");
+             const sArtist = norm(s.attributes?.artistName || "");
+             if (!sTitle.includes(titleN) && !titleN.includes(sTitle)) continue;
+             if (!sArtist.includes(artistN) && !artistN.includes(sArtist)) continue;
+             const dur = s.attributes?.durationInMillis || 0;
+             const diff = duration > 0 ? Math.abs(dur - duration * 1000) : 0;
+             if (duration > 0 && diff > 3000) continue;
+             bestSong = s;
+             usedSf = sf;
+             break;
+          }
         }
       }
-      return bestRes;
-    } else {
-      const [lrcmux, lrclib, netease] = await Promise.all([
-        fetchLrcmux(queryTitle),
-        fetchLrclib(queryTitle),
-        fetchNetease(queryTitle),
-      ]);
-      if (lrcmux && isValid(lrcmux)) return lrcmux;
-      if (lrclib && isValid(lrclib)) return lrclib;
-      if (netease && isValid(netease)) return netease;
-      if (lrclib && lrclib.plain) return lrclib;
-      if (lrclib && lrclib.rateLimited) return { rateLimited: true };
+      
+      if (!bestSong) return null;
+      
+      const lyrUrl = `https://amp-api.music.apple.com/v1/catalog/${usedSf}/songs/${bestSong.id}/syllable-lyrics?extend=ttmlLocalizations`;
+      const lr = await fetch(lyrUrl, { headers: reqHeaders, signal });
+      if (!lr.ok) return null;
+      const ld = await lr.json();
+      if (!ld || !ld.data || !ld.data.length) return null;
+      
+      const attrs = ld.data[0].attributes;
+      if (!attrs) return null;
+      
+      const ttml = attrs.ttmlLocalizations || attrs.ttml;
+      if (!ttml) return null;
+      
+      const lines = parseAppleTTML(ttml);
+      if (!lines || !lines.length) return null; // null if line-only, [] if empty
+      
+      return { 
+        source: "apple", 
+        wordSync: true, 
+        lines, 
+        calib: { offsetMs: 0, mad: null, pairs: 0, ref: null, confidence: "reference", provider: "apple" }
+      };
+      
+    } catch {
       return null;
+    } finally {
+      clearTimeout(to);
     }
+  }
+
+  async function queryProvidersWord(queryTitle) {
+    const [apple, kugouLrcmux, defaultLrcmux, netease, lrclibRef, ytmusicRef] = await Promise.all([
+      fetchApple(queryTitle),
+      fetchLrcmux(queryTitle, "&level=word&sources=kugou"),
+      fetchLrcmux(queryTitle),
+      fetchNetease(queryTitle),
+      fetchLrclibSync(queryTitle),
+      fetchYtMusicRef(queryTitle)
+    ]);
+    
+    if (apple && isValid(apple)) return apple;
+    
+    const candidates = [
+      kugouLrcmux && kugouLrcmux.provider === "kugou" ? kugouLrcmux : null,
+      defaultLrcmux,
+      netease
+    ].filter(c => c && c.wordSync && isValid(c));
+    
+    const rawRefs = [lrclibRef, ytmusicRef].filter(Boolean);
+    
+    for (const cand of candidates) {
+      const candProvider = cand.source === "lrcmux" ? (cand.provider || "lrcmux") : "netease";
+      const validRefs = rawRefs.filter(r => r.name !== candProvider);
+      const res = calibrate(cand, validRefs, { provider: candProvider });
+      if (!res.rejected) {
+        return { ...cand, lines: res.lines, calib: res.calib };
+      }
+    }
+    return null;
+  }
+
+  async function queryProvidersLine(queryTitle) {
+    const [lrclib, lrcmux, netease] = await Promise.all([
+      fetchLrclib(queryTitle),
+      fetchLrcmux(queryTitle, "&level=line&sources=!kugou"),
+      fetchNetease(queryTitle)
+    ]);
+    
+    if (lrclib && isValid(lrclib) && !lrclib.plain && !lrclib.rateLimited) return lrclib;
+    if (lrcmux && isValid(lrcmux)) {
+      lrcmux.wordSync = false;
+      lrcmux.lines.forEach(l => { delete l.words; delete l.ends; });
+      return lrcmux;
+    }
+    if (netease && isValid(netease)) {
+      netease.wordSync = false;
+      netease.lines.forEach(l => { delete l.words; delete l.ends; });
+      return netease;
+    }
+    if (lrclib && lrclib.plain) return lrclib;
+    if (lrclib && lrclib.rateLimited) return { rateLimited: true };
+    return null;
   }
 
   // --- Dispatch based on mode ---
   try {
     const hasLines = (r) => Boolean(r && r.lines && r.lines.length);
 
-    let winner = await queryProviders(cleanedTitle);
+    let winner = mode === "word" ? await queryProvidersWord(cleanedTitle) : await queryProvidersLine(cleanedTitle);
+    
     if (!hasLines(winner) && cleanedTitle !== title) {
-      const retryWinner = await queryProviders(title);
+      const retryWinner = mode === "word" ? await queryProvidersWord(title) : await queryProvidersLine(title);
       if (hasLines(retryWinner)) {
         winner = retryWinner;
       } else if (!winner) {
@@ -366,10 +535,17 @@ export default async function handler(req, res) {
 
     if (mode === "word") {
       if (winner && winner.wordSync) return res.json(winner);
+      
+      // Fallback: If every word candidate is rejected/invalid, return wordSync:false with line lyrics
+      const lineWinner = await queryProvidersLine(cleanedTitle);
+      if (lineWinner && lineWinner.lines && lineWinner.lines.length) {
+        lineWinner.lines.forEach(l => { delete l.words; delete l.ends; });
+        return res.json({ ...lineWinner, wordSync: false });
+      }
       return res.json({ source: "none", wordSync: false, lines: [] });
     } else {
       if (winner && winner.lines && winner.lines.length) {
-        winner.lines.forEach(l => delete l.ends);
+        winner.lines.forEach(l => { delete l.words; delete l.ends; });
         return res.json(winner);
       }
       if (winner && winner.plain) return res.json(winner);

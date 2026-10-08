@@ -49,6 +49,7 @@ export default async function handler(req, res) {
       url: t.external_urls ? t.external_urls.spotify : null,
       progressMs: outer ? outer.progress_ms : null,
       durationMs: t.duration_ms || null,
+      isrc: (t.external_ids && t.external_ids.isrc) || null,
     });
 
     const spSend = performance.now();

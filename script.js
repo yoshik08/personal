@@ -436,36 +436,50 @@ function envelopeTarget(win, now) {
     spState.playing = live;
     spState.progressMs = d.progressMs;
     spState.durationMs = d.durationMs;
+    spState.isrc = d.isrc || null;
 
     if (d && d.deviceId && d.deviceId !== spState.deviceId) {
       spState.deviceId = d.deviceId;
       spState.deviceType = d.deviceType || "Device";
-      try {
-        var saved = localStorage.getItem("lyrLead:" + d.deviceId);
-        var _p = saved ? parseInt(saved, 10) : NaN;
-        lyrLeadMs = isNaN(_p) ? 400 : _p;
-      } catch (e) {}
-      if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
     } else if (d && !d.deviceId) {
       spState.deviceId = null;
       spState.deviceType = null;
+    }
+
+    if (isNewTrack || (d && d.deviceId && d.deviceId !== spState.deviceId)) {
+      try {
+        var savedLyr = localStorage.getItem("lLead:" + key);
+        if (savedLyr !== null) {
+          lyrLeadMs = parseInt(savedLyr, 10);
+          lTrackHasCustomLead = true;
+        } else {
+          var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
+          var _p = devSaved ? parseInt(devSaved, 10) : NaN;
+          lyrLeadMs = isNaN(_p) ? 400 : _p;
+          lTrackHasCustomLead = false;
+        }
+
+        var savedK = localStorage.getItem("kLead:" + key);
+        if (savedK !== null) {
+          kLeadMs = parseInt(savedK, 10);
+          kTrackHasCustomLead = true;
+        } else {
+          var entry = lyrStore.get(key);
+          var p = entry ? entry.calibProvider : null;
+          if (p === "netease") kLeadMs = -400;
+          else if (p === "kugou") kLeadMs = -100;
+          else if (p === "apple") kLeadMs = 0;
+          else kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+          kTrackHasCustomLead = false;
+        }
+      } catch (e) {}
+      if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
     }
 
     if (document.getElementById("lyricsOverlay") && document.getElementById("lyricsOverlay").classList.contains("open")) {
       setLyricsHeader();
       if (isNewTrack) {
         kSnapNext = true;
-        try {
-          var saved = localStorage.getItem("kLead:" + key);
-          if (saved !== null) {
-            kLeadMs = parseInt(saved, 10);
-            kTrackHasCustomLead = true;
-          } else {
-            kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
-            kTrackHasCustomLead = false;
-          }
-        } catch (e) {}
-        if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
         
         lyrActiveIdx = -1;
         kActiveIdx = -1;
@@ -973,6 +987,7 @@ function envelopeTarget(win, now) {
   var kLastFrameTime = 0;
   var kLastLyrPos = 0;
   var kTrackHasCustomLead = false;
+  var lTrackHasCustomLead = false;
 
   function resetKIdle() {
     if (kIdleTimer) clearTimeout(kIdleTimer);
@@ -1135,8 +1150,8 @@ function envelopeTarget(win, now) {
       if (lyrLeadMs > 2000) lyrLeadMs = 2000;
       if (lyrLeadMs < -2000) lyrLeadMs = -2000;
       try {
-        localStorage.setItem("lyrLeadMs", lyrLeadMs);
-        if (spState.deviceId) localStorage.setItem("lyrLead:" + spState.deviceId, lyrLeadMs);
+        localStorage.setItem("lLead:" + spState.key, lyrLeadMs);
+        lTrackHasCustomLead = true;
       } catch(e) {}
     }
     updateSyncLabel();
@@ -1144,13 +1159,25 @@ function envelopeTarget(win, now) {
   
   var syncPressTimer = null;
   syncBtn.addEventListener("mousedown", function() {
-    if (!karaokeMode) return;
     syncPressTimer = setTimeout(function() {
       syncPressTimer = null;
       try {
-        localStorage.removeItem("kLead:" + spState.key);
-        kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
-        kTrackHasCustomLead = false;
+        if (karaokeMode) {
+          localStorage.removeItem("kLead:" + spState.key);
+          var entry = lyrStore.get(spState.key);
+          var p = entry ? entry.calibProvider : null;
+          if (p === "netease") kLeadMs = -400;
+          else if (p === "kugou") kLeadMs = -100;
+          else if (p === "apple") kLeadMs = 0;
+          else kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+          kTrackHasCustomLead = false;
+        } else {
+          localStorage.removeItem("lLead:" + spState.key);
+          var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
+          var _p = devSaved ? parseInt(devSaved, 10) : NaN;
+          lyrLeadMs = isNaN(_p) ? 400 : _p;
+          lTrackHasCustomLead = false;
+        }
         updateSyncLabel();
       } catch(e) {}
     }, 600);
@@ -1162,13 +1189,25 @@ function envelopeTarget(win, now) {
     if (syncPressTimer) { clearTimeout(syncPressTimer); syncPressTimer = null; }
   });
   syncBtn.addEventListener("touchstart", function() {
-    if (!karaokeMode) return;
     syncPressTimer = setTimeout(function() {
       syncPressTimer = null;
       try {
-        localStorage.removeItem("kLead:" + spState.key);
-        kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
-        kTrackHasCustomLead = false;
+        if (karaokeMode) {
+          localStorage.removeItem("kLead:" + spState.key);
+          var entry = lyrStore.get(spState.key);
+          var p = entry ? entry.calibProvider : null;
+          if (p === "netease") kLeadMs = -400;
+          else if (p === "kugou") kLeadMs = -100;
+          else if (p === "apple") kLeadMs = 0;
+          else kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+          kTrackHasCustomLead = false;
+        } else {
+          localStorage.removeItem("lLead:" + spState.key);
+          var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
+          var _p = devSaved ? parseInt(devSaved, 10) : NaN;
+          lyrLeadMs = isNaN(_p) ? 400 : _p;
+          lTrackHasCustomLead = false;
+        }
         updateSyncLabel();
       } catch(e) {}
     }, 600);
@@ -1343,7 +1382,8 @@ function envelopeTarget(win, now) {
     lyricsHint.onclick = null;
     var base = "/api/lyrics?artist=" + encodeURIComponent((artist || "").split(",")[0]) +
       "&title=" + encodeURIComponent(title) +
-      "&duration=" + Math.round((durationMs || 0) / 1000) + "&v=4";
+      "&duration=" + Math.round((durationMs || 0) / 1000) + 
+      (spState.isrc ? "&isrc=" + encodeURIComponent(spState.isrc) : "") + "&v=5";
       
     Promise.all([
       fetch(base + "&mode=line").then(function(r) { return r.ok ? r.json() : null; }),
@@ -1362,9 +1402,19 @@ function envelopeTarget(win, now) {
       
       if (dWord && dWord.lines && dWord.lines.length && dWord.wordSync) {
         entry.wordLines = dWord.lines;
+        entry.calibProvider = dWord.calib ? dWord.calib.provider : null;
       }
       
       lyrPut(key, entry);
+      
+      if (!kTrackHasCustomLead && entry.calibProvider) {
+         if (entry.calibProvider === "netease") kLeadMs = -400;
+         else if (entry.calibProvider === "kugou") kLeadMs = -100;
+         else if (entry.calibProvider === "apple") kLeadMs = 0;
+         else kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+         if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
+      }
+      
       if (spState.key === key && lyricsOverlay.classList.contains("open"))
         renderLyrEntry(key, durationMs);
     }).catch(function (err) {
