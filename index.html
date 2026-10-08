@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Black+Han+Sans&family=Rubik+Bubbles&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=awe6">
+<link rel="stylesheet" href="style.css?v=awe7">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yoshik.xyz/">
 <meta property="og:title" content="yoshik — developer">
@@ -400,6 +400,11 @@
   <div class="lyrics-bg lyrics-bg-c" id="lyricsBgC"></div>
   <div class="lyrics-vignette"></div>
   <div class="lyrics-controls" id="lyricsControls">
+    <div class="sync-group" id="syncGroup">
+      <button class="sync-nudge" id="syncMinus" data-hover aria-label="lyrics later by 50ms" title="Lyrics later (−50ms)">−</button>
+      <button class="sync-btn" id="syncBtn" data-hover aria-label="resync lyrics" title="Resync (S)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg><span id="syncLabel">Sync</span></button>
+      <button class="sync-nudge" id="syncPlus" data-hover aria-label="lyrics earlier by 50ms" title="Lyrics earlier (+50ms)">+</button>
+    </div>
     <button class="karaoke-toggle" id="karaokeToggle" data-hover aria-label="toggle karaoke mode" title="Karaoke Mode (K)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg> Karaoke</button>
     <button class="lyrics-close" id="lyricsClose" data-hover aria-label="close lyrics">✕</button>
   </div>
@@ -463,6 +468,6 @@
   </div>
 </div>
 
-<script src="script.js?v=awe6"></script>
+<script src="script.js?v=awe7"></script>
 </body>
 </html>

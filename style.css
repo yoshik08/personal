@@ -384,6 +384,16 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .karaoke-toggle.disabled {
   opacity: 0.4; cursor: not-allowed; pointer-events: none;
 }
+.sync-group { display: flex; align-items: center; gap: 6px; }
+.sync-btn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #fff; height: 38px; border-radius: 99px; font-size: 13px; font-family: "Sora", sans-serif; font-weight: 500; padding: 0 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; backdrop-filter: blur(8px); transition: background .2s ease, transform .2s ease; pointer-events: auto; min-width: 74px; justify-content: center; }
+.sync-btn:hover { background: rgba(255,255,255,.18); transform: scale(1.05); }
+.sync-btn:active { transform: scale(.95); }
+.sync-btn.spinning svg { animation: syncSpin .6s linear infinite; }
+.sync-btn.done { background: #fff; color: #000; border-color: #fff; }
+.sync-nudge { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #fff; font-size: 15px; line-height: 1; cursor: pointer; pointer-events: auto; transition: background .15s ease; }
+.sync-nudge:hover { background: rgba(255,255,255,.18); }
+@keyframes syncSpin { to { transform: rotate(360deg); } }
+html[data-motion="off"] .sync-btn.spinning svg { animation: none; }
 
 /* karaoke view styles */
 .lyrics-karaoke {
@@ -499,9 +509,9 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 32px 0 90
 .lyr-line.active .w .ch.lit { color: #fff; }
 .lyr-line.past { color: rgba(255,255,255,.45); }
 .emo { display: inline-block; margin-left: .25em; }
-.lyr-line.active .emo, .k-tape-word.active .emo { animation: emoPop .35s cubic-bezier(.2,1.6,.4,1); }
+.k-tape-word.active .emo { animation: emoPop .35s cubic-bezier(.2,1.6,.4,1); }
 @keyframes emoPop { 0% { transform: scale(.4) rotate(-15deg); } 60% { transform: scale(1.35) rotate(8deg); } 100% { transform: scale(1); } }
-html[data-motion="off"] .lyr-line.active .emo, html[data-motion="off"] .k-tape-word.active .emo { animation: none; }
+html[data-motion="off"] .k-tape-word.active .emo { animation: none; }
 .lyrics-hint { position: relative; z-index: 2; text-align: center; color: rgba(255,255,255,.4); font-size: 12px; padding: 0 20px 26px; margin: 0; min-height: 18px; }
 .lyrics-side-text { min-width: 0; }
 @media (max-width: 700px) {

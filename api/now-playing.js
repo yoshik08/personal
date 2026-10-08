@@ -4,6 +4,7 @@ let cachedToken = null;
 let tokenExpiresAt = 0;
 
 export default async function handler(req, res) {
+  const tStart = performance.now();
   res.setHeader("Cache-Control", "no-store");
   const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REFRESH_TOKEN } =
     process.env;
@@ -50,13 +51,36 @@ export default async function handler(req, res) {
       durationMs: t.duration_ms || null,
     });
 
+    const spSend = performance.now();
     const now = await fetch(
       "https://api.spotify.com/v1/me/player/currently-playing",
       { headers: auth }
     );
+    const spRecv = performance.now();
+    
+    if (now.status === 429) {
+      return res.status(200).json({ rateLimited: true, retryAfter: +now.headers.get("retry-after") || 10 });
+    }
+    if (now.status === 401) {
+      cachedToken = null;
+      return res.status(200).json({});
+    }
+    
     if (now.status === 200) {
       const d = await now.json();
-      if (d && d.item) return res.status(200).json({ playing: d.is_playing, timestamp: Date.now(), ...pick(d.item, d) });
+      if (d && d.item) {
+        const tOut = performance.now();
+        return res.status(200).json({
+          playing: d.is_playing,
+          timestamp: Date.now(),
+          ...pick(d.item, d),
+          spotifyTs: d.timestamp || null,
+          spotifyRtt: Math.round(spRecv - spSend),
+          msSinceSpotifyResponse: Math.round(tOut - spRecv),
+          serverHold: Math.round(tOut - tStart),
+          serverNow: Date.now()
+        });
+      }
     }
     // nothing playing right now: fall back to last played
     const recent = await fetch(

@@ -271,65 +271,52 @@
      advances a monotonic performance.now() clock. Each new anchor only
      corrects drift: tiny drift is ignored, moderate drift is absorbed
      gradually over ~5s (no visible jump), large drift/seek hard-resets. */
-  function createPlaybackClock() {
-    var baseMs = 0;
-    var basePerf = 0;
-    var playing = false;
-    var corrMs = 0;
-    var corrStart = 0;
-    var BLEND_DUR = 250;
-    
-    function getProgressMs() {
-      var pos = baseMs;
-      if (playing) pos += performance.now() - basePerf;
-      if (corrMs !== 0) {
-        var elapsed = performance.now() - corrStart;
-        if (elapsed >= BLEND_DUR) {
-           corrMs = 0;
-        } else {
-           pos += corrMs * (1 - (elapsed / BLEND_DUR));
-        }
-      }
-      return pos;
-    }
-    return {
-      getProgressMs: getProgressMs,
-      isPlaying: function () { return playing; },
-      setAnchor: function (p, perfNow) {
-        perfNow = perfNow || performance.now();
-        baseMs = p; basePerf = perfNow; corrMs = 0;
-      },
-      setPlaying: function (p, perfNow) {
-        perfNow = perfNow || performance.now();
-        p = !!p;
-        if (playing && !p) {
-          baseMs = getProgressMs(); corrMs = 0; basePerf = perfNow;
-        } else if (!playing && p) {
-          basePerf = perfNow;
-        }
-        playing = p;
-      },
-      correctDrift: function (serverMs, perfNow) {
-        perfNow = perfNow || performance.now();
-        var predictedAtMidpoint = baseMs + (playing ? (perfNow - basePerf) : 0);
-        var drift = serverMs - predictedAtMidpoint;
-        if (Math.abs(drift) > 1500) {
-          this.setAnchor(serverMs, perfNow);
-          return "seek";
-        } else if (Math.abs(drift) > 300) {
-          this.setAnchor(serverMs, perfNow);
-          return "snap";
-        } else {
-          var currentDisplay = getProgressMs();
-          baseMs = serverMs + (playing ? (performance.now() - perfNow) : 0);
-          basePerf = performance.now();
-          corrMs = currentDisplay - baseMs;
-          corrStart = performance.now();
-          return "blend";
-        }
-      }
-    };
+/* core math, pasted into script.js section 10b (ES5) */
+var SYNC = { POLL_MS: 3000, BURST_N: 3, BURST_GAP: 250, MANUAL_N: 5, MANUAL_GAP: 150,
+             SNAP_MS: 120, IGNORE_MS: 15, SLEW_MS: 150, WINDOW: 5 };
+function createPlaybackClock(nowFn) {
+  nowFn = nowFn || function () { return performance.now(); };
+  var baseMs = 0, basePerf = 0, playing = false, corrMs = 0, corrStart = 0;
+  function get(now) {
+    var pos = baseMs + (playing ? now - basePerf : 0);
+    if (corrMs) { var e = now - corrStart; if (e >= SYNC.SLEW_MS) corrMs = 0; else pos += corrMs * (1 - e / SYNC.SLEW_MS); }
+    return pos;
   }
+  return {
+    getProgressMs: function () { return get(nowFn()); },
+    isPlaying: function () { return playing; },
+    hardSet: function (posMs, atPerf, isPlaying) {
+      var now = nowFn(); playing = !!isPlaying;
+      baseMs = posMs + (playing ? now - atPerf : 0); basePerf = now; corrMs = 0;
+    },
+    correct: function (targetNowMs) {           /* target already projected to nowFn() */
+      var now = nowFn(), shown = get(now), drift = targetNowMs - shown, ad = Math.abs(drift);
+      if (ad < SYNC.IGNORE_MS) return "ignore";
+      baseMs = targetNowMs; basePerf = now;
+      if (ad > SYNC.SNAP_MS) { corrMs = 0; return "snap"; }
+      corrMs = shown - targetNowMs; corrStart = now; return "slew";
+    }
+  };
+}
+/* one now-playing response -> position estimate at arrival time */
+function sampleFrom(d, tSend, tArrive) {
+  var rtt = tArrive - tSend, hasT = d.spotifyRtt != null && d.serverHold != null;
+  var net = hasT ? Math.max(0, rtt - d.serverHold) / 2 : rtt / 2;
+  var age = hasT ? d.spotifyRtt / 2 + d.msSinceSpotifyResponse + net : rtt / 2;
+  return { pos: (d.progressMs || 0) + (d.playing ? age : 0), at: tArrive, rtt: rtt,
+           unc: hasT ? d.spotifyRtt / 2 + net : rtt / 2, d: d };
+}
+/* freshest-sample envelope: Spotify's progress_ms is only ever stale (late), never early,
+   so among recent good samples the one projecting furthest is the least stale */
+function envelopeTarget(win, now) {
+  var minUnc = Infinity, best = -Infinity, i;
+  for (i = 0; i < win.length; i++) minUnc = Math.min(minUnc, win[i].unc);
+  for (i = 0; i < win.length; i++) {
+    if (win[i].unc > 2 * minUnc + 20) continue;
+    best = Math.max(best, win[i].pos + (now - win[i].at));
+  }
+  return best;
+}
 
   /* lyric index lookup: advance forward from the hint when playing normally
      (O(1) amortized), binary search when seeking backward */
@@ -460,29 +447,6 @@
         }
       });
     }
-    /* reconcile the local clock with the fresh server anchor */
-    (function () {
-      var key = d.trackId || (title + " :: " + artist);
-      var isNewTrack = spState.key !== null && key !== spState.key;
-      var wasPlaying = playbackClock.isPlaying();
-      spState.key = key;
-      var mid = d._fetchMidpoint || performance.now();
-      
-      if (!live) {
-        playbackClock.setPlaying(false, mid);
-        playbackClock.setAnchor(d.progressMs || 0, mid);
-      } else if (isNewTrack || !wasPlaying) {
-        playbackClock.setAnchor(d.progressMs || 0, mid);
-        playbackClock.setPlaying(true, mid);
-        spFastPollUntil = performance.now() + 5000;
-      } else {
-        playbackClock.setPlaying(true, mid);
-        var action = playbackClock.correctDrift(d.progressMs || 0, mid);
-        if (action === "seek" || action === "snap") {
-          spFastPollUntil = performance.now() + 5000;
-        }
-      }
-    })();
     if (spTimer) { clearInterval(spTimer); spTimer = null; }
     if (live && d.progressMs != null && d.durationMs) {
       var draw = function () {
@@ -490,8 +454,7 @@
         spProg.style.width = Math.min(100, (p / d.durationMs) * 100) + "%";
         if (p >= d.durationMs) {
           if (spTimer) { clearInterval(spTimer); spTimer = null; }
-          spFastPollUntil = performance.now() + 5000;
-          schedulePoll(); /* track ended */
+          startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {}); /* track ended */
         }
       };
       draw();
@@ -499,37 +462,99 @@
     }
   }
 
-  var spPollTimer = null;
-  var spFastPollUntil = performance.now() + 5000;
-  function schedulePoll() {
+  function syncActive(){ return document.visibilityState === "visible" && document.hasFocus(); }
+  var spPollTimer = null, spInflight = false, spRtts = [], spWin = [], spEpoch = null, spClockKey = null;
+  var spBurst = { left: 0, gap: 0, best: null, hard: false, force: false, done: null };
+  function median(arr) { var s = arr.slice().sort(function(a,b){return a-b;}); return s[Math.floor(s.length/2)] || 0; }
+  
+  function startBurst(n, gap, opts) {
     if (spPollTimer) clearTimeout(spPollTimer);
-    var intv = (performance.now() < spFastPollUntil) ? 1000 : 5000;
-    spPollTimer = setTimeout(function() {
-      if (!document.hidden) pollSpotify();
-      else schedulePoll();
-    }, intv);
+    spBurst = { left: n, gap: gap, best: null, hard: !!opts.hard, force: !!opts.force, done: opts.done || null };
+    pollSpotify();
+  }
+  function scheduleNext(ms) {
+    if (spPollTimer) clearTimeout(spPollTimer);
+    if (!syncActive() && !(spBurst.left > 0 && spBurst.force)) return;
+    spPollTimer = setTimeout(pollSpotify, ms);
   }
   function pollSpotify() {
-    if (spPollTimer) clearTimeout(spPollTimer);
-    var reqStart = performance.now();
+    if (spInflight) return;
+    spInflight = true;
+    var tSend = performance.now();
     fetch("/api/now-playing", { cache: "no-store" })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function(d) {
-        if(d) d._fetchMidpoint = reqStart + (performance.now() - reqStart) / 2;
-        renderSpotify(d);
+      .then(function (r) {
+        var tArr = performance.now();
+        return r.json().then(function(d) { return {d: d, tSend: tSend, tArr: tArr}; });
       })
-      .catch(function () {})
-      .finally(function() {
-        schedulePoll();
+      .then(function (res) {
+        spInflight = false;
+        handleSample(res.d, res.tSend, res.tArr);
+      })
+      .catch(function () {
+        spInflight = false;
+        scheduleNext(SYNC.POLL_MS);
       });
   }
-  pollSpotify();
-  document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) {
-      spFastPollUntil = performance.now() + 5000;
-      pollSpotify(); /* refresh instantly */
+  function applySample(s, hard) {
+    if (!s.d || !s.d.title) {
+      playbackClock.hardSet(playbackClock.getProgressMs(), performance.now(), false);
+      return;
     }
-  });
+    var key = s.d.trackId || (s.d.title + " :: " + s.d.artist);
+    var epoch = key + "|" + s.d.spotifyTs + "|" + !!s.d.playing;
+    var newTrack = key !== spClockKey;
+    spClockKey = key;
+    if (hard || newTrack || !s.d.playing || !playbackClock.isPlaying()) {
+      playbackClock.hardSet(s.pos, s.at, !!s.d.playing);
+      spWin = s.d.playing ? [s] : [];
+      spEpoch = epoch;
+      return newTrack && !hard ? "newtrack" : "reset";
+    }
+    if (epoch !== spEpoch) { spWin = []; spEpoch = epoch; }
+    spWin.push(s);
+    if (spWin.length > SYNC.WINDOW) spWin.shift();
+    var now = performance.now();
+    return playbackClock.correct(envelopeTarget(spWin, now));
+  }
+  function handleSample(d, tSend, tArr) {
+    if (d.rateLimited) { scheduleNext(Math.max(10000, (d.retryAfter || 10) * 1000)); return; }
+    var s = sampleFrom(d, tSend, tArr);
+    var med = median(spRtts);
+    spRtts.push(s.rtt);
+    if (spRtts.length > 15) spRtts.shift();
+    var outlier = spRtts.length >= 4 && s.rtt > 2 * med;
+    
+    if (spBurst.left > 0) {
+      if (!outlier && (!spBurst.best || s.unc < spBurst.best.unc)) spBurst.best = s;
+      spBurst.left--;
+      if (spBurst.left > 0) { scheduleNext(spBurst.gap); return; }
+      var best = spBurst.best || s;
+      renderSpotify(best.d);
+      applySample(best, spBurst.hard);
+      if (spBurst.done) spBurst.done();
+      spBurst.left = 0;
+      scheduleNext(SYNC.POLL_MS);
+      return;
+    }
+    renderSpotify(d);
+    var r = outlier ? null : applySample(s, false);
+    if (r === "newtrack") startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {});
+    else scheduleNext(SYNC.POLL_MS);
+  }
+  function onActive() {
+    if (!syncActive()) return;
+    startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {});
+    if (lyricsOverlay.classList.contains("open") && !lyrRaf) { lyrRaf = requestAnimationFrame(lyrLoop); }
+  }
+  function onInactive() {
+    if (!syncActive()) {
+      clearTimeout(spPollTimer); spPollTimer = null; spBurst.left = 0;
+    }
+  }
+  document.addEventListener("visibilitychange", function() { document.hidden ? onInactive() : onActive(); });
+  window.addEventListener("focus", onActive);
+  window.addEventListener("blur", onInactive);
+  startBurst(SYNC.BURST_N, SYNC.BURST_GAP, { force: true });
 
   /* ---------- 11b. synced lyrics overlay (verci-style) + karaoke ---------- */
   var lyricsOverlay = document.getElementById("lyricsOverlay"),
@@ -552,53 +577,124 @@
       kTapeCol = document.getElementById("kTapeCol");
 
   var EMOJI_MAP = {
-    yeah:"🔥",yea:"🔥",fire:"🔥",lit:"🔥",hot:"🥵",heat:"🥵",burn:"🔥",flame:"🔥",
-    money:"💸",cash:"💵",bands:"💵",racks:"💰",rich:"🤑",paid:"💰",dollar:"💲",bank:"🏦",check:"💳",bag:"💰",
-    ice:"🧊",diamond:"💎",diamonds:"💎",drip:"💧",chain:"⛓️",gold:"🥇",rolex:"⌚",watch:"⌚",ring:"💍",
-    love:"❤️",heart:"💖",kiss:"💋",lips:"💋",hug:"🫂",crush:"😍",baby:"🍼",babe:"😘",darling:"🥰",honey:"🍯",sweet:"🍬",cute:"🥺",
-    cry:"😭",tears:"😢",sad:"😔",lonely:"🥀",broken:"💔",heartbreak:"💔",hurt:"🤕",pain:"🩹",alone:"🥀",miss:"🥺",sorry:"🙏",
-    happy:"😊",smile:"😁",laugh:"😂",fun:"🥳",party:"🎉",dance:"💃",club:"🪩",drink:"🍹",shots:"🥃",wine:"🍷",champagne:"🍾",bottle:"🍾",
-    smoke:"💨",high:"🌿",weed:"🌿",cloud:"☁️",clouds:"☁️",sky:"🌌",star:"⭐",stars:"✨",shine:"✨",glow:"✨",light:"💡",
-    moon:"🌙",night:"🌙",midnight:"🌃",dark:"🌑",sun:"☀️",sunshine:"🌞",summer:"🏖️",rain:"🌧️",storm:"⛈️",thunder:"⚡",lightning:"⚡",
-    snow:"❄️",cold:"🥶",winter:"❄️",ocean:"🌊",sea:"🌊",wave:"🌊",beach:"🏝️",island:"🏝️",river:"🏞️",hills:"⛰️",mountain:"🏔️",
-    flower:"🌸",roses:"🌹",rose:"🌹",garden:"🌷",tree:"🌳",
-    car:"🏎️",cars:"🚘",ride:"🚗",drive:"🚗",whip:"🏎️",benz:"🚘",road:"🛣️",highway:"🛣️",fast:"💨",speed:"💨",run:"🏃",
-    plane:"✈️",fly:"🕊️",jet:"🛩️",wings:"🪽",
-    crown:"👑",king:"👑",queen:"👸",prince:"🤴",princess:"👸",boss:"😎",goat:"🐐",legend:"🏆",win:"🏆",champion:"🏆",
-    devil:"😈",bad:"😈",sin:"😈",hell:"🔥",evil:"👿",angel:"😇",good:"😇",heaven:"☁️",god:"🙏",pray:"🙏",prayer:"🙏",bless:"🙌",blessed:"🙌",
-    soul:"🫀",ghost:"👻",dead:"💀",die:"💀",kill:"💀",skull:"💀",grave:"🪦",
-    phone:"📱",call:"📞",text:"💬",message:"💌",letter:"💌",camera:"📸",photo:"📸",picture:"🖼️",tv:"📺",radio:"📻",
-    music:"🎶",song:"🎵",sing:"🎤",beat:"🥁",guitar:"🎸",piano:"🎹",melody:"🎶",
-    eyes:"👀",look:"👀",see:"👀",
-    girl:"💅",girls:"💅",boy:"🧢",man:"🧔",woman:"👩",friend:"🤝",homie:"🤝",gang:"🤝",squad:"👯",family:"👨👩👧",mama:"👩👧",
-    time:"⏳",clock:"⏰",forever:"♾️",tonight:"🌃",today:"📅",tomorrow:"🌅",morning:"🌅",
-    home:"🏠",house:"🏡",city:"🏙️",world:"🌍",earth:"🌎",
-    game:"🎮",play:"🎮",ball:"🏀",gun:"💥",shot:"💥",bang:"💥",boom:"💥",bomb:"💣",war:"⚔️",fight:"🥊",
-    food:"🍔",pizza:"🍕",candy:"🍭",sugar:"🍬",cherry:"🍒",peach:"🍑",apple:"🍎",
-    dog:"🐶",cat:"🐱",snake:"🐍",lion:"🦁",wolf:"🐺",butterfly:"🦋",bee:"🐝",
-    crazy:"🤪",wild:"🐆",mad:"😤",angry:"😠",scared:"😱",shock:"😳",shy:"🙈",
-    secret:"🤫",lie:"🤥",lies:"🤥",truth:"🗝️",key:"🔑",door:"🚪",
-    sleep:"😴",dream:"💭",dreams:"💭",wake:"⏰",bed:"🛏️",
-    plan:"📝",gift:"🎁",birthday:"🎂",wedding:"💒",
-    cool:"😎",fresh:"🆕",new:"🆕",young:"🧒",old:"👴",
-    hands:"👐",clap:"👏",peace:"☮️",hello:"👋",bye:"👋",goodbye:"👋",
-    bitter:"🍋",sour:"🍋",poison:"☠️",medicine:"💊",pill:"💊",
-    magic:"🪄",luck:"🍀",lucky:"🍀"
-  };
+  yeah:"🔥",yea:"🔥",yuh:"🔥",ayy:"🙌",ay:"🙌",aye:"🙌",woo:"🥳",skrrt:"🏎️",skrt:"🏎️",brr:"🥶",bet:"🤝",facts:"💯",fax:"💯",
+  deadass:"💯",forreal:"💯",hundred:"💯",perfect:"💯",fire:"🔥",lit:"🔥",flame:"🔥",flames:"🔥",burn:"🔥",blaze:"🔥",hot:"🥵",
+  heat:"🥵",sauce:"🥫",spicy:"🌶️",pepper:"🌶️",gas:"⛽",fuel:"⛽",valid:"✅",slay:"💅",slaps:"🔊",banger:"🔊",bop:"🎶",vibe:"🌈",
+  vibes:"🌈",mood:"🌈",energy:"⚡",aura:"✨",rizz:"😏",swag:"😎",swagger:"😎",drip:"💧",drippy:"💧",wet:"💦",splash:"💦",
+  flex:"💪",flexin:"💪",stunt:"😎",stuntin:"😎",style:"🕶️",fly:"🕊️",fresh:"🆕",clean:"🧼",icy:"🧊",ice:"🧊",frozen:"🧊",
+  freeze:"🧊",cold:"🥶",chill:"🧊",cool:"😎",shades:"🕶️",glasses:"🕶️",sunglasses:"🕶️",money:"💸",cash:"💵",bands:"💵",
+  band:"💵",racks:"💰",rack:"💰",stack:"💰",stacks:"💰",bread:"🍞",cheese:"🧀",cheddar:"🧀",paper:"📄",guap:"💰",bag:"💰",
+  bags:"💰",bankroll:"💰",bank:"🏦",vault:"🏦",safe:"🔐",rich:"🤑",wealthy:"🤑",millionaire:"🤑",billionaire:"🤑",million:"🤑",
+  millions:"🤑",billion:"🤑",ticket:"🎟️",dollar:"💲",dollars:"💲",dime:"🪙",penny:"🪙",coin:"🪙",coins:"🪙",crypto:"🪙",
+  bitcoin:"🪙",paid:"💰",check:"💳",cheque:"💳",debt:"📉",broke:"📉",poor:"📉",profit:"📈",stocks:"📈",invest:"📈",hustle:"💼",
+  grind:"⚙️",grindin:"⚙️",work:"💼",job:"💼",business:"💼",deal:"🤝",boss:"😎",ceo:"👔",suit:"👔",shop:"🛍️",shopping:"🛍️",
+  mall:"🛍️",spend:"💸",spent:"💸",blow:"💸",tip:"💵",price:"🏷️",cost:"🏷️",expensive:"💎",cheap:"🏷️",luxury:"💎",
+  designer:"👜",gucci:"👜",prada:"👜",louis:"👜",fendi:"👜",dior:"👜",chanel:"👜",versace:"👜",balenciaga:"👟",purse:"👜",
+  wallet:"👛",diamond:"💎",diamonds:"💎",gem:"💎",jewel:"💎",jewelry:"💎",bling:"💎",chain:"⛓️",chains:"⛓️",necklace:"📿",
+  pendant:"📿",rings:"💍",rolex:"⌚",watch:"⌚",wrist:"⌚",patek:"⌚",gold:"🥇",golden:"🥇",silver:"🥈",platinum:"💿",
+  plaque:"💿",grammy:"🏆",award:"🏆",trophy:"🏆",medal:"🏅",crown:"👑",throne:"👑",king:"👑",kings:"👑",queen:"👸",prince:"🤴",
+  princess:"👸",royal:"👑",goat:"🐐",legend:"🏆",legendary:"🏆",icon:"⭐",star:"⭐",superstar:"🌟",famous:"🌟",fame:"🌟",
+  celebrity:"🌟",spotlight:"🔦",camera:"📸",cameras:"📸",paparazzi:"📸",photo:"📸",pic:"📸",selfie:"🤳",picture:"🖼️",
+  frame:"🖼️",win:"🏆",winning:"🏆",winner:"🏆",won:"🏆",champion:"🏆",champ:"🏆",best:"🥇",greatest:"🐐",loser:"📉",player:"🎮",
+  mvp:"🏆",goal:"🥅",aim:"🎯",target:"🎯",car:"🏎️",cars:"🚘",whip:"🏎️",ride:"🚗",drive:"🚗",drivin:"🚗",driver:"🚗",wheel:"🛞",
+  wheels:"🛞",tires:"🛞",engine:"🏁",motor:"🏁",race:"🏁",racing:"🏁",speed:"💨",fast:"💨",faster:"💨",zoom:"💨",vroom:"🏎️",
+  lambo:"🏎️",lamborghini:"🏎️",ferrari:"🏎️",porsche:"🏎️",benz:"🚘",mercedes:"🚘",bentley:"🚘",rolls:"🚘",bugatti:"🏎️",
+  maybach:"🚘",tesla:"🚘",truck:"🛻",coupe:"🏎️",foreign:"🏎️",garage:"🏠",parking:"🅿️",road:"🛣️",roads:"🛣️",highway:"🛣️",
+  freeway:"🛣️",street:"🛣️",streets:"🛣️",hood:"🏘️",city:"🏙️",town:"🏘️",downtown:"🌆",uptown:"🌆",corner:"🏘️",traffic:"🚦",
+  plane:"✈️",planes:"✈️",jet:"🛩️",private:"🛩️",flight:"✈️",flights:"✈️",airport:"🛫",pilot:"✈️",boat:"🛥️",yacht:"🛥️",
+  ship:"🚢",train:"🚆",bike:"🚲",bus:"🚌",taxi:"🚕",uber:"🚕",rocket:"🚀",launch:"🚀",space:"🚀",moonwalk:"🌕",travel:"🧳",
+  passport:"🛂",vacation:"🏝️",trip:"🧳",world:"🌍",global:"🌍",earth:"🌎",map:"🗺️",paris:"🗼",london:"💂",tokyo:"🗼",
+  miami:"🌴",vegas:"🎰",york:"🗽",atlanta:"🍑",houston:"🚀",chicago:"🌆",toronto:"🍁",cali:"🌴",california:"🌴",texas:"🤠",
+  brazil:"🇧🇷",mexico:"🌮",love:"❤️",lovin:"❤️",lover:"💕",lovers:"💕",loved:"❤️",heart:"💖",hearts:"💖",heartbeat:"💓",
+  heartbreak:"💔",heartbroken:"💔",broken:"💔",break:"💔",kiss:"💋",kisses:"💋",kissin:"💋",lips:"💋",hug:"🫂",hugs:"🫂",
+  cuddle:"🫂",crush:"😍",cute:"🥺",pretty:"🌸",beautiful:"🌸",gorgeous:"😍",sexy:"😏",hottie:"🥵",baby:"👶",babe:"😘",bae:"😘",
+  boo:"👻",shawty:"💅",darling:"🥰",honey:"🍯",sweetie:"🍬",sweet:"🍬",sugar:"🍬",candy:"🍭",lollipop:"🍭",chocolate:"🍫",
+  cake:"🎂",cookie:"🍪",cherry:"🍒",cherries:"🍒",peach:"🍑",strawberry:"🍓",lemon:"🍋",lemonade:"🍋",apple:"🍎",banana:"🍌",
+  grape:"🍇",watermelon:"🍉",pineapple:"🍍",mango:"🥭",coconut:"🥥",honeymoon:"🌙",dates:"🌹",valentine:"💘",cupid:"💘",
+  forever:"♾️",always:"♾️",eternity:"♾️",infinity:"♾️",soulmate:"💞",wifey:"💍",wife:"💍",husband:"💍",marry:"💒",
+  married:"💒",wedding:"💒",bride:"👰",propose:"💍",together:"💑",couple:"💑",relationship:"💑",exes:"🙅",lonely:"🥀",
+  alone:"🥀",miss:"🥺",missin:"🥺",jealous:"😒",toxic:"☠️",cheat:"🐍",cheater:"🐍",cheated:"🐍",liar:"🤥",lie:"🤥",lies:"🤥",
+  lyin:"🤥",fake:"🤡",clown:"🤡",snake:"🐍",snakes:"🐍",trust:"🤝",loyal:"🤞",loyalty:"🤞",promise:"🤞",swear:"🤞",secret:"🤫",
+  secrets:"🤫",whisper:"🤫",quiet:"🤫",silence:"🤫",shh:"🤫",cry:"😭",cryin:"😭",crying:"😭",cried:"😭",tears:"😢",tear:"😢",
+  sad:"😔",sadness:"😔",blue:"💙",hurt:"🤕",pain:"🩹",scar:"🩹",scars:"🩹",wound:"🩹",bleed:"🩸",bleeding:"🩸",blood:"🩸",
+  sorry:"🙏",apologize:"🙏",regret:"😞",depressed:"😞",anxiety:"😰",stress:"😩",stressed:"😩",tired:"😴",sleepy:"😴",sleep:"😴",
+  nap:"😴",bed:"🛏️",pillow:"🛏️",dream:"💭",dreams:"💭",dreamin:"💭",nightmare:"😱",wake:"⏰",awake:"👁️",insomnia:"🌃",
+  happy:"😊",happiness:"😊",smile:"😁",smilin:"😁",laugh:"😂",laughin:"😂",lol:"😂",haha:"😂",joke:"😂",funny:"😂",fun:"🥳",
+  joy:"😊",glad:"😊",excited:"🤩",amazing:"🤩",wow:"🤩",crazy:"🤪",insane:"🤯",brain:"🧠",smart:"🧠",genius:"🧠",thinkin:"🤔",
+  thoughts:"💭",wonder:"🤔",wild:"🐆",savage:"😈",mad:"😤",angry:"😠",anger:"😠",rage:"😡",hate:"😤",hater:"😒",haters:"😒",
+  enemy:"😤",enemies:"😤",opps:"👀",beef:"🥩",scared:"😱",scary:"😱",afraid:"😱",fear:"😱",nervous:"😬",shy:"🙈",shock:"😳",
+  shook:"😳",confused:"😵",dizzy:"😵",search:"🔎",hope:"🤞",faith:"🙏",wish:"🌠",wishes:"🌠",luck:"🍀",lucky:"🍀",blessed:"🙌",
+  bless:"🙌",blessing:"🙌",grateful:"🙏",thankful:"🙏",thank:"🙏",thanks:"🙏",pray:"🙏",prayer:"🙏",prayin:"🙏",god:"🙏",
+  lord:"🙏",jesus:"✝️",church:"⛪",heaven:"☁️",angel:"😇",angels:"😇",halo:"😇",holy:"😇",saint:"😇",good:"😇",devil:"😈",
+  demon:"👹",demons:"👹",evil:"👿",bad:"😈",sin:"😈",sins:"😈",hell:"🔥",soul:"🫀",spirit:"👻",ghost:"👻",ghosts:"👻",
+  haunted:"👻",dead:"💀",death:"💀",die:"💀",dying:"💀",skull:"💀",bones:"🦴",grave:"🪦",rip:"🪦",heavenly:"☁️",karma:"☯️",
+  peace:"☮️",zen:"🧘",calm:"😌",relax:"😌",breathe:"💨",party:"🎉",parties:"🎉",partyin:"🎉",celebrate:"🎊",turnt:"🎉",
+  dance:"💃",dancin:"💃",dancer:"💃",twerk:"🍑",club:"🪩",clubs:"🪩",disco:"🪩",dj:"🎧",floor:"🪩",stage:"🎤",crowd:"🙌",
+  concert:"🎤",tour:"🚌",festival:"🎡",rave:"🪩",night:"🌙",nights:"🌙",tonight:"🌃",midnight:"🌃",drink:"🍹",drinks:"🍹",
+  drinkin:"🍹",cup:"🥤",cups:"🥤",sip:"🥤",shot:"🥃",shots:"🥃",liquor:"🥃",whiskey:"🥃",tequila:"🥃",vodka:"🍸",wine:"🍷",
+  champagne:"🍾",bottle:"🍾",bottles:"🍾",toast:"🥂",cheers:"🥂",beer:"🍺",drunk:"🥴",tipsy:"🥴",smoke:"💨",smokin:"💨",
+  high:"🌿",cloud:"☁️",clouds:"☁️",hookah:"💨",lighter:"🔥",ash:"🚬",food:"🍔",hungry:"🍔",eat:"🍽️",eatin:"🍽️",dinner:"🍽️",
+  lunch:"🥪",breakfast:"🥞",pizza:"🍕",burger:"🍔",fries:"🍟",chicken:"🍗",wings:"🪽",steak:"🥩",sushi:"🍣",tacos:"🌮",taco:"🌮",
+  noodles:"🍜",ramen:"🍜",rice:"🍚",icecream:"🍦",cream:"🍦",milk:"🥛",coffee:"☕",tea:"🍵",juice:"🧃",water:"💧",soda:"🥤",
+  popcorn:"🍿",snack:"🍿",kitchen:"🍳",cook:"🍳",cookin:"🍳",chef:"🍳",recipe:"📜",phone:"📱",phones:"📱",iphone:"📱",call:"📞",
+  calls:"📞",callin:"📞",text:"💬",texts:"💬",textin:"💬",message:"💌",dm:"📩",dms:"📩",inbox:"📥",email:"📧",letter:"💌",
+  facetime:"🤳",insta:"📸",instagram:"📸",tiktok:"🎵",twitter:"🐦",online:"🌐",internet:"🌐",viral:"🦠",followers:"👥",
+  likes:"👍",views:"👀",stream:"🎧",streams:"🎧",spotify:"🎧",radio:"📻",tv:"📺",movie:"🎬",movies:"🎬",film:"🎬",scene:"🎬",
+  hollywood:"🎬",computer:"💻",laptop:"💻",code:"💻",robot:"🤖",alien:"👽",ufo:"🛸",matrix:"🕶️",glitch:"👾",video:"📹",
+  records:"💿",album:"💿",mixtape:"📼",tape:"📼",studio:"🎙️",mic:"🎤",microphone:"🎤",sing:"🎤",singin:"🎤",singer:"🎤",
+  song:"🎵",songs:"🎵",music:"🎶",melody:"🎶",rhythm:"🥁",beat:"🥁",beats:"🥁",drum:"🥁",drums:"🥁",bass:"🔊",loud:"🔊",
+  volume:"🔊",speaker:"🔊",headphones:"🎧",guitar:"🎸",piano:"🎹",violin:"🎻",trumpet:"🎺",saxophone:"🎷",rap:"🎤",rapper:"🎤",
+  verse:"📝",bars:"📝",pen:"🖊️",write:"✍️",wrote:"✍️",book:"📖",books:"📚",school:"🏫",class:"🏫",teacher:"🏫",college:"🎓",
+  graduate:"🎓",degree:"🎓",plan:"📝",plans:"📝",list:"📝",notes:"🗒️",history:"📜",story:"📖",stories:"📖",chapter:"📖",
+  time:"⏳",clock:"⏰",hour:"⏰",hours:"⏰",minute:"⏱️",minutes:"⏱️",seconds:"⏱️",today:"📅",tomorrow:"🌅",yesterday:"🕰️",
+  morning:"🌅",sunrise:"🌅",sunset:"🌇",evening:"🌆",weekend:"🎉",monday:"😩",friday:"🎉",saturday:"🎉",sunday:"☀️",
+  summer:"🏖️",winter:"❄️",spring:"🌷",autumn:"🍂",christmas:"🎄",halloween:"🎃",birthday:"🎂",year:"📅",years:"📅",new:"🆕",
+  young:"🧒",old:"👴",future:"🔮",memories:"🧠",memory:"🧠",remember:"🧠",forget:"🫥",forgot:"🫥",moment:"⏱️",repeat:"🔁",
+  replay:"🔁",rewind:"⏪",pause:"⏸️",run:"🏃",runnin:"🏃",runaway:"🏃",chase:"🏃",jump:"🦘",walk:"🚶",walkin:"🚶",climb:"🧗",
+  flyin:"🕊️",float:"🎈",balloon:"🎈",swim:"🏊",surf:"🏄",sink:"⚓",drown:"🌊",moon:"🌙",moonlight:"🌙",sun:"☀️",sunshine:"🌞",
+  sunny:"☀️",stars:"✨",starry:"✨",shine:"✨",shinin:"✨",glow:"✨",glitter:"✨",sparkle:"✨",galaxy:"🌌",universe:"🌌",
+  planet:"🪐",mars:"🪐",sky:"🌌",skies:"🌌",rain:"🌧️",rainy:"🌧️",rainbow:"🌈",storm:"⛈️",thunder:"⚡",lightning:"⚡",
+  wind:"🌬️",tornado:"🌪️",hurricane:"🌀",snow:"❄️",snowflake:"❄️",ocean:"🌊",sea:"🌊",wave:"🌊",waves:"🌊",tide:"🌊",
+  beach:"🏝️",island:"🏝️",sand:"🏖️",river:"🏞️",lake:"🏞️",hills:"⛰️",hill:"⛰️",mountain:"🏔️",mountains:"🏔️",valley:"🏞️",
+  desert:"🏜️",jungle:"🌴",forest:"🌲",tree:"🌳",trees:"🌳",palm:"🌴",leaf:"🍃",leaves:"🍂",flower:"🌸",flowers:"🌸",rose:"🌹",
+  roses:"🌹",petal:"🌸",garden:"🌷",sunflower:"🌻",tulip:"🌷",lily:"🪷",grass:"🌱",seed:"🌱",grow:"🌱",growin:"🌱",
+  earthquake:"🫨",volcano:"🌋",fireworks:"🎆",dark:"🌑",darkness:"🌑",shadow:"👤",shadows:"👤",black:"🖤",white:"🤍",red:"❤️",
+  pink:"🩷",purple:"💜",green:"💚",yellow:"💛",orange:"🧡",colors:"🌈",eyes:"👀",eye:"👁️",look:"👀",lookin:"👀",stare:"👀",
+  face:"😶",tongue:"👅",mouth:"👄",teeth:"🦷",hand:"✋",hands:"👐",finger:"☝️",fingers:"🤞",nails:"💅",hair:"💇",body:"💃",
+  legs:"🦵",feet:"🦶",shoes:"👟",sneakers:"👟",kicks:"👟",jordans:"👟",nikes:"👟",boots:"👢",heels:"👠",dress:"👗",jeans:"👖",
+  shirt:"👕",hoodie:"🧥",jacket:"🧥",coat:"🧥",hat:"🧢",cap:"🧢",mask:"🎭",makeup:"💄",lipstick:"💄",perfume:"🧴",mirror:"🪞",
+  muscle:"💪",strong:"💪",strength:"💪",power:"⚡",powerful:"⚡",clap:"👏",hello:"👋",bye:"👋",goodbye:"👋",pinky:"🤙",
+  handshake:"🤝",fist:"✊",punch:"👊",fight:"🥊",fightin:"🥊",boxing:"🥊",knockout:"🥊",war:"⚔️",battle:"⚔️",sword:"⚔️",
+  shield:"🛡️",armor:"🛡️",army:"🪖",soldier:"🪖",gun:"💥",guns:"💥",shoot:"💥",shootin:"💥",bang:"💥",boom:"💥",bomb:"💣",
+  blast:"💥",explode:"💥",police:"🚓",cops:"🚓",sirens:"🚨",jail:"⛓️",prison:"⛓️",freedom:"🕊️",judge:"⚖️",court:"⚖️",
+  lawyer:"⚖️",crime:"🚨",danger:"⚠️",dangerous:"⚠️",risk:"🎲",dice:"🎲",casino:"🎰",gamble:"🎰",cards:"🃏",poker:"🃏",
+  chess:"♟️",trap:"🪤",key:"🔑",keys:"🔑",lock:"🔒",door:"🚪",doors:"🚪",window:"🪟",house:"🏡",home:"🏠",mansion:"🏰",
+  castle:"🏰",palace:"🏰",pool:"🏊",penthouse:"🏙️",roof:"🏠",room:"🚪",couch:"🛋️",tub:"🛁",shower:"🚿",girl:"💅",girls:"💅",
+  woman:"👩",women:"👩",lady:"💃",ladies:"💃",boy:"🧢",boys:"🧢",man:"🧔",men:"🧔",guy:"🧔",dude:"🧔",bro:"🤜",brother:"🤜",
+  brothers:"🤜",sister:"👭",sisters:"👭",friend:"🤝",friends:"🤝",homie:"🤝",homies:"🤝",dawg:"🐶",fam:"🏡",family:"🏡",
+  mama:"👩",mom:"👩",mother:"👩",dad:"👨",daddy:"👨",father:"👨",son:"👦",daughter:"👧",kid:"🧒",kids:"🧒",child:"🧒",
+  children:"🧒",crew:"👯",squad:"👯",team:"🤝",gang:"🤝",clique:"👯",everybody:"🙌",everyone:"🙌",people:"👥",stranger:"🕵️",
+  neighbor:"🏘️",baddie:"💅",diva:"💅",bestie:"👯",dog:"🐶",dogs:"🐶",puppy:"🐶",cat:"🐱",kitty:"🐱",lion:"🦁",tiger:"🐯",
+  wolf:"🐺",wolves:"🐺",bear:"🐻",fox:"🦊",bunny:"🐰",rabbit:"🐰",horse:"🐎",pony:"🐴",bird:"🐦",birds:"🐦",eagle:"🦅",dove:"🕊️",
+  owl:"🦉",butterfly:"🦋",butterflies:"🦋",bee:"🐝",bees:"🐝",spider:"🕷️",shark:"🦈",fish:"🐟",whale:"🐋",dolphin:"🐬",
+  monkey:"🐒",ape:"🦍",gorilla:"🦍",panda:"🐼",unicorn:"🦄",dragon:"🐉",dinosaur:"🦖",frog:"🐸",rat:"🐀",cow:"🐄",pig:"🐷",
+  duck:"🦆",bull:"🐂",panther:"🐆",cheetah:"🐆",leopard:"🐆",zebra:"🦓",monster:"👾",beast:"🦍",magic:"🪄",wizard:"🧙",
+  witch:"🧙",spell:"✨",potion:"🧪",crystal:"🔮",fortune:"🔮",destiny:"🔮",fate:"🔮",mystery:"🕵️",gift:"🎁",gifts:"🎁",
+  surprise:"🎁",candle:"🕯️",balloons:"🎈",confetti:"🎊",ribbon:"🎀",bow:"🎀",doll:"🪆",teddy:"🧸",toy:"🧸",fairy:"🧚",
+  fairytale:"🧚",hero:"🦸",superhero:"🦸",villain:"🦹",ninja:"🥷",pirate:"☠️",cowboy:"🤠",zombie:"🧟",vampire:"🧛",
+  medicine:"💊",pill:"💊",pills:"💊",doctor:"🩺",hospital:"🏥",sick:"🤒",fever:"🤒",poison:"☠️",bitter:"🍋",sour:"🍋",
+  salty:"🧂",fireproof:"🧯",alarm:"🚨",bell:"🔔",tick:"⏱️"
+};
   var EMOJI_STOP = {"a":1,"the":1,"i":1,"you":1,"me":1,"it":1,"oh":1,"la":1,"na":1};
   function emojiFor(word) {
-    var w = word.toLowerCase().replace(/^[^a-z0-9]+/, "").replace(/[^a-z0-9]+$/, "");
+    var w = word.toLowerCase().replace(/[’‘]/g, "'").replace(/^[^a-z0-9']+|[^a-z0-9']+$/g, "").replace(/^'+|'+$/g, "");
     if (!w || EMOJI_STOP[w]) return null;
-    if (EMOJI_MAP[w]) return EMOJI_MAP[w];
-    var s1 = w.replace(/ing$/, "").replace(/in$/, "");
-    if (s1 !== w && EMOJI_MAP[s1]) return EMOJI_MAP[s1];
-    var s2 = w.replace(/s$/, "");
-    if (s2 !== w && EMOJI_MAP[s2]) return EMOJI_MAP[s2];
-    var s3 = w.replace(/ies$/, "y");
-    if (s3 !== w && EMOJI_MAP[s3]) return EMOJI_MAP[s3];
+    var tries = [w, w.replace(/'s$/, ""), w.replace(/in'?$/, "ing"), w.replace(/in'?$/, ""), w.replace(/ing$/, ""),
+                 w.replace(/ies$/, "y"), w.replace(/es$/, ""), w.replace(/s$/, ""), w.replace(/ed$/, "")];
+    for (var i = 0; i < tries.length; i++) if (tries[i] && EMOJI_MAP[tries[i]]) return EMOJI_MAP[tries[i]];
     return null;
   }
-  var OFFSET_MS = 0;
+  var lyrLeadMs = 40; try { var _l = localStorage.getItem("lyrLeadMs"); if (_l !== null) lyrLeadMs = parseInt(_l, 10) || 0; } catch (e) {}
   var karaokeMode = false;
   try { karaokeMode = localStorage.getItem("karaokeMode") === "true"; } catch(e) {}
   var lyrStore = new Map();
@@ -723,6 +819,44 @@
   }
   karaokeToggle.addEventListener("click", toggleKaraokeMode);
 
+  var syncBtn = document.getElementById("syncBtn");
+  var syncLabel = document.getElementById("syncLabel");
+  function doSync() {
+    if (syncBtn.classList.contains("spinning")) return;
+    syncBtn.classList.add("spinning");
+    startBurst(SYNC.MANUAL_N, SYNC.MANUAL_GAP, {
+      hard: true, force: true,
+      done: function() {
+        syncBtn.classList.remove("spinning");
+        syncBtn.classList.add("done");
+        syncLabel.textContent = "✓";
+        setTimeout(function() {
+          syncBtn.classList.remove("done");
+          syncLabel.textContent = "Sync";
+        }, 900);
+      }
+    });
+  }
+  syncBtn.addEventListener("click", doSync);
+  syncBtn.addEventListener("wheel", function(e) {
+    e.preventDefault();
+    if (e.deltaY < 0) nudgeSync(50);
+    else if (e.deltaY > 0) nudgeSync(-50);
+  }, { passive: false });
+  document.getElementById("syncPlus").addEventListener("click", function() { nudgeSync(50); });
+  document.getElementById("syncMinus").addEventListener("click", function() { nudgeSync(-50); });
+  
+  var nudgeTimer = null;
+  function nudgeSync(delta) {
+    lyrLeadMs += delta;
+    if (lyrLeadMs > 2000) lyrLeadMs = 2000;
+    if (lyrLeadMs < -2000) lyrLeadMs = -2000;
+    try { localStorage.setItem("lyrLeadMs", lyrLeadMs); } catch(e) {}
+    syncLabel.textContent = (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
+    if (nudgeTimer) clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(function() { syncLabel.textContent = "Sync"; }, 1200);
+  }
+
   function renderSynced(lines, wordLines, durationMs) {
     lyricsHint.textContent = "";
     lyricsLines.innerHTML = "";
@@ -731,9 +865,7 @@
     var anyHasWords = false;
 
     // Classic view uses 'lines'
-      var prevEmo = [];
     lines.forEach(function (ln, i) {
-      var currEmo = [];
       var words = ln.text.split(/\s+/).filter(Boolean);
       var hasWords = !!(ln.words && ln.words.length === words.length);
       ln.hasWords = hasWords;
@@ -752,29 +884,12 @@
             ws.appendChild(ls);
           }
           div.appendChild(ws);
-          var e = emojiFor(w);
-          if (e && currEmo.length < 2 && currEmo.indexOf(e) === -1 && prevEmo.indexOf(e) === -1) {
-            currEmo.push(e);
-            var emo = document.createElement("span");
-            emo.className = "emo";
-            emo.setAttribute("aria-hidden", "true");
-            emo.textContent = e;
-            div.appendChild(emo);
-          }
           if (j < words.length - 1) div.appendChild(document.createTextNode(" "));
         });
       } else {
         div.textContent = ln.text;
-        words.forEach(function (w) {
-          var e = emojiFor(w);
-          if (e && currEmo.length < 2 && currEmo.indexOf(e) === -1 && prevEmo.indexOf(e) === -1) {
-            currEmo.push(e);
-            div.textContent += " " + e;
-          }
-        });
       }
       frag.appendChild(div);
-      prevEmo = currEmo;
     });
     lyricsLines.appendChild(frag);
 
@@ -893,7 +1008,7 @@
     lyricsHint.onclick = null;
     var base = "/api/lyrics?artist=" + encodeURIComponent((artist || "").split(",")[0]) +
       "&title=" + encodeURIComponent(title) +
-      "&duration=" + Math.round((durationMs || 0) / 1000) + "&v=2";
+      "&duration=" + Math.round((durationMs || 0) / 1000) + "&v=3";
       
     Promise.all([
       fetch(base + "&mode=line").then(function(r) { return r.ok ? r.json() : null; }),
@@ -1021,7 +1136,7 @@
       return;
     }
 
-    var pos = lyrPos() + OFFSET_MS;
+    var pos = lyrPos() + lyrLeadMs;
     var entry = lyrStore.get(key);
 
     if (karaokeMode && karaokeWordList.length > 0) {
@@ -1107,8 +1222,7 @@
     lyricsClassicView.style.display = karaokeMode ? "none" : "";
     lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
     resetKIdle();
-    spFastPollUntil = performance.now() + 5000;
-    pollSpotify();
+    startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {force:true});
     if (!lyrRaf) lyrRaf = requestAnimationFrame(lyrLoop);
   }
   function closeLyrics() {
@@ -1123,6 +1237,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && lyricsOverlay.classList.contains("open")) closeLyrics();
     if ((e.key === "k" || e.key === "K") && lyricsOverlay.classList.contains("open")) toggleKaraokeMode();
+    if ((e.key === "s" || e.key === "S") && lyricsOverlay.classList.contains("open")) doSync();
   });
   lyricsLines.addEventListener("wheel", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
   lyricsLines.addEventListener("touchmove", function () { lyrUserScrollAt = Date.now(); }, { passive: true });
