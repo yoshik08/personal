@@ -150,9 +150,10 @@ export default async function handler(req, res) {
       if (netease && netease.wordSync) return res.json(netease);
       return res.json({ source: "none", wordSync: false, lines: [] });
     } else {
-      const [lrcmux, lrclib] = await Promise.all([fetchLrcmux(), fetchLrclib()]);
+      const [lrcmux, lrclib, netease] = await Promise.all([fetchLrcmux(), fetchLrclib(), fetchNetease()]);
       if (lrcmux && lrcmux.lines && lrcmux.lines.length) return res.json(lrcmux);
       if (lrclib && lrclib.lines && lrclib.lines.length) return res.json(lrclib);
+      if (netease && netease.lines && netease.lines.length) return res.json(netease);
       if (lrclib && lrclib.plain) return res.json(lrclib);
       if (lrclib && lrclib.rateLimited) return res.status(429).json({ error: "rate-limited" });
       return res.json({ source: "none", lines: [] });

@@ -427,6 +427,8 @@ function envelopeTarget(win, now) {
     lyricsBtn.style.display = "";
     
     var key = d.trackId || (title + " :: " + artist);
+    var isNewTrack = spState.key !== key;
+    spState.key = key;
     spState.title = title;
     spState.artist = artist;
     spState.artists = d.artists || [];
@@ -435,6 +437,13 @@ function envelopeTarget(win, now) {
     spState.playing = live;
     spState.progressMs = d.progressMs;
     spState.durationMs = d.durationMs;
+
+    if (document.getElementById("lyricsOverlay") && document.getElementById("lyricsOverlay").classList.contains("open") && isNewTrack) {
+      setLyricsHeader();
+      if (!lyrStore.has(key) && !lyrInflight[key]) {
+        fetchLyrics(title, artist, d.durationMs);
+      }
+    }
 
     if (d.image) {
       upgradeArtwork(title, artist, key, d.image, function(bestImg) {
@@ -1223,6 +1232,10 @@ function envelopeTarget(win, now) {
     lyricsKaraokeView.style.display = karaokeMode ? "flex" : "none";
     resetKIdle();
     startBurst(SYNC.BURST_N, SYNC.BURST_GAP, {force:true});
+    if (spState.key) {
+      if (lyrStore.has(spState.key)) renderLyrEntry(spState.key, spState.durationMs);
+      else if (!lyrInflight[spState.key]) fetchLyrics(spState.title, spState.artist, spState.durationMs);
+    }
     if (!lyrRaf) lyrRaf = requestAnimationFrame(lyrLoop);
   }
   function closeLyrics() {
