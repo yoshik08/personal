@@ -83,8 +83,13 @@ b, strong { font-weight: 600; }
   position: fixed; inset: 0; z-index: 200; background: var(--bg);
   display: flex; align-items: center; justify-content: center;
   transition: opacity .45s ease, visibility .45s;
+  animation: bootFailsafe 2.2s forwards;
 }
-#boot.done { opacity: 0; visibility: hidden; }
+#boot.done { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+@keyframes bootFailsafe {
+  0%, 80% { opacity: 1; visibility: visible; }
+  100% { opacity: 0; visibility: hidden; pointer-events: none; }
+}
 .boot-box { width: min(380px, 86vw); }
 .boot-line { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--dim); line-height: 2.2; opacity: 0; transform: translateY(6px); }
 .boot-line.show { opacity: 1; transform: none; transition: all .25s ease; }

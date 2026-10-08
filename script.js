@@ -840,6 +840,8 @@
         spin: (Math.random() - 0.5) * 0.012,
         rot: Math.random() * Math.PI * 2
       });
+    }
+
     /* ambient constellation particles (interactive depth) */
     var ambientNodes = [];
     var NODE_COUNT = finePointer ? 36 : 16;
