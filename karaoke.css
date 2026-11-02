@@ -23,7 +23,7 @@
 }
 .vk-t { position: relative; z-index: 1; transition: color .16s ease; }
 .vk-w.s-up .vk-t { color: color-mix(in srgb, var(--lyric) 36%, transparent); }
-.vk-w.s-on .vk-t { color: #fff; }
+.vk-w.s-on .vk-t { color: #fff; transition: none; } /* lights up instantly: a fade reads as late */
 .vk-w.s-past .vk-t { color: var(--secondary); }
 .vk-hl {
   position: absolute; inset: .03em .05em .05em; border-radius: .22em;

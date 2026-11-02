@@ -170,3 +170,6 @@ html[data-motion="off"] .sync-btn.spinning svg { animation: none; }
   .vk-settings { bottom: 14px; }
 }
 html[data-motion="off"] .lyrics-overlay.open .lyrics-body, html[data-motion="off"] .lyrics-overlay.open .lyrics-karaoke { animation: none; }
+
+/* a song with its own offset says so, permanently (it can't silently look like "Sync") */
+.sync-btn.custom { color: #ffd84d; background: rgba(255, 216, 77, .12); }

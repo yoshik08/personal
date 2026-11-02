@@ -265,33 +265,12 @@ function envelopeTarget(win, now) {
 
     if (isNewTrack || (d && d.deviceId && d.deviceId !== spState.deviceId)) {
       try {
-        var savedLyr = localStorage.getItem("lLead:" + key);
-        if (savedLyr !== null) {
-          lyrLeadMs = parseInt(savedLyr, 10);
-          lTrackHasCustomLead = true;
-        } else {
-          var entry = lyrStore.get(key);
-          var s = entry ? entry.source : null;
-          var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
-          var _p = devSaved ? parseInt(devSaved, 10) : NaN;
-          if (s === "apple") lyrLeadMs = 0;
-          else lyrLeadMs = isNaN(_p) ? 400 : _p;
-          lTrackHasCustomLead = false;
-        }
-
-        var savedK = localStorage.getItem("kLead:" + key);
-        if (savedK !== null) {
-          kLeadMs = parseInt(savedK, 10);
-          kTrackHasCustomLead = true;
-        } else {
-          var entry = lyrStore.get(key);
-          var p = entry ? entry.calibProvider : null;
-          if (p === "netease") kLeadMs = -400;
-          else if (p === "kugou") kLeadMs = -100;
-          else if (p === "apple") kLeadMs = 0;
-          else kLeadMs = lsInt("kLeadMs", 150);
-          kTrackHasCustomLead = false;
-        }
+        var savedLyr = lsInt("lLead:" + key, null);
+        lTrackHasCustomLead = savedLyr !== null;
+        lyrLeadMs = lTrackHasCustomLead ? savedLyr : 0;
+        var savedK = lsInt("kLead:" + key, null);
+        kTrackHasCustomLead = savedK !== null;
+        kLeadMs = kTrackHasCustomLead ? savedK : autoKLead(key);
       } catch (e) {}
       if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
     }
@@ -790,20 +769,29 @@ function envelopeTarget(win, now) {
       return isNaN(v) ? fallback : v;
     } catch (e) { return fallback; }
   }
-  var lyrLeadMs = 400;
+  /* lyric leads (ms added to the playback clock before looking up the line/word).
+     line view: 0 — the clock is accurate to ~50ms and lrclib lines already sit ~50ms ahead of
+     apple's, so the old 400ms default showed every non-apple line half a second early.
+     karaoke: per word source (see autoKLead). a track only deviates when you nudge it. */
+  var lyrLeadMs = 0;
   var kLeadMs = 150;
   try {
-    var _v = localStorage.getItem("lyrLeadV");
-    if (_v !== "2") {
-      var _l = localStorage.getItem("lyrLeadMs");
-      if (!_l || _l === "40") localStorage.setItem("lyrLeadMs", "400");
-      localStorage.setItem("lyrLeadV", "2");
+    if (localStorage.getItem("lyrLeadV") !== "3") {
+      /* clean slate: scrolling over the sync pill used to shift and save these silently
+         (±25-50ms per wheel tick, one trackpad swipe = a second or more), so saved values
+         from before this fix cannot be trusted */
+      var stale = [];
+      for (var li = 0; li < localStorage.length; li++) {
+        var lk = localStorage.key(li);
+        if (/^(kLead|lLead|lyrLead):/.test(lk) || lk === "kLeadMs" || lk === "lyrLeadMs") stale.push(lk);
+      }
+      stale.forEach(function (k) { localStorage.removeItem(k); });
+      localStorage.setItem("lyrLeadV", "3");
     }
-    lyrLeadMs = lsInt("lyrLeadMs", 400);
-    kLeadMs = lsInt("kLeadMs", 150);
   } catch (e) {}
   var karaokeMode = false;
   try { karaokeMode = localStorage.getItem("karaokeMode") === "true"; } catch(e) {}
+  var karaokePref = karaokeMode; /* the user's choice; forced-off for word-less songs doesn't change it */
   var lyrStore = new Map();
   var lyrInflight = {};
   var lyrRaf = 0, lyrActiveIdx = -1, lyrUserScrollAt = 0, lyrRenderedKey = null;
@@ -948,7 +936,7 @@ function envelopeTarget(win, now) {
       toggleKaraokeMode(false);
     } else {
       karaokeToggle.classList.remove("disabled");
-      if (karaokeMode) toggleKaraokeMode(true);
+      if (karaokePref) toggleKaraokeMode(true);
     }
   }
 
@@ -959,7 +947,10 @@ function envelopeTarget(win, now) {
       nextMode = false;
     }
     karaokeMode = nextMode;
-    try { localStorage.setItem("karaokeMode", karaokeMode); } catch(e) {}
+    if (!isBool) { /* only a real toggle (click / K key) is a preference */
+      karaokePref = karaokeMode;
+      try { localStorage.setItem("karaokeMode", karaokeMode); } catch(e) {}
+    }
     kSnapNext = true;
     karaokeToggle.classList.toggle("active", karaokeMode);
     lyricsOverlay.classList.toggle("karaoke-mode", karaokeMode);
@@ -988,83 +979,75 @@ function envelopeTarget(win, now) {
       syncLabel.textContent = "✓";
       setTimeout(function() {
         syncBtn.classList.remove("done");
-        syncLabel.textContent = "Sync";
+        syncLabel.textContent = restingSyncLabel();
       }, 900);
     });
   }
   syncBtn.addEventListener("click", doSync);
-  syncBtn.addEventListener("wheel", function(e) {
-    e.preventDefault();
-    if (e.deltaY < 0) nudgeSync(50);
-    else if (e.deltaY > 0) nudgeSync(-50);
-  }, { passive: false });
+  /* no wheel handler on purpose: scrolling over this pill used to nudge the offset ±25-50ms per
+     tick and save it, so one trackpad swipe could put lyrics a second or more out of sync */
   document.getElementById("syncPlus").addEventListener("click", function() { nudgeSync(50); });
   document.getElementById("syncMinus").addEventListener("click", function() { nudgeSync(-50); });
   
+  /* karaoke lead by word source: apple syllable timings are exact; the others carry the
+     provider bias this code has always applied. used whenever a track has no custom offset. */
+  function autoKLead(key) {
+    var entry = lyrStore.get(key || spState.key);
+    var p = entry ? entry.calibProvider : null;
+    if (p === "netease") return -400;
+    if (p === "kugou") return -100;
+    if (p === "apple") return 0;
+    return 150;
+  }
+  /* resting label: "Sync" when on auto, the offset itself (tinted) when this track is nudged,
+     so a shifted song can never look normal */
+  function restingSyncLabel() {
+    var custom = karaokeMode ? kTrackHasCustomLead : lTrackHasCustomLead;
+    var v = userOffset();
+    syncBtn.classList.toggle("custom", custom);
+    syncBtn.title = custom ? "Offset for this song (hold to reset)" : "Resync (S)";
+    return custom ? (v >= 0 ? "+" : "") + v + "ms" : (karaokeMode ? "K Sync" : "Sync");
+  }
+  /* what the pill shows: your tweak on top of the automatic lead (+50 means "50ms earlier") */
+  function userOffset() { return karaokeMode ? kLeadMs - autoKLead() : lyrLeadMs; }
   var nudgeTimer = null;
-  function updateSyncLabel() {
-    var sl = document.getElementById("syncLabel");
-    if (!sl) return;
-    if (karaokeMode) {
-      sl.textContent = "K " + (kLeadMs >= 0 ? "+" : "") + kLeadMs + "ms";
-    } else {
-      sl.textContent = (lyrLeadMs >= 0 ? "+" : "") + lyrLeadMs + "ms";
-    }
+  function updateSyncLabel(flash) {
+    if (!syncLabel) return;
+    if (!flash) { if (nudgeTimer) clearTimeout(nudgeTimer); syncLabel.textContent = restingSyncLabel(); return; }
+    var v = userOffset();
+    syncLabel.textContent = (karaokeMode ? "K " : "") + (v >= 0 ? "+" : "") + v + "ms";
+    syncBtn.classList.toggle("custom", karaokeMode ? kTrackHasCustomLead : lTrackHasCustomLead);
     if (nudgeTimer) clearTimeout(nudgeTimer);
-    nudgeTimer = setTimeout(function() { sl.textContent = karaokeMode ? "K Sync" : "Sync"; }, 2500);
+    nudgeTimer = setTimeout(function () { syncLabel.textContent = restingSyncLabel(); }, 2500);
   }
 
+  /* +/- adjust THIS song only (saved per track; it no longer leaks into every other song) */
   function nudgeSync(delta) {
-    if (karaokeMode) {
-      kLeadMs += delta > 0 ? 25 : -25;
-      if (kLeadMs > 1000) kLeadMs = 1000;
-      if (kLeadMs < -1000) kLeadMs = -1000;
-      try {
-        localStorage.setItem("kLead:" + spState.key, kLeadMs);
-        if (!kTrackHasCustomLead) {
-          localStorage.setItem("kLeadMs", kLeadMs);
-        }
+    if (!spState.key) return;
+    try {
+      if (karaokeMode) {
+        kLeadMs = Math.max(-1000, Math.min(1000, kLeadMs + (delta > 0 ? 25 : -25)));
         kTrackHasCustomLead = true;
-      } catch(e) {}
-    } else {
-      lyrLeadMs += delta;
-      if (lyrLeadMs > 2000) lyrLeadMs = 2000;
-      if (lyrLeadMs < -2000) lyrLeadMs = -2000;
-      try {
-        localStorage.setItem("lLead:" + spState.key, lyrLeadMs);
+        localStorage.setItem("kLead:" + spState.key, kLeadMs);
+      } else {
+        lyrLeadMs = Math.max(-2000, Math.min(2000, lyrLeadMs + delta));
         lTrackHasCustomLead = true;
-      } catch(e) {}
-    }
-    updateSyncLabel();
+        localStorage.setItem("lLead:" + spState.key, lyrLeadMs);
+      }
+    } catch (e) {}
+    updateSyncLabel(true);
+  }
+  function resetLead() {
+    try {
+      if (karaokeMode) { localStorage.removeItem("kLead:" + spState.key); kLeadMs = autoKLead(); kTrackHasCustomLead = false; }
+      else { localStorage.removeItem("lLead:" + spState.key); lyrLeadMs = 0; lTrackHasCustomLead = false; }
+    } catch (e) {}
+    updateSyncLabel(true);
   }
   
   var syncPressTimer = null;
   syncBtn.addEventListener("mousedown", function() {
-    syncPressTimer = setTimeout(function() {
-      syncPressTimer = null;
-      try {
-        if (karaokeMode) {
-          localStorage.removeItem("kLead:" + spState.key);
-          var entry = lyrStore.get(spState.key);
-          var p = entry ? entry.calibProvider : null;
-          if (p === "netease") kLeadMs = -400;
-          else if (p === "kugou") kLeadMs = -100;
-          else if (p === "apple") kLeadMs = 0;
-          else kLeadMs = lsInt("kLeadMs", 150);
-          kTrackHasCustomLead = false;
-        } else {
-          localStorage.removeItem("lLead:" + spState.key);
-          var entry = lyrStore.get(spState.key);
-          var s = entry ? entry.source : null;
-          var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
-          var _p = devSaved ? parseInt(devSaved, 10) : NaN;
-          if (s === "apple") lyrLeadMs = 0;
-          else lyrLeadMs = isNaN(_p) ? 400 : _p;
-          lTrackHasCustomLead = false;
-        }
-        updateSyncLabel();
-      } catch(e) {}
-    }, 600);
+    syncPressTimer = setTimeout(function() { syncPressTimer = null; resetLead(); }, 600);
   });
   syncBtn.addEventListener("mouseup", function() {
     if (syncPressTimer) { clearTimeout(syncPressTimer); syncPressTimer = null; }
@@ -1073,31 +1056,7 @@ function envelopeTarget(win, now) {
     if (syncPressTimer) { clearTimeout(syncPressTimer); syncPressTimer = null; }
   });
   syncBtn.addEventListener("touchstart", function() {
-    syncPressTimer = setTimeout(function() {
-      syncPressTimer = null;
-      try {
-        if (karaokeMode) {
-          localStorage.removeItem("kLead:" + spState.key);
-          var entry = lyrStore.get(spState.key);
-          var p = entry ? entry.calibProvider : null;
-          if (p === "netease") kLeadMs = -400;
-          else if (p === "kugou") kLeadMs = -100;
-          else if (p === "apple") kLeadMs = 0;
-          else kLeadMs = lsInt("kLeadMs", 150);
-          kTrackHasCustomLead = false;
-        } else {
-          localStorage.removeItem("lLead:" + spState.key);
-          var entry = lyrStore.get(spState.key);
-          var s = entry ? entry.source : null;
-          var devSaved = spState.deviceId ? localStorage.getItem("lyrLead:" + spState.deviceId) : null;
-          var _p = devSaved ? parseInt(devSaved, 10) : NaN;
-          if (s === "apple") lyrLeadMs = 0;
-          else lyrLeadMs = isNaN(_p) ? 400 : _p;
-          lTrackHasCustomLead = false;
-        }
-        updateSyncLabel();
-      } catch(e) {}
-    }, 600);
+    syncPressTimer = setTimeout(function() { syncPressTimer = null; resetLead(); }, 600);
   }, {passive: true});
   syncBtn.addEventListener("touchend", function() {
     if (syncPressTimer) { clearTimeout(syncPressTimer); syncPressTimer = null; }
@@ -1273,14 +1232,14 @@ function envelopeTarget(win, now) {
         }, 4000);
       }
 
-      if (!kTrackHasCustomLead && entry.calibProvider) {
-         if (entry.calibProvider === "netease") kLeadMs = -400;
-         else if (entry.calibProvider === "kugou") kLeadMs = -100;
-         else if (entry.calibProvider === "apple") kLeadMs = 0;
-         else kLeadMs = lsInt("kLeadMs", 150);
-         if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
+      /* the source is only known now: apply its auto lead (the track-change rule ran before the
+         lyrics existed, which is how apple-timed lines ended up shown 400ms early) */
+      if (spState.key === key) {
+        if (!kTrackHasCustomLead) kLeadMs = autoKLead(key);
+        if (!lTrackHasCustomLead) lyrLeadMs = 0;
+        if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
       }
-      
+
       if (spState.key === key && lyricsOverlay.classList.contains("open"))
         renderLyrEntry(key, durationMs);
     }).catch(function (err) {

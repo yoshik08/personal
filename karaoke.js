@@ -67,6 +67,7 @@
     var i = Math.floor(x);
     return arr[i] + (arr[i + 1] - arr[i]) * (x - i);
   }
+  var LOOK_AHEAD = 70; /* ms: camera starts moving just before a word is sung (perceived on-time) */
   function outBack(p) { var c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); }
   function rnd(i, salt) { var x = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453; return x - Math.floor(x); }
 
@@ -241,15 +242,15 @@
       if (!words.length) return;
       dt = clamp(dt || 16, 1, 100);
       if (C.W <= 1 || C.H <= 1) resize();
-      var a = find(pos); hint = a;
+      var a = find(pos + LOOK_AHEAD); hint = a;
       var target, tau = 120, cur = a >= 0 ? words[a] : null, nxt = a >= 0 ? words[a + 1] : words[0];
       if (!cur) target = -0.9;
       else {
         target = a;
         if (nxt) {
           var endA = Math.min(cur.end, nxt.start), gap = nxt.start - endA;
-          tau = clamp((nxt.start - cur.start) * 0.22, 35, 95);
-          if (gap > 260) { var p = clamp((pos - (endA + 120)) / (gap - 120), 0, 1); target = a + 0.42 * p * p; } /* lean toward the next word */
+          tau = clamp((nxt.start - cur.start) * 0.2, 30, 80);
+          if (gap > 260) { var p = clamp((pos - (endA + 120)) / (gap - 120), 0, 1); target = a + 0.28 * p * p; } /* lean toward the next word */
         }
       }
       var rm = reduced();
@@ -283,12 +284,12 @@
         var st = pos < w.start ? "up" : pos < w.endEff ? "on" : "past";
         if (st !== w.state) { el.classList.remove("s-up", "s-on", "s-past"); el.classList.add("s-" + st); w.state = st; }
         var bp = 0, ha = 0;
-        if (st === "on") { bp = rm ? 1 : outBack(clamp((pos - w.start) / 170, 0, 1)); ha = 1; }
+        if (st === "on") { bp = rm ? 1 : outBack(clamp((pos - w.start) / 110, 0, 1)); ha = 1; }
         else if (st === "past") { var q = rm ? 1 : clamp((pos - w.endEff) / 80, 0, 1); bp = 1 - q * 0.45; ha = 1 - q; } /* collapse + fade, fast */
         if (bp !== w.bp || ha !== w.ha) {
           w.bp = bp; w.ha = ha;
           w.hl.style.opacity = ha.toFixed(3);
-          w.hl.style.transform = "translateX(" + ((1 - bp) * -0.35).toFixed(3) + "em) scale(" + (0.55 + 0.45 * bp).toFixed(3) + "," + (0.7 + 0.3 * bp).toFixed(3) + ") rotate(var(--tilt))";
+          w.hl.style.transform = "translateX(" + ((1 - bp) * -0.1).toFixed(3) + "em) scale(" + (0.86 + 0.14 * bp).toFixed(3) + "," + (0.9 + 0.1 * bp).toFixed(3) + ") rotate(var(--tilt))";
           if (w.ic) { w.ic.style.opacity = ha.toFixed(3); w.ic.style.transform = "scale(" + (0.35 + 0.65 * Math.min(bp, 1.15)).toFixed(3) + ") rotate(" + ((1 - bp) * -25).toFixed(1) + "deg)"; }
         }
       }
