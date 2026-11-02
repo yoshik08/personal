@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-motion="on">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,9 +7,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/type/style.css">
+<script>
+(function () {
+  var d = document.documentElement;
+  try {
+    var m = localStorage.getItem("yk-motion");
+    var off = m === "off" || (!m && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    d.setAttribute("data-motion", off ? "off" : "on");
+    var n = +sessionStorage.getItem("yk-nav");
+    if (n && Date.now() - n < 6000 && !off) d.classList.add("arrive");
+    sessionStorage.removeItem("yk-nav");
+  } catch (e) {}
+  setTimeout(function () { if (!window.anime) d.classList.remove("arrive"); }, 4000);
+})();
+</script>
+<link rel="stylesheet" href="/type/style.css?v=v5">
 </head>
 <body>
+<div class="curtain" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 
 <header class="topbar">
   <a class="brand" href="/">yk<span>.</span></a>
@@ -61,6 +76,9 @@
 
 <input class="hidden-input" id="hiddenInput" autocomplete="off" autocapitalize="off" spellcheck="false">
 
+<script src="/assets/vendor/anime-4.5.0.umd.min.js" defer></script>
+<script src="/assets/page-fx.v1.js" defer></script>
 <script src="/type/script.js"></script>
+<script src="/type/motion.js" defer></script>
 </body>
 </html>

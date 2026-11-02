@@ -1,13 +1,35 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" data-motion="on">
+<html lang="en" data-theme="dark" data-motion="on">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>yoshik — developer</title>
 <meta name="description" content="yoshik builds full-stack apps, android tools and ml models.">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" href="assets/vendor/anime-4.5.0.umd.min.js" as="script">
 <link rel="preload" href="assets/fonts/HankenGrotesk-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=awe13">
+<script>
+/* theme + motion preference resolved before first paint (no flash) */
+(function () {
+  var d = document.documentElement;
+  try {
+    var th = localStorage.getItem("yk-theme");
+    if (th !== "light" && th !== "dark") th = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    d.setAttribute("data-theme", th);
+    var m = localStorage.getItem("yk-motion");
+    var off = m === "off" || (!m && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    d.setAttribute("data-motion", off ? "off" : "on");
+    var n = +sessionStorage.getItem("yk-nav");
+    if (n && Date.now() - n < 6000 && !off) d.classList.add("arrive");
+    sessionStorage.removeItem("yk-nav");
+  } catch (e) {}
+  if (d.getAttribute("data-motion") !== "off") {
+    d.classList.add("mo");
+    /* failsafe: if the motion layer never boots, show everything */
+    setTimeout(function () { if (!window.__moReady) { d.classList.remove("mo"); d.classList.remove("arrive"); } }, 4000);
+  }
+})();
+</script>
+<link rel="stylesheet" href="style.css?v=v5">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yoshik.xyz/">
 <meta property="og:title" content="yoshik — developer">
@@ -17,14 +39,8 @@
 </head>
 <body>
 
-<!-- BOOT -->
-<div id="boot" aria-hidden="true">
-  <div class="boot-box">
-    <p class="boot-line" data-t="100">&gt; hello_</p>
-    <p class="boot-line" data-t="380">&gt; loading portfolio .... <span class="ok">ok</span></p>
-    <p class="boot-line" data-t="640">&gt; signal locked ......... <span class="ok">ok</span></p>
-  </div>
-</div>
+<!-- PAGE TRANSITION CURTAIN -->
+<div class="curtain" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 
 <!-- CURSOR -->
 <div class="cursor-dot" aria-hidden="true"></div>
@@ -40,7 +56,7 @@
 <header class="topbar">
   <div class="wrap topbar-in">
     <a class="brand magnetic" href="#top" data-hover>yk<span class="brand-dot">.</span></a>
-    <nav class="nav">
+    <nav class="nav" id="nav"><span class="nav-ind" aria-hidden="true"></span>
       <div class="nav-drop">
         <a href="#projects" data-hover>projects</a>
         <div class="nav-menu">
@@ -72,38 +88,41 @@
 
   <!-- HERO -->
   <section class="hero">
-    <div class="hero-id">
-      <div class="avatar" aria-hidden="true">
-        <svg viewBox="0 0 96 96">
-          <circle cx="48" cy="48" r="48" fill="#90c5ff"/>
-          <g fill="#1d2a44">
-            <rect x="30" y="28" width="8" height="8"/><rect x="58" y="28" width="8" height="8"/>
-            <rect x="38" y="36" width="8" height="8"/><rect x="50" y="36" width="8" height="8"/>
-            <rect x="44" y="44" width="8" height="8"/>
-            <rect x="44" y="52" width="8" height="8"/>
-            <rect x="44" y="60" width="8" height="8"/>
-            <rect x="36" y="68" width="24" height="8"/>
-          </g>
-        </svg>
+    <p class="kicker" data-intro><span><i class="status-dot"></i>building &amp; shipping</span><span class="sep">/</span><span>hyderabad, in</span><span class="sep">/</span><span id="clock">--:-- ist</span></p>
+    <h1 class="wordmark" id="wordmark" aria-label="yoshik"><span class="wm-mask" aria-hidden="true"><span class="wm-ch">y</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">o</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">s</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">h</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">i</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">k</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch dot">.</span></span></h1>
+    <div class="hero-bottom">
+      <div>
+        <p class="tagline" data-intro><span class="prompt">&gt;</span><span class="roller"><span id="typed">full-stack developer</span></span><span class="caret" aria-hidden="true"></span></p>
+        <p class="hero-note" data-intro>i build full-stack apps, android tools and ml models — then i ship them, break them, and ship them again.</p>
       </div>
-      <div class="hero-id-text">
-        <h1>yoshik</h1>
-        <p class="subline">developer · hyderabad
-          <button class="copy-mail" id="mailCopy" data-hover title="copy email">me@yoshik.xyz ⧉</button>
-        </p>
-      </div>
-    </div>
-    <p class="tagline">
-      <span class="prompt">&gt;</span><span id="typed"></span><span class="caret" aria-hidden="true"></span>
-    </p>
-    <p class="hero-note">i build full-stack apps, android tools and ml models — then i ship them, break them, and ship them again.</p>
-    <div class="sp-line">
-      <a class="sp-glyph-link" href="https://open.spotify.com/user/31updzcpgn2v2oxgmn6jcijtmxyi" target="_blank" rel="noopener" aria-label="spotify profile" data-hover><img class="sp-glyph" src="assets/spotify.png" alt="spotify"></a>
-      <span class="sp-label" id="spLabel">last played —</span>
-      <span class="sp-track"><a class="sp-song" id="spHeroLink" target="_blank" rel="noopener">quiet rn</a><span class="sp-artists" id="spHeroArtists"></span></span>
-    </div>
-    <div class="socials">
-      <a href="https://github.com/yoshik08" target="_blank" rel="noopener" data-hover title="github" aria-label="github">
+      <div>
+        <div class="hero-id" data-intro>
+          <div class="avatar" aria-hidden="true">
+            <svg viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="48" fill="#90c5ff"/>
+              <g fill="#1d2a44">
+                <rect x="30" y="28" width="8" height="8"/><rect x="58" y="28" width="8" height="8"/>
+                <rect x="38" y="36" width="8" height="8"/><rect x="50" y="36" width="8" height="8"/>
+                <rect x="44" y="44" width="8" height="8"/>
+                <rect x="44" y="52" width="8" height="8"/>
+                <rect x="44" y="60" width="8" height="8"/>
+                <rect x="36" y="68" width="24" height="8"/>
+              </g>
+            </svg>
+          </div>
+          <div class="hero-id-text">
+            <p class="subline">developer · hyderabad<br>
+              <button class="copy-mail" id="mailCopy" data-hover title="copy email">me@yoshik.xyz ⧉</button>
+            </p>
+          </div>
+        </div>
+        <div class="sp-line" data-intro>
+          <a class="sp-glyph-link" href="https://open.spotify.com/user/31updzcpgn2v2oxgmn6jcijtmxyi" target="_blank" rel="noopener" aria-label="spotify profile" data-hover><img class="sp-glyph" src="assets/spotify.png" alt="spotify"></a>
+          <span class="sp-label" id="spLabel">last played —</span>
+          <span class="sp-track"><a class="sp-song" id="spHeroLink" target="_blank" rel="noopener">quiet rn</a><span class="sp-artists" id="spHeroArtists"></span></span>
+        </div>
+        <div class="socials" data-intro>
+<a href="https://github.com/yoshik08" target="_blank" rel="noopener" data-hover title="github" aria-label="github">
         <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.2-.4-1.3.1-2.6 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.4.1 2.6.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>
       </a>
       <a href="https://x.com/yoshik767" target="_blank" rel="noopener" data-hover title="x" aria-label="x">
@@ -118,13 +137,18 @@
       <a href="mailto:me@yoshik.xyz" data-hover title="email" aria-label="email">
         <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
       </a>
+        </div>
+      </div>
     </div>
   </section>
 
+  <!-- MARQUEE -->
+  <div class="marquee" aria-hidden="true"><div class="marquee-track" id="marqueeTrack"><span>node.js</span><span>express</span><span>mongodb</span><span>next.js</span><span>typescript</span><span>kotlin</span><span>python</span><span>sklearn</span><span>razorpay</span><span>vanilla js</span><span>vercel</span></div></div>
+
   <!-- PROJECTS -->
   <section id="projects" class="section">
-    <h2 data-reveal>projects</h2>
-    <div class="rows" data-reveal style="--d:.06s">
+    <h2 data-h2><span class="sec-no">01</span><span class="sec-rule"></span><span class="sec-title">projects</span></h2>
+    <div class="rows" data-reveal data-stagger>
 
       <article class="row">
         <button class="row-top" data-hover aria-expanded="true">
@@ -132,7 +156,7 @@
             <span class="row-name">sportsphere <span class="pill live"><span class="pdot"></span>live</span></span>
             <span class="row-desc">sports venue + program booking platform</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail open">
           <div class="row-detail-in">
@@ -152,7 +176,7 @@
             <span class="row-name">val <span class="pill live"><span class="pdot"></span>live</span></span>
             <span class="row-desc">valorant shop + live match, in one place</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
@@ -172,7 +196,7 @@
             <span class="row-name">attenly <span class="pill live"><span class="pdot"></span>live</span></span>
             <span class="row-desc">attendance, automated from the college erp</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
@@ -192,7 +216,7 @@
             <span class="row-name">spotlight launcher <span class="pill ship">apk shipped</span></span>
             <span class="row-desc">android launcher, opens straight into search</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
@@ -211,7 +235,7 @@
             <span class="row-name">play <span class="pill live"><span class="pdot"></span>live</span></span>
             <span class="row-desc">music player — search, play, lyrics, playlists</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
@@ -231,7 +255,7 @@
             <span class="row-name">engagement predictor <span class="pill live"><span class="pdot"></span>live</span></span>
             <span class="row-desc">predict post engagement, trained in your browser</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
@@ -251,7 +275,7 @@
             <span class="row-name">gba <span class="pill live"><span class="pdot"></span>live</span></span>
             <span class="row-desc">game boy advance emulator, in the browser</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
@@ -271,7 +295,7 @@
             <span class="row-name">lyrics <span class="pill live"><span class="pdot"></span>live</span></span>
             <span class="row-desc">synced lyrics + karaoke for your spotify</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
@@ -291,7 +315,7 @@
             <span class="row-name">geminiswitcher <span class="pill live"><span class="pdot"></span>live</span></span>
             <span class="row-desc">multi-account cli wrapper for the antigravity cli</span>
           </span>
-          <span class="chev">⌄</span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
@@ -310,16 +334,16 @@
 
   <!-- ABOUT -->
   <section id="about" class="section">
-    <h2 data-reveal>about</h2>
-    <div class="prose" data-reveal style="--d:.06s">
+    <h2 data-h2><span class="sec-no">02</span><span class="sec-rule"></span><span class="sec-title">about</span></h2>
+    <div class="prose" id="aboutProse">
       <p>i'm yoshik, 18, from hyderabad. i like building things that actually run — apps people tap, models that predict, tools that save me five minutes every day.</p>
     </div>
   </section>
 
   <!-- STACK -->
   <section id="stack" class="section">
-    <h2 data-reveal>stack</h2>
-    <div class="cards" data-reveal style="--d:.06s">
+    <h2 data-h2><span class="sec-no">03</span><span class="sec-rule"></span><span class="sec-title">stack</span></h2>
+    <div class="cards" data-reveal data-stagger>
       <div class="card tilt" data-hover>
         <div class="glare" aria-hidden="true"></div>
         <p class="card-title">backend</p>
@@ -368,8 +392,8 @@
 
   <!-- LIVE -->
   <section id="live" class="section">
-    <h2 data-reveal>right now</h2>
-    <div class="cards" data-reveal style="--d:.06s">
+    <h2 data-h2><span class="sec-no">04</span><span class="sec-rule"></span><span class="sec-title">right now</span></h2>
+    <div class="cards" data-reveal data-stagger>
       <div class="card" data-hover>
         <p class="card-title">
           ♪ now playing
@@ -412,9 +436,9 @@
 
   <!-- CONTACT -->
   <section id="contact" class="section">
-    <h2 data-reveal>contact</h2>
-    <div data-reveal style="--d:.06s">
-      <p class="contact-big">have an idea? let's talk.</p>
+    <h2 data-h2><span class="sec-no">05</span><span class="sec-rule"></span><span class="sec-title">contact</span></h2>
+    <div data-reveal>
+      <p class="contact-big" id="contactBig"><span class="ln">have an idea?</span><span class="ln">let's talk.</span></p>
       <p class="dim contact-sub">projects, collabs, or arguing about frameworks — my inbox is open.</p>
       <div class="contact-cta">
         <a href="mailto:me@yoshik.xyz" class="pill-btn solid magnetic" data-hover>me@yoshik.xyz</a>
@@ -526,9 +550,9 @@
   </div>
 </div>
 
-<script src="script.js?v=awe13"></script>
+<script src="assets/vendor/anime-4.5.0.umd.min.js" defer></script>
+<script src="assets/page-fx.v1.js" defer></script>
+<script src="script.js?v=v5"></script>
+<script src="motion.js?v=v5" defer></script>
 </body>
 </html>
-
-
-
