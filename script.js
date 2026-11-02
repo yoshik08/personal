@@ -351,16 +351,21 @@ function envelopeTarget(win, now) {
       return "stop";
     }
     var key = s.d.trackId || (s.d.title + " :: " + s.d.artist);
-    var epoch = key + "|" + !!s.d.playing;
+    /* spotify's `timestamp` is the moment of the last playback state change (play, pause, skip,
+       scrub). it stays fixed during normal playback (measured on this account: one value across 60s),
+       so when it moves, every older sample describes a timeline that no longer exists. dropping them
+       is what makes a short backward scrub land: before, a < 2s scrub back was not seen as a seek and
+       the newest-sample envelope kept lyrics running ahead by the scrub for ~6s. */
+    var epoch = key + "|" + !!s.d.playing + "|" + (s.d.spotifyTs || "");
     var newTrack = key !== spClockKey;
+    var stateChanged = spEpoch !== null && epoch !== spEpoch;
     spClockKey = key;
-    if (hard || newTrack || !s.d.playing || !playbackClock.isPlaying()) {
+    if (hard || newTrack || stateChanged || !s.d.playing || !playbackClock.isPlaying()) {
       playbackClock.hardSet(s.pos, s.at, !!s.d.playing);
       spWin = s.d.playing ? [s] : [];
       spEpoch = epoch;
-      return newTrack ? "newtrack" : "reset";
+      return newTrack ? "newtrack" : stateChanged ? "state" : "reset";
     }
-    if (epoch !== spEpoch) { spWin = []; spEpoch = epoch; }
     spWin.push(s);
     if (spWin.length > SYNC.WINDOW) spWin.shift();
     var now = performance.now();
@@ -378,13 +383,20 @@ function envelopeTarget(win, now) {
     var _hard = !!(hardSync || isNewTrack || seeked);
     if (_hard) spLastActivity = performance.now();
     renderSpotify(d);
-    applySample(s, _hard);
+    /* after a state change during playback (scrub, resume), poll quickly for a few seconds so the
+       sample window refills fast; not while paused, and not for ordinary corrections */
+    var applied = applySample(s, _hard);
+    if (!_hard && applied === "state" && d.playing) spLastActivity = performance.now();
     scheduleNext();
   }
+  /* coming back to the tab is a normal (soft) poll: a pause/skip/scrub made while away arrives as
+     a new spotify timestamp and resets the clock by itself. the old hard reset threw away the
+     sample history and made the lyrics step back ~100ms on every alt-tab. long absences still
+     start clean (buffering stalls while away don't always move the timestamp). */
+  var spHiddenAt = 0;
   document.addEventListener("visibilitychange", function() {
-    if (!document.hidden) {
-      pollSpotify(true);
-    }
+    if (document.hidden) { spHiddenAt = performance.now(); return; }
+    pollSpotify(performance.now() - spHiddenAt > 30000);
   });
   window.addEventListener("focus", function() {
     if (!document.hidden) {
@@ -776,7 +788,7 @@ function envelopeTarget(win, now) {
   var lyrLeadMs = 0;
   var kLeadMs = 150;
   try {
-    if (localStorage.getItem("lyrLeadV") !== "3") {
+    if (localStorage.getItem("lyrLeadV") !== "4") {
       /* clean slate: scrolling over the sync pill used to shift and save these silently
          (±25-50ms per wheel tick, one trackpad swipe = a second or more), so saved values
          from before this fix cannot be trusted */
@@ -786,12 +798,18 @@ function envelopeTarget(win, now) {
         if (/^(kLead|lLead|lyrLead):/.test(lk) || lk === "kLeadMs" || lk === "lyrLeadMs") stale.push(lk);
       }
       stale.forEach(function (k) { localStorage.removeItem(k); });
-      localStorage.setItem("lyrLeadV", "3");
+      localStorage.setItem("lyrLeadV", "4");
     }
   } catch (e) {}
   var karaokeMode = false;
   try { karaokeMode = localStorage.getItem("karaokeMode") === "true"; } catch(e) {}
   var karaokePref = karaokeMode; /* the user's choice; forced-off for word-less songs doesn't change it */
+  /* bluetooth headphones play audio late (codec + radio buffering; spotify reports the app's position,
+     not what reaches your ears). this is a manual toggle, OFF by default: -225ms is the value measured
+     by ear on yoshik's own headphones, not a universal number. it applies to line and word modes alike. */
+  var HEADPHONES_MS = -225;
+  var headphonesOn = false;
+  try { headphonesOn = localStorage.getItem("ykHeadphones") === "1"; } catch (e) {}
   var lyrStore = new Map();
   var lyrInflight = {};
   var lyrRaf = 0, lyrActiveIdx = -1, lyrUserScrollAt = 0, lyrRenderedKey = null;
@@ -929,6 +947,20 @@ function envelopeTarget(win, now) {
     }
     paint();
   })();
+
+  var hpToggle = document.getElementById("hpToggle");
+  function paintHeadphones() {
+    if (!hpToggle) return;
+    hpToggle.classList.toggle("active", headphonesOn);
+    hpToggle.setAttribute("aria-pressed", headphonesOn ? "true" : "false");
+  }
+  function toggleHeadphones() {
+    headphonesOn = !headphonesOn;
+    try { localStorage.setItem("ykHeadphones", headphonesOn ? "1" : "0"); } catch (e) {}
+    paintHeadphones();
+  }
+  if (hpToggle) hpToggle.addEventListener("click", toggleHeadphones);
+  paintHeadphones();
 
   function updateKaraokeToggle(hasWords) {
     if (!hasWords) {
@@ -1361,7 +1393,7 @@ function envelopeTarget(win, now) {
       return;
     }
 
-    var pos = lyrPos() + (karaokeMode ? kLeadMs : lyrLeadMs);
+    var pos = lyrPos() + (karaokeMode ? kLeadMs : lyrLeadMs) + (headphonesOn ? HEADPHONES_MS : 0);
     var entry = lyrStore.get(key);
 
     if (Math.abs(lyrPos() - kLastLyrPos) > 1500) kSnapNext = true;
@@ -1468,7 +1500,8 @@ function envelopeTarget(win, now) {
       if (lyrStore.has(spState.key)) renderLyrEntry(spState.key, spState.durationMs);
       else if (!lyrInflight[spState.key]) fetchLyrics(spState.title, spState.artist, spState.durationMs);
     }
-    pollSpotify(true);
+    paintHeadphones();
+    pollSpotify(false); /* fresh sample, keep the history (a hard reset here cost ~100ms of accuracy) */
   }
   function closeLyrics() {
     if (kIdleTimer) clearTimeout(kIdleTimer);
@@ -1485,6 +1518,7 @@ function envelopeTarget(win, now) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if ((e.key === "k" || e.key === "K") && lyricsOverlay.classList.contains("open")) toggleKaraokeMode();
     if ((e.key === "s" || e.key === "S") && lyricsOverlay.classList.contains("open")) doSync();
+    if ((e.key === "h" || e.key === "H") && lyricsOverlay.classList.contains("open")) toggleHeadphones();
     if (karaokeMode && lyricsOverlay.classList.contains("open") && window.ykVK && window.__vkSetStyle && e.key >= "1" && e.key <= "4") window.__vkSetStyle(ykVK.STYLES[+e.key - 1]);
     if ((e.key === "d" || e.key === "D") && lyricsOverlay.classList.contains("open")) {
        var dbg = document.getElementById("kDebugLabel");

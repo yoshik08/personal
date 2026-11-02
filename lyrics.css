@@ -173,3 +173,15 @@ html[data-motion="off"] .lyrics-overlay.open .lyrics-body, html[data-motion="off
 
 /* a song with its own offset says so, permanently (it can't silently look like "Sync") */
 .sync-btn.custom { color: #ffd84d; background: rgba(255, 216, 77, .12); }
+
+/* headphones toggle (shares the pill look of the karaoke toggle) */
+.hp-toggle.active { background: #fff; color: #000; border-color: #fff; }
+@media (max-width: 700px) { .hp-toggle span { display: none; } .hp-toggle { padding: 0 12px; } }
+/* phones: five controls must fit on one row */
+@media (max-width: 700px) {
+  .lyrics-controls { top: 14px; right: 12px; gap: 8px; }
+  .karaoke-toggle { padding: 0 12px; }
+  #karaokeToggle { font-size: 0; gap: 0; }            /* icon only (the svg keeps its own size) */
+  .sync-btn { min-width: 62px; padding: 0 10px; }
+  .sync-nudge { width: 28px; }
+}
