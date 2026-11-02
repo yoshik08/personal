@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         }),
       });
       const data = await tok.json();
-      if (!data.access_token) return res.status(200).json({});
+      if (!data.access_token) return res.status(200).json({ transient: true });
       cachedToken = data.access_token;
       tokenExpiresAt = Date.now() + (data.expires_in || 3600) * 1000;
     }
@@ -39,6 +39,7 @@ export default async function handler(req, res) {
     const pick = async (t, outer) => {
       let isrc = (t.external_ids && t.external_ids.isrc) || null;
       if (!isrc && t.id) {
+        if (isrcCache.size > 500) isrcCache.clear();
         if (isrcCache.has(t.id)) {
           isrc = isrcCache.get(t.id);
         } else {
@@ -123,6 +124,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ playing: false, timestamp: Date.now(), ...(await pick(r.items[0].track)) });
     return res.status(200).json({});
   } catch {
-    return res.status(200).json({});
+    // network blip / upstream error: tell the client to keep what it has instead of showing "nothing playing"
+    return res.status(200).json({ transient: true });
   }
 }

@@ -289,7 +289,7 @@ function envelopeTarget(win, now) {
           if (p === "netease") kLeadMs = -400;
           else if (p === "kugou") kLeadMs = -100;
           else if (p === "apple") kLeadMs = 0;
-          else kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+          else kLeadMs = lsInt("kLeadMs", 150);
           kTrackHasCustomLead = false;
         }
       } catch (e) {}
@@ -390,6 +390,7 @@ function envelopeTarget(win, now) {
   function handleSample(d, tSend, tArr, hardSync) {
     if (!d) { scheduleNext(); return; }
     if (d.rateLimited) { scheduleNext(Math.max(6000, (d.retryAfter || 6) * 1000)); return; }
+    if (d.transient) { scheduleNext(4000); return; } /* keep the current track + lyrics on screen */
     var s = sampleFrom(d, tSend, tArr);
     var key = d.trackId || (d.title ? (d.title + " :: " + d.artist) : null);
     var isNewTrack = key !== spClockKey;
@@ -592,7 +593,10 @@ function envelopeTarget(win, now) {
   var APPLE_EMOJI_BASE = "https://cdn.jsdelivr.net/npm/emoji-datasource-apple@16.0.0/img/apple/64/";
   var EMOJI_REGEX;
   try {
-    EMOJI_REGEX = new RegExp("\\p{Extended_Pictographic}(\\uFE0F|\\u200D\\p{Extended_Pictographic}|\\p{Emoji_Modifier})*", "gu");
+    /* real emoji only: emoji-presentation chars, or pictographs explicitly followed by VS16.
+       plain text symbols (↗ ⌘ ◐ ♪ ✦) must stay text — they have no apple image and each one
+       used to trigger a failing image request + a flash of broken fallback. */
+    EMOJI_REGEX = new RegExp("(?:\\p{Emoji_Presentation}|\\p{Extended_Pictographic}\\uFE0F)(?:\\uFE0F|\\u200D(?:\\p{Emoji_Presentation}|\\p{Extended_Pictographic}\\uFE0F?)|\\p{Emoji_Modifier})*", "gu");
   } catch (e) {
     EMOJI_REGEX = null;
   }
@@ -779,6 +783,13 @@ function envelopeTarget(win, now) {
   } else {
     runEmojiWalker();
   }
+  /* integer from localStorage; 0 is a legitimate saved lead (`|| 150` used to turn it back into 150) */
+  function lsInt(key, fallback) {
+    try {
+      var v = parseInt(localStorage.getItem(key), 10);
+      return isNaN(v) ? fallback : v;
+    } catch (e) { return fallback; }
+  }
   var lyrLeadMs = 400;
   var kLeadMs = 150;
   try {
@@ -788,11 +799,8 @@ function envelopeTarget(win, now) {
       if (!_l || _l === "40") localStorage.setItem("lyrLeadMs", "400");
       localStorage.setItem("lyrLeadV", "2");
     }
-    var _l2 = localStorage.getItem("lyrLeadMs");
-    if (_l2 !== null) lyrLeadMs = parseInt(_l2, 10) || 0;
-    
-    var _k = localStorage.getItem("kLeadMs");
-    if (_k !== null) kLeadMs = parseInt(_k, 10) || 150;
+    lyrLeadMs = lsInt("lyrLeadMs", 400);
+    kLeadMs = lsInt("kLeadMs", 150);
   } catch (e) {}
   var karaokeMode = false;
   try { karaokeMode = localStorage.getItem("karaokeMode") === "true"; } catch(e) {}
@@ -852,10 +860,20 @@ function envelopeTarget(win, now) {
     return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
   }
 
+  var colorToken = 0;
   function extractDominantColors(imgSrc) {
+    var token = ++colorToken;
     var img = new Image();
     img.crossOrigin = "Anonymous";
+    img.onerror = function () {};
     img.onload = function() {
+      if (token !== colorToken) return; /* a newer track's artwork already won */
+      try { paintDominantColors(img); } catch (e) { /* tainted canvas: keep the default backdrop */ }
+    };
+    img.src = imgSrc;
+  }
+  function paintDominantColors(img) {
+    {
       var cvs = document.createElement("canvas");
       var ctx = cvs.getContext("2d", { willReadFrequently: true });
       cvs.width = 16; cvs.height = 16;
@@ -878,9 +896,51 @@ function envelopeTarget(win, now) {
         var accHue = (bgHue + 180) % 360;
         lyricsOverlay.style.setProperty("--k-accent", "hsl(" + accHue + ", 100%, 65%)");
       }
-    };
-    img.src = imgSrc;
+    }
   }
+
+  /* ---------- karaoke engine (karaoke.js) ---------- */
+  function emojiNode(key) {
+    var frag = document.createDocumentFragment();
+    var parts = (EMOJI_REGEX && key.match(EMOJI_REGEX)) || [key];
+    for (var i = 0; i < parts.length; i++) frag.appendChild(toAppleEmoji(parts[i]));
+    return frag;
+  }
+  var vk = null;
+  (function initVK() {
+    if (!window.ykVK || !karaokeStage) return;
+    vk = ykVK.create(karaokeStage, {
+      reduced: function () { return !motionOK() || window.matchMedia("(prefers-reduced-motion: reduce)").matches; },
+      iconKey: function (t) { return emojiFor(t); },
+      iconNode: emojiNode
+    });
+    var DEF = { lyric: "#ffffff", highlight: "#ff3d8b", secondary: "#d6906c" };
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem("vkSettings") || "{}"); } catch (e) {}
+    var st = { style: saved.style || "visual", colors: Object.assign({}, DEF, saved.colors) };
+    var bar = document.getElementById("vkSettings");
+    function paint() {
+      vk.setStyle(st.style); vk.setColors(st.colors);
+      if (bar) {
+        [].forEach.call(bar.querySelectorAll("[data-s]"), function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-s") === st.style ? "true" : "false"); });
+        [].forEach.call(bar.querySelectorAll("[data-c]"), function (i) { i.value = st.colors[i.getAttribute("data-c")]; });
+      }
+      try { localStorage.setItem("vkSettings", JSON.stringify(st)); } catch (e) {}
+    }
+    window.__vkSetStyle = function (name) { st.style = name; paint(); };
+    if (bar) {
+      bar.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-s]");
+        if (b) { st.style = b.getAttribute("data-s"); paint(); }
+        if (e.target.closest("#vkReset")) { st = { style: "visual", colors: Object.assign({}, DEF) }; paint(); }
+      });
+      bar.addEventListener("input", function (e) {
+        var c = e.target.getAttribute && e.target.getAttribute("data-c");
+        if (c) { st.colors[c] = e.target.value; paint(); }
+      });
+    }
+    paint();
+  })();
 
   function updateKaraokeToggle(hasWords) {
     if (!hasWords) {
@@ -910,6 +970,7 @@ function envelopeTarget(win, now) {
       setLyricsPadding();
     } else {
       kActiveIdx = -1;
+      if (vk) { vk.resize(); kSnapNext = true; }
     }
     if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
   }
@@ -989,7 +1050,7 @@ function envelopeTarget(win, now) {
           if (p === "netease") kLeadMs = -400;
           else if (p === "kugou") kLeadMs = -100;
           else if (p === "apple") kLeadMs = 0;
-          else kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+          else kLeadMs = lsInt("kLeadMs", 150);
           kTrackHasCustomLead = false;
         } else {
           localStorage.removeItem("lLead:" + spState.key);
@@ -1022,7 +1083,7 @@ function envelopeTarget(win, now) {
           if (p === "netease") kLeadMs = -400;
           else if (p === "kugou") kLeadMs = -100;
           else if (p === "apple") kLeadMs = 0;
-          else kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+          else kLeadMs = lsInt("kLeadMs", 150);
           kTrackHasCustomLead = false;
         } else {
           localStorage.removeItem("lLead:" + spState.key);
@@ -1094,7 +1155,6 @@ function envelopeTarget(win, now) {
       });
     });
 
-    if (kTapeCol) kTapeCol.innerHTML = "";
     var seenSongEmojis = {};
     karaokeWordList.forEach(function(kw) {
       var se = emojiFor(kw.text);
@@ -1106,54 +1166,7 @@ function envelopeTarget(win, now) {
         }
       }
     });
-    var kFrag2 = document.createDocumentFragment();
-    var seed = 42;
-    var kPrev = [], kCurr = [], kLastLine = -1;
-    karaokeWordList.forEach(function(word, idx) {
-       if (word.lineIdx !== kLastLine) {
-         kPrev = kCurr;
-         kCurr = [];
-         kLastLine = word.lineIdx;
-       }
-       var div = document.createElement("div");
-       div.className = "k-tape-word";
-       div.textContent = word.text;
-       var e = emojiFor(word.text);
-       if (e && kCurr.length < 2 && kCurr.indexOf(e) === -1 && kPrev.indexOf(e) === -1) {
-         kCurr.push(e);
-         var emo = document.createElement("span");
-         emo.className = "emo";
-         var eMatches = (EMOJI_REGEX && e.match(EMOJI_REGEX)) || [e];
-         for (var emi = 0; emi < eMatches.length; emi++) {
-           emo.appendChild(toAppleEmoji(eMatches[emi]));
-         }
-         div.appendChild(emo);
-       }
-       seed = (seed * 9301 + 49297) % 233280; var rand1 = seed / 233280;
-       seed = (seed * 9301 + 49297) % 233280; var rand2 = seed / 233280;
-       var rot = -3 + rand1 * 6;
-       div.style.setProperty("--rot", rot + "deg");
-       if (rand2 < 0.16) div.classList.add("font-bubbly");
-       
-       var tl_x = rand1 * 4, tl_y = rand2 * 4;
-       seed = (seed * 9301 + 49297) % 233280; var r3 = seed / 233280;
-       seed = (seed * 9301 + 49297) % 233280; var r4 = seed / 233280;
-       var tr_x = 100 - r3 * 4, tr_y = r4 * 4;
-       seed = (seed * 9301 + 49297) % 233280; var r5 = seed / 233280;
-       seed = (seed * 9301 + 49297) % 233280; var r6 = seed / 233280;
-       var br_x = 100 - r5 * 4, br_y = 100 - r6 * 4;
-       seed = (seed * 9301 + 49297) % 233280; var r7 = seed / 233280;
-       seed = (seed * 9301 + 49297) % 233280; var r8 = seed / 233280;
-       var bl_x = r7 * 4, bl_y = 100 - r8 * 4;
-       var clip = "polygon(" + tl_x + "% " + tl_y + "%, " + tr_x + "% " + tr_y + "%, " + br_x + "% " + br_y + "%, " + bl_x + "% " + bl_y + "%)";
-       div.style.setProperty("--clip", clip);
-       word.el = div;
-       kFrag2.appendChild(div);
-    });
-    if (kTapeCol) {
-      kTapeCol.appendChild(kFrag2);
-      kTapeCol.style.transform = "translateY(0px)";
-    }
+    if (vk) { vk.setWords(karaokeWordList); kSnapNext = true; }
 
     updateKaraokeToggle(anyHasWords);
     setLyricsPadding();
@@ -1194,6 +1207,7 @@ function envelopeTarget(win, now) {
   }
 
   var lyrLastQuery = null;
+  var lyrFailUntil = {}, lyrTries = {};
   function fetchLyrics(title, artist, durationMs, force) {
     var key = spState.key;
     if (!key) return;
@@ -1202,7 +1216,7 @@ function envelopeTarget(win, now) {
     lyrLastQuery = { title: title, artist: artist, durationMs: durationMs, retried: false };
     lyrActiveIdx = -1; kActiveIdx = -1; lyrRenderedKey = null;
     lyricsLines.innerHTML = "";
-    if (kTapeCol) kTapeCol.innerHTML = "";
+    if (vk) vk.clear();
     lyricsHint.textContent = "finding lyrics…";
     lyricsHint.style.cursor = "";
     lyricsHint.onclick = null;
@@ -1211,15 +1225,25 @@ function envelopeTarget(win, now) {
       "&duration=" + Math.round((durationMs || 0) / 1000) + 
       (spState.isrc ? "&isrc=" + encodeURIComponent(spState.isrc) : "") + "&v=6";
       
-    Promise.all([
-      fetch(base + "&mode=line").then(function(r) { return r.ok ? r.json() : null; }),
-      fetch(base + "&mode=word").then(function(r) { return r.ok ? r.json() : null; })
-    ]).then(function(results) {
+    /* never swallow a non-ok response: a 429 must reach the rate-limit path, and a 5xx / network
+       failure must NOT be cached as "this song has no lyrics". */
+    function getJson(url) {
+      return fetch(url).then(function (r) {
+        if (r.status === 429) return { rateLimited: true };
+        if (!r.ok) return { failed: true };
+        return r.json();
+      }).catch(function () { return { failed: true }; });
+    }
+    Promise.all([getJson(base + "&mode=line"), getJson(base + "&mode=word")]).then(function(results) {
       delete lyrInflight[key];
       var dLine = results[0], dWord = results[1];
-      if (dLine && dLine.error && dLine.error === "rate-limited") { var e = new Error("rate-limited"); e.rate = true; throw e; }
-      
-      var entry = { empty: true };
+      if ((dLine && dLine.rateLimited) || (dWord && dWord.rateLimited)) { var e = new Error("rate-limited"); e.rate = true; throw e; }
+      if (dLine && dLine.failed && dWord && dWord.failed) throw new Error("lyrics upstream failed");
+      if (dLine && dLine.failed) dLine = null;
+      var wordFailed = !!(dWord && dWord.failed);
+      if (wordFailed) dWord = null;
+
+      var entry = { empty: true, wordFailed: wordFailed };
       if (dLine && dLine.lines && dLine.lines.length) {
         entry.lines = dLine.lines;
         entry.source = dLine.source;
@@ -1233,12 +1257,27 @@ function envelopeTarget(win, now) {
       }
       
       lyrPut(key, entry);
-      
+      delete lyrTries[key]; delete lyrFailUntil[key];
+      /* the line request worked but the word request blew up: try the word timings once more
+         in the background so karaoke can still switch on, instead of staying line-only forever */
+      if (entry.wordFailed && entry.lines) {
+        setTimeout(function () {
+          getJson(base + "&mode=word").then(function (dw) {
+            if (dw && dw.lines && dw.lines.length && dw.wordSync) {
+              entry.wordLines = dw.lines;
+              entry.calibProvider = dw.calib ? dw.calib.provider : null;
+              entry.wordFailed = false;
+              if (spState.key === key && lyricsOverlay.classList.contains("open")) { lyrRenderedKey = null; }
+            }
+          });
+        }, 4000);
+      }
+
       if (!kTrackHasCustomLead && entry.calibProvider) {
          if (entry.calibProvider === "netease") kLeadMs = -400;
          else if (entry.calibProvider === "kugou") kLeadMs = -100;
          else if (entry.calibProvider === "apple") kLeadMs = 0;
-         else kLeadMs = parseInt(localStorage.getItem("kLeadMs"), 10) || 150;
+         else kLeadMs = lsInt("kLeadMs", 150);
          if (typeof updateSyncLabel !== "undefined") updateSyncLabel();
       }
       
@@ -1246,9 +1285,14 @@ function envelopeTarget(win, now) {
         renderLyrEntry(key, durationMs);
     }).catch(function (err) {
       delete lyrInflight[key];
-      var lq = lyrLastQuery;
-      if (!err.rate && lq && !lq.retried && lyricsOverlay.classList.contains("open")) {
-        lq.retried = true;
+      /* cooldown: lyrTick auto-fetches whenever a track has no entry, so without this a failed
+         request was re-issued on the very next frame (hammering the api, and "tap to retry"
+         could never stay on screen). the retry counter is per track, not per call, so the
+         automatic retry really happens once instead of looping every 2.5s forever. */
+      var tries = lyrTries[key] || 0;
+      if (!err.rate && tries < 1 && lyricsOverlay.classList.contains("open")) {
+        lyrTries[key] = tries + 1;
+        lyrFailUntil[key] = Date.now() + 3500;
         lyricsHint.textContent = "retrying…";
         setTimeout(function () {
           if (lyricsOverlay.classList.contains("open") && spState.key === key && !lyrStore.has(key))
@@ -1256,12 +1300,14 @@ function envelopeTarget(win, now) {
         }, 2500);
         return;
       }
+      lyrFailUntil[key] = Infinity; /* stay failed until the user taps */
       lyricsLines.innerHTML = "";
       lyricsHint.textContent = err.rate ? "too many requests — tap to retry" : "couldn't load lyrics — tap to retry";
       lyricsHint.style.cursor = "pointer";
       lyricsHint.onclick = function () {
         lyricsHint.style.cursor = "";
         lyricsHint.onclick = null;
+        delete lyrFailUntil[key]; delete lyrTries[key];
         fetchLyrics(title, artist, durationMs, true);
       };
     });
@@ -1339,7 +1385,7 @@ function envelopeTarget(win, now) {
     var key = spState.key;
     if (!key) return;
     if (!lyrStore.has(key)) {
-      if (!lyrInflight[key]) {
+      if (!lyrInflight[key] && !(lyrFailUntil[key] > Date.now())) {
         setLyricsHeader();
         fetchLyrics(spState.title, spState.artist, spState.durationMs);
       }
@@ -1376,55 +1422,8 @@ function envelopeTarget(win, now) {
         dbg.textContent = "[karaoke] p=" + entry.calib.provider + " r=" + entry.calib.ref + " off=" + entry.calib.offsetMs + " mad=" + entry.calib.mad + " conf=" + entry.calib.confidence + " lead=" + kLeadMs;
       }
     
-      var kidx = findKaraokeIndex(pos, kActiveIdx);
-      if (kidx !== kActiveIdx) {
-        if (kActiveIdx >= 0 && karaokeWordList[kActiveIdx] && karaokeWordList[kActiveIdx].el) {
-          karaokeWordList[kActiveIdx].el.classList.remove("active", "k-rest");
-        }
-        kActiveIdx = kidx;
-        if (kidx >= 0 && karaokeWordList[kidx] && karaokeWordList[kidx].el) {
-          var word = karaokeWordList[kidx];
-          if (karaokeStage && kTapeCol) {
-            var wW = word.el.scrollWidth;
-            var maxW = window.innerWidth * 0.9;
-            if (wW > maxW) {
-              word.el.style.setProperty("--scale", (maxW / wW));
-            } else {
-              word.el.style.setProperty("--scale", "1");
-            }
-          }
-        }
-      }
-      
-      if (kidx >= 0 && karaokeWordList[kidx] && karaokeWordList[kidx].el) {
-         var cw = karaokeWordList[kidx];
-         var nw = karaokeWordList[kidx + 1];
-         var nStart = nw ? nw.start : Infinity;
-         var inGap = pos >= cw.end + 120 && (nStart - cw.end) > 400;
-         cw.el.classList.toggle("active", !inGap);
-         cw.el.classList.toggle("k-rest", inGap);
-      }
-      
-      if (karaokeStage && kTapeCol) {
-         var lookPos = pos + 60;
-         var lookIdx = findKaraokeIndex(lookPos, kActiveIdx);
-         if (lookIdx >= 0 && karaokeWordList[lookIdx] && karaokeWordList[lookIdx].el) {
-             var tgtWord = karaokeWordList[lookIdx];
-             var targetY = tgtWord.el.offsetTop + tgtWord.el.offsetHeight / 2 - karaokeStage.offsetHeight / 2;
-             
-             if (Math.abs(targetY - kCamY) > 1.5 * karaokeStage.offsetHeight) kSnapNext = true;
-             if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) kSnapNext = true;
-             
-             if (kSnapNext) {
-               kCamY = targetY;
-               kSnapNext = false;
-             } else {
-               kCamY += (targetY - kCamY) * (1 - Math.exp(-dt / 45));
-             }
-             kTapeCol.style.transform = "translate3d(0, " + (-kCamY) + "px, 0)";
-         }
-      }
-
+      if (vk) { vk.update(pos, dt, kSnapNext); kSnapNext = false; }
+      kActiveIdx = findKaraokeIndex(pos, kActiveIdx);
     } else if (karaokeMode && karaokeWordList.length === 0) {
       toggleKaraokeMode(false);
     } else if (!karaokeMode && entry.lines) {
@@ -1496,13 +1495,6 @@ function envelopeTarget(win, now) {
   var karaokeFontsLoaded = false;
   function openLyrics() {
     if (!spState.title) return;
-    if (!karaokeFontsLoaded) {
-      karaokeFontsLoaded = true;
-      var ln = document.createElement("link");
-      ln.rel = "stylesheet";
-      ln.href = "karaoke-fonts.css";
-      document.head.appendChild(ln);
-    }
     setLyricsHeader();
     lyricsOverlay.classList.add("open");
     lyricsOverlay.setAttribute("aria-hidden", "false");
@@ -1534,6 +1526,7 @@ function envelopeTarget(win, now) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if ((e.key === "k" || e.key === "K") && lyricsOverlay.classList.contains("open")) toggleKaraokeMode();
     if ((e.key === "s" || e.key === "S") && lyricsOverlay.classList.contains("open")) doSync();
+    if (karaokeMode && lyricsOverlay.classList.contains("open") && window.ykVK && window.__vkSetStyle && e.key >= "1" && e.key <= "4") window.__vkSetStyle(ykVK.STYLES[+e.key - 1]);
     if ((e.key === "d" || e.key === "D") && lyricsOverlay.classList.contains("open")) {
        var dbg = document.getElementById("kDebugLabel");
        if (dbg) dbg.style.display = dbg.style.display === "none" ? "block" : "none";
@@ -1821,7 +1814,7 @@ function envelopeTarget(win, now) {
       (function frame() {
       if (loopGen("fx") !== gen) return; /* superseded by a restart */
       loopTick("fx");
-      if (!motionOK()) { requestAnimationFrame(frame); return; }
+      if (!motionOK() || (lyricsOverlay && lyricsOverlay.classList.contains("open"))) { requestAnimationFrame(frame); return; }
       /* self-heal: a resize that fired while hidden can leave stale dims */
       if (W !== window.innerWidth || H !== window.innerHeight) size();
       var t = performance.now() / 1000;

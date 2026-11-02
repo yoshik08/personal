@@ -1,16 +1,15 @@
 /* ============================================================
-   yoshik v5 — motion layer (anime.js 4)
-   choreography, in order of appearance:
-     intro      topbar drops, wordmark letters rise through masks (stagger),
-                avatar springs in, hero lines follow
-     scroll     section titles + rules, staggered rows/cards, meter bars +
-                counters, word-by-word about text, contact letters
-     interact   cursor (animatable), magnetic buttons, card tilt, row nudge,
-                nav indicator, accordion, role roller, marquee
-   rules: only transform/opacity are tweened (accordion height excepted),
-   everything starts after first paint, nothing blocks content, all of it
-   stands down for data-motion="off" / prefers-reduced-motion, and if this
-   file never boots the head script un-hides the page after 4s.
+   yoshik v6 — motion layer (anime.js 4). the particle hero is hero.js.
+     intro      brand + dock + viewfinder corners settle in after first paint
+     scroll     section rules draw, titles rise, rows/cards stagger, about text
+                lights word by word, dot plots slide + count, contact letters rise
+     interact   cursor, magnetic buttons, project names breathe on their
+                variable-font axes, a generative cover trails the pointer over
+                the work list, dock pill follows hover + scroll, accordion,
+                role roller, two marquees
+   rules: transform/opacity (plus font axes + one accordion height),
+   nothing blocks content, everything stands down for data-motion="off",
+   and the head script un-hides the page if this file never boots.
    ============================================================ */
 (function () {
   "use strict";
@@ -26,7 +25,6 @@
   var bootedMo = root.classList.contains("mo");
   var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
 
-  /* ---------- helpers ---------- */
   function splitChars(el) {
     var txt = el.textContent;
     el.setAttribute("aria-label", txt);
@@ -52,143 +50,124 @@
       return s;
     });
   }
-  /* final state, no animation (reduced motion / motion toggled off) */
-  function settle(els, props) { if (els.length || els.nodeType) utils.set(els, props); }
+  function settle(els, props) { if (els && (els.length || els.nodeType)) utils.set(els, props); }
 
-  /* ---------- 1. scroll progress ---------- */
+  /* ---------- 1. scroll: progress bar + about text scrub ---------- */
   var pfill = $("#progressFill");
-  var progTick = false;
-  function updateProgress() {
-    progTick = false;
-    var h = document.documentElement;
-    var max = h.scrollHeight - h.clientHeight;
-    pfill.style.transform = "scaleX(" + (max > 0 ? clamp(h.scrollTop / max, 0, 1) : 0).toFixed(4) + ")";
-  }
-  /* ---------- 2. about text: words light up as you scroll past ---------- */
-  var proseEl = $("#aboutProse p");
-  var proseWords = proseEl ? splitWords(proseEl) : [];
-  var proseNear = false;
-  function scrubProse() {
-    if (!proseEl || !proseNear || !motionOK()) return;
-    var r = proseEl.getBoundingClientRect();
-    var vh = window.innerHeight;
-    var p = clamp((vh * 0.86 - r.top) / (r.height + vh * 0.32), 0, 1);
-    var lit = p * proseWords.length;
-    for (var i = 0; i < proseWords.length; i++) {
-      var o = clamp(lit - i, 0, 1);
-      proseWords[i].style.opacity = (0.2 + o * 0.8).toFixed(3);
-    }
+  var lead = $("#aboutProse .lead");
+  var leadWords = lead ? splitWords(lead) : [];
+  var leadNear = false, ticking = false;
+  function scrubLead() {
+    if (!lead || !leadNear || !motionOK()) return;
+    var r = lead.getBoundingClientRect(), vh = window.innerHeight;
+    var p = clamp((vh * 0.88 - r.top) / (r.height + vh * 0.3), 0, 1);
+    var lit = p * leadWords.length;
+    for (var i = 0; i < leadWords.length; i++) leadWords[i].style.opacity = (0.16 + clamp(lit - i, 0, 1) * 0.84).toFixed(3);
   }
   function onScroll() {
-    if (!progTick) { progTick = true; requestAnimationFrame(function () { updateProgress(); scrubProse(); }); }
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      ticking = false;
+      var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+      pfill.style.transform = "scaleX(" + (max > 0 ? clamp(h.scrollTop / max, 0, 1) : 0).toFixed(4) + ")";
+      scrubLead();
+    });
   }
   document.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
-  updateProgress();
+  onScroll();
+  if (lead) new IntersectionObserver(function (es) { leadNear = es[0].isIntersecting; scrubLead(); }, { rootMargin: "25% 0px 25% 0px" }).observe(lead);
 
-  /* ---------- 3. section titles, meters, contact: prepared once ---------- */
-  var titles = $$("[data-h2]").map(function (h) {
-    return { el: h, rule: $(".sec-rule", h), no: $(".sec-no", h), chars: splitChars($(".sec-title", h)) };
+  /* ---------- 2. prepare the things that reveal ---------- */
+  var heads = $$("[data-h2]").map(function (h) {
+    var line = document.createElement("i"); line.className = "sec-line"; line.setAttribute("aria-hidden", "true"); h.appendChild(line);
+    return { el: h, line: line, chars: splitChars($(".sec-title", h)) };
   });
   var contactBig = $("#contactBig");
   var contactLines = contactBig ? $$(".ln", contactBig) : [];
   var contactChars = [];
   contactLines.forEach(function (ln) { contactChars = contactChars.concat(splitChars(ln)); });
-
   var meters = $$(".meters li").map(function (li) {
-    var bar = $(".bar i", li);
-    var label = $("span", li);
+    var bar = $(".bar i", li), label = $("span", li);
     var v = parseFloat((bar.getAttribute("style") || "").replace(/.*--v:\s*([\d.]+)%.*/, "$1")) || 0;
-    bar.style.setProperty("--s", (v / 100).toFixed(3));
-    var pct = document.createElement("em");
-    pct.className = "pct"; pct.textContent = v + "%";
-    label.appendChild(pct);
-    return { bar: bar, pct: pct, v: v };
+    var pct = document.createElement("em"); pct.className = "pct"; pct.textContent = v + "%"; label.appendChild(pct);
+    return { li: li, bar: bar, pct: pct, v: v };
   });
 
-  /* ---------- 4. reveal engine (one IntersectionObserver for everything) ---------- */
+  /* ---------- 3. reveal engine (one observer) ---------- */
   var handlers = new WeakMap();
-  function on(el, fn) { handlers.set(el, fn); }
+  var on = function (el, fn) { handlers.set(el, fn); };
 
   $$("[data-reveal]").forEach(function (el) {
     on(el, function () {
       var kids = el.hasAttribute("data-stagger") ? $$(":scope > *", el) : [el];
       if (!motionOK()) { settle(kids, { opacity: 1, y: 0 }); el.classList.add("in"); return; }
-      utils.set(kids, { opacity: 0, y: 30 });
+      utils.set(kids, { opacity: 0, y: 40 });
       el.classList.add("in");
-      animate(kids, { opacity: 1, y: 0, duration: 900, delay: stagger(70), ease: "outExpo" });
+      animate(kids, { opacity: 1, y: 0, duration: 1000, delay: stagger(65), ease: "outExpo" });
     });
   });
-
-  titles.forEach(function (t) {
-    on(t.el, function () {
-      if (!motionOK()) { settle(t.chars, { y: 0 }); settle(t.rule, { scaleX: 1 }); return; }
-      animate(t.rule, { scaleX: [0, 1], duration: 900, ease: "outExpo" });
-      animate(t.chars, { y: ["110%", "0%"], duration: 800, delay: stagger(32, { start: 120 }), ease: "outExpo" });
+  heads.forEach(function (h) {
+    on(h.el, function () {
+      if (!motionOK()) { settle(h.chars, { y: "0%" }); settle(h.line, { scaleX: 1 }); return; }
+      animate(h.line, { scaleX: [0, 1], duration: 1300, ease: "inOutExpo" });
+      animate(h.chars, { y: ["110%", "0%"], duration: 900, delay: stagger(28, { start: 180 }), ease: "outExpo" });
     });
   });
-
   meters.forEach(function (m) {
-    on(m.bar.parentNode, function () {
+    on(m.li, function () {
       m.bar.classList.add("done");
-      if (!motionOK()) { settle(m.bar, { scaleX: m.v / 100 }); return; }
-      animate(m.bar, { scaleX: [0, m.v / 100], duration: 1400, delay: 150, ease: "outExpo" });
+      if (!motionOK()) { m.bar.style.width = m.v + "%"; return; }
+      var delay = 120 + meters.indexOf(m) % 5 * 70;
+      animate(m.bar, { width: ["0%", m.v + "%"], duration: 1500, delay: delay, ease: "outExpo" });
       var o = { n: 0 };
-      animate(o, { n: m.v, duration: 1400, delay: 150, ease: "outExpo",
+      animate(o, { n: m.v, duration: 1500, delay: delay, ease: "outExpo",
         onUpdate: function () { m.pct.textContent = Math.round(o.n) + "%"; },
         onComplete: function () { m.pct.textContent = m.v + "%"; } });
     });
   });
-
-  if (contactBig) {
-    on(contactBig, function () {
-      if (!motionOK()) { settle(contactChars, { y: 0 }); return; }
-      animate(contactChars, { y: ["110%", "0%"], duration: 1000, delay: stagger(24), ease: "outExpo" });
-    });
-  }
-
-  if (proseEl) {
-    var proseIO = new IntersectionObserver(function (es) { proseNear = es[0].isIntersecting; scrubProse(); },
-      { rootMargin: "20% 0px 20% 0px" });
-    proseIO.observe(proseEl);
-  }
+  if (contactBig) on(contactBig, function () {
+    if (!motionOK()) { settle(contactChars, { y: "0%" }); return; }
+    animate(contactChars, { y: ["110%", "0%"], duration: 1100, delay: stagger(22), ease: "outExpo" });
+  });
 
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (en) {
       if (!en.isIntersecting) return;
       io.unobserve(en.target);
-      var fn = handlers.get(en.target);
-      if (fn) fn();
+      var fn = handlers.get(en.target); if (fn) fn();
     });
   }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
-  $$("[data-reveal]").concat(titles.map(function (t) { return t.el; }), meters.map(function (m) { return m.bar.parentNode; }), contactBig ? [contactBig] : [])
+  $$("[data-reveal]").concat(heads.map(function (h) { return h.el; }), meters.map(function (m) { return m.li; }), contactBig ? [contactBig] : [])
     .forEach(function (el) { io.observe(el); });
 
-  /* ---------- 5. accordion (height + staggered content) ---------- */
+  /* ---------- 4. accordion ---------- */
   var rows = $$(".row");
-  function closeRow(row, instant) {
-    var d = $(".row-detail", row), b = $(".row-top", row);
+  rows.forEach(function (r) { if ($(".row-detail", r).classList.contains("open")) r.classList.add("is-open"); });
+  function closeRow(row) {
+    var d = $(".row-detail", row);
     if (!d.classList.contains("open")) return;
-    b.setAttribute("aria-expanded", "false");
-    if (instant || !motionOK()) { d.classList.remove("open"); d.style.height = ""; return; }
+    $(".row-top", row).setAttribute("aria-expanded", "false");
+    row.classList.remove("is-open");
+    if (!motionOK()) { d.classList.remove("open"); d.style.height = ""; return; }
     var h = d.offsetHeight;
     d.style.height = h + "px";
-    animate(d, { height: [h + "px", "0px"], duration: 480, ease: "inOutQuart",
+    animate(d, { height: [h + "px", "0px"], duration: 520, ease: "inOutQuart",
       onComplete: function () { d.classList.remove("open"); d.style.height = ""; } });
   }
   function openRow(row) {
-    var d = $(".row-detail", row), b = $(".row-top", row);
-    b.setAttribute("aria-expanded", "true");
+    var d = $(".row-detail", row);
+    $(".row-top", row).setAttribute("aria-expanded", "true");
+    row.classList.add("is-open");
     d.classList.add("open");
     if (!motionOK()) return;
     d.style.height = "auto";
-    var target = d.offsetHeight;
-    var kids = $$(".row-detail-in > *", d);
-    utils.set(kids, { opacity: 0, y: 14 });
+    var target = d.offsetHeight, kids = $$(".row-detail-in > *", d);
+    utils.set(kids, { opacity: 0, y: 18 });
     d.style.height = "0px";
-    animate(d, { height: ["0px", target + "px"], duration: 700, ease: "outExpo",
-      onComplete: function () { d.style.height = ""; } });
-    animate(kids, { opacity: 1, y: 0, duration: 700, delay: stagger(70, { start: 140 }), ease: "outQuart" });
+    animate(d, { height: ["0px", target + "px"], duration: 800, ease: "outExpo", onComplete: function () { d.style.height = ""; } });
+    animate(kids, { opacity: 1, y: 0, duration: 800, delay: stagger(70, { start: 160 }), ease: "outQuart" });
   }
   rows.forEach(function (row) {
     $(".row-top", row).addEventListener("click", function () {
@@ -198,117 +177,174 @@
     });
   });
 
-  /* ---------- 6. micro-interactions (fine pointers) ---------- */
+  /* ---------- 5. generative project covers ---------- */
+  function drawCover(c, hue, idx) {
+    var w = c.width, h = c.height, x = c.getContext("2d");
+    var dark = root.getAttribute("data-theme") !== "light";
+    var bg = "hsl(" + hue + "," + (dark ? 60 : 70) + "%," + (dark ? 11 : 88) + "%)";
+    var fg = "hsl(" + hue + ",95%," + (dark ? 62 : 46) + "%)";
+    var fg2 = "hsl(" + ((hue + 40) % 360) + ",90%," + (dark ? 72 : 32) + "%)";
+    x.save(); x.fillStyle = bg; x.fillRect(0, 0, w, h);
+    var k = idx % 4, i, j;
+    if (k === 0) {                         /* off-centre rings: moiré */
+      x.lineWidth = 3; x.strokeStyle = fg;
+      for (i = 0; i < 46; i++) { x.beginPath(); x.arc(w * 0.62, h * 0.38, 12 + i * 14, 0, Math.PI * 2); x.stroke(); }
+      x.strokeStyle = fg2; x.globalAlpha = .6;
+      for (i = 0; i < 46; i++) { x.beginPath(); x.arc(w * 0.38, h * 0.62, 12 + i * 14, 0, Math.PI * 2); x.stroke(); }
+    } else if (k === 1) {                  /* dot field, sized by a sine field */
+      x.fillStyle = fg;
+      for (i = 0; i < 14; i++) for (j = 0; j < 18; j++) {
+        var px = (i + .5) * w / 14, py = (j + .5) * h / 18;
+        var r = (Math.sin(i * .55 + idx) + Math.cos(j * .42 - idx * .7) + 2) * 4.6;
+        x.beginPath(); x.arc(px, py, Math.max(1, r), 0, Math.PI * 2); x.fill();
+      }
+    } else if (k === 2) {                  /* bands */
+      x.translate(w / 2, h / 2); x.rotate(-0.5);
+      for (i = -24; i < 24; i++) { x.fillStyle = i % 3 === 0 ? fg2 : fg; x.globalAlpha = .25 + (Math.sin(i * .7 + idx) + 1) * .35; x.fillRect(-w, i * 26, w * 2, 13 + (i % 4) * 3); }
+    } else {                               /* stacked waves */
+      x.lineWidth = 3;
+      for (i = 0; i < 34; i++) {
+        x.strokeStyle = i % 5 === 0 ? fg2 : fg; x.globalAlpha = .35 + (i / 34) * .65;
+        x.beginPath();
+        for (j = 0; j <= w; j += 8) {
+          var yy = 40 + i * 19 + Math.sin(j * .018 + i * .35 + idx) * 22 * Math.sin(i * .2 + 1);
+          j === 0 ? x.moveTo(j, yy) : x.lineTo(j, yy);
+        }
+        x.stroke();
+      }
+    }
+    x.restore();
+    /* film grain so it doesn't look like a vector clip-art */
+    x.globalAlpha = dark ? .07 : .05; x.fillStyle = dark ? "#fff" : "#000";
+    for (i = 0; i < 900; i++) x.fillRect(Math.random() * w, Math.random() * h, 1.4, 1.4);
+    x.globalAlpha = 1;
+    var g = x.createLinearGradient(0, h * .55, 0, h); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.55)");
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+  }
+
+  /* ---------- 6. pointer interactions (fine pointers only) ---------- */
   if (finePointer) {
-    /* cursor: two animatables with different inertia */
+    /* cursor */
     var dot = $(".cursor-dot"), ring = $(".cursor-ring");
     if (dot && ring) {
-      var dotA = createAnimatable(dot, { x: 90, y: 90, ease: "out(2)" });
-      var ringA = createAnimatable(ring, { x: 520, y: 520, ease: "out(3)" });
-      document.addEventListener("mousemove", function (e) {
-        dotA.x(e.clientX).y(e.clientY);
-        ringA.x(e.clientX).y(e.clientY);
-      }, { passive: true });
-      document.addEventListener("mousedown", function () {
-        if (!motionOK()) return;
-        animate(ring, { scale: [1.5, 1], duration: 500, ease: "outExpo" });
-      });
+      var dotA = createAnimatable(dot, { x: 70, y: 70, ease: "out(2)" });
+      var ringA = createAnimatable(ring, { x: 480, y: 480, ease: "out(3)" });
+      document.addEventListener("mousemove", function (e) { dotA.x(e.clientX).y(e.clientY); ringA.x(e.clientX).y(e.clientY); }, { passive: true });
+      document.addEventListener("mousedown", function () { if (motionOK()) animate(ring, { scale: [1.6, 1], duration: 550, ease: "outExpo" }); });
       document.addEventListener("pointerover", function (e) {
-        var t = e.target.closest && e.target.closest("a, button, [data-hover], .magnetic");
+        var t = e.target.closest && e.target.closest("a, button, [data-hover], .magnetic, input");
         document.body.classList.toggle("link-hover", !!t);
       });
-      document.addEventListener("mouseleave", function () { document.body.classList.remove("link-hover"); });
     }
 
     /* magnetic pull + press */
-    $$(".socials a, .foot-socials a, .sp-glyph-link, .pill-btn").forEach(function (el) { el.classList.add("magnetic"); });
+    $$(".socials a, .foot-socials a, .pill-btn, .ctl, .lyrics-btn").forEach(function (el) { el.classList.add("magnetic"); });
     $$(".magnetic").forEach(function (el) {
-      var R = 90;
       el.addEventListener("pointermove", function (e) {
         if (!motionOK()) return;
         var r = el.getBoundingClientRect();
         var dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-        var f = clamp(1 - Math.hypot(dx, dy) / (R + r.width / 2), 0, 1);
-        animate(el, { x: dx * f * 0.35, y: dy * f * 0.35, duration: 320, ease: "out(3)" });
+        animate(el, { x: dx * 0.3, y: dy * 0.3, duration: 320, ease: "out(3)" });
       });
-      el.addEventListener("pointerenter", function () { if (motionOK()) animate(el, { scale: 1.07, duration: 400, ease: "outBack(2)" }); });
-      el.addEventListener("pointerdown", function () { if (motionOK()) animate(el, { scale: 0.92, duration: 140, ease: "out(2)" }); });
-      el.addEventListener("pointerup", function () { if (motionOK()) animate(el, { scale: 1.07, duration: 500, ease: "outElastic(1, .5)" }); });
+      el.addEventListener("pointerdown", function () { if (motionOK()) animate(el, { scale: 0.9, duration: 140, ease: "out(2)" }); });
+      el.addEventListener("pointerup", function () { if (motionOK()) animate(el, { scale: 1, duration: 600, ease: "outElastic(1, .5)" }); });
       el.addEventListener("pointerleave", function () {
         if (motionOK()) animate(el, { x: 0, y: 0, scale: 1, duration: 900, ease: "outElastic(1, .45)" });
         else settle(el, { x: 0, y: 0, scale: 1 });
       });
     });
 
-    /* card tilt */
-    $$(".tilt").forEach(function (card) {
-      var glare = $(".glare", card);
+    /* project names breathe on the variable font axes; a cover trails the pointer */
+    var cover = $("#workCover"), coverCanvas = $("#coverCanvas"), coverTag = $("#coverTag"), coverName = $("#coverName");
+    var coverA = cover ? createAnimatable(cover, { x: 520, y: 520, rotate: 700, ease: "out(3)" }) : null;
+    var lastX = 0, coverOn = false;
+    rows.forEach(function (row, i) {
+      var name = $(".row-name", row);
+      row.addEventListener("pointerenter", function (e) {
+        if (!motionOK()) return;
+        animate(name, { "--wd": 100, "--wt": 800, duration: 700, ease: "outExpo" });
+        if (!cover) return;
+        drawCover(coverCanvas, +row.getAttribute("data-hue") || 0, i);
+        coverTag.textContent = row.getAttribute("data-tag") || "project";
+        coverName.textContent = name.childNodes[0].textContent.trim();
+        if (!coverOn) {
+          coverOn = true; lastX = e.clientX;
+          coverA.x(e.clientX + 28, 0).y(e.clientY - cover.offsetHeight / 2, 0);
+          animate(cover, { opacity: [0, 1], scale: [0.7, 1], duration: 600, ease: "outExpo" });
+        } else {
+          animate(cover, { scale: [0.94, 1], duration: 500, ease: "outBack(2)" });
+        }
+      });
+      row.addEventListener("pointerleave", function () {
+        animate(name, { "--wd": 80, "--wt": 700, duration: 600, ease: "outExpo" });
+      });
+    });
+    var rowsWrap = $(".rows");
+    if (rowsWrap && cover) {
+      rowsWrap.addEventListener("pointermove", function (e) {
+        if (!coverOn) return;
+        var vx = e.clientX - lastX; lastX = e.clientX;
+        /* sit on whichever side of the pointer has room */
+        var side = e.clientX > window.innerWidth - 340 ? -cover.offsetWidth - 28 : 28;
+        coverA.x(e.clientX + side).y(e.clientY - cover.offsetHeight / 2).rotate(clamp(vx * 0.6, -12, 12));
+      });
+      rowsWrap.addEventListener("pointerleave", function () {
+        coverOn = false;
+        animate(cover, { opacity: 0, scale: 0.8, duration: 350, ease: "outQuad" });
+      });
+      /* hide it when a row is clicked open (the detail is the focus now) */
+      rowsWrap.addEventListener("click", function () { if (coverOn) animate(cover, { opacity: 0.0, duration: 200 }); coverOn = false; });
+    }
+
+    /* live cards: slight tilt */
+    $$(".np, .dc").forEach(function (card) {
+      card.style.transformStyle = "preserve-3d";
       card.addEventListener("pointermove", function (e) {
         if (!motionOK()) return;
-        var r = card.getBoundingClientRect();
-        var px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-        animate(card, { rotateX: (0.5 - py) * 8, rotateY: (px - 0.5) * 10, duration: 260, ease: "out(2)" });
-        if (glare) { glare.style.setProperty("--gx", px * 100 + "%"); glare.style.setProperty("--gy", py * 100 + "%"); }
+        var r = card.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+        animate(card, { rotateX: (0.5 - py) * 5, rotateY: (px - 0.5) * 7, duration: 300, ease: "out(2)" });
       });
-      card.addEventListener("pointerleave", function () {
-        animate(card, { rotateX: 0, rotateY: 0, duration: 1000, ease: "outElastic(1, .55)" });
-      });
+      card.addEventListener("pointerleave", function () { animate(card, { rotateX: 0, rotateY: 0, duration: 1000, ease: "outElastic(1, .55)" }); });
     });
 
-    /* project rows: name nudges with a spring */
-    rows.forEach(function (row) {
-      var name = $(".row-name", row);
-      row.addEventListener("pointerenter", function () { if (motionOK()) animate(name, { x: 16, duration: 700, ease: "outElastic(1, .6)" }); });
-      row.addEventListener("pointerleave", function () { animate(name, { x: 0, duration: 600, ease: "outExpo" }); });
-    });
-
-    /* wordmark letters: springy hover */
-    $$(".wm-ch").forEach(function (ch) {
-      ch.addEventListener("pointerenter", function () {
-        if (!motionOK() || !root.classList.contains("intro-done")) return;
-        animate(ch, { y: ["0%", "-7%", "0%"], rotate: [0, -4, 0], duration: 900, ease: "outElastic(1, .5)" });
-      });
-    });
-
-    /* contact headline: letter wave */
+    /* contact headline: a letter wave on hover */
     if (contactBig) {
       var waving = false;
       contactBig.addEventListener("pointerenter", function () {
         if (waving || !motionOK()) return;
         waving = true;
         contactLines.forEach(function (ln) { ln.style.overflow = "visible"; });
-        animate(contactChars, { y: ["0%", "-12%", "0%"], duration: 800, delay: stagger(22), ease: "out(3)",
-          onComplete: function () { waving = false; } });
+        animate(contactChars, { y: ["0%", "-14%", "0%"], duration: 800, delay: stagger(20), ease: "out(3)", onComplete: function () { waving = false; } });
       });
     }
   }
 
-  /* ---------- 7. nav: sliding indicator + scrollspy ---------- */
-  var nav = $("#nav"), ind = nav && $(".nav-ind", nav);
-  var navLinks = nav ? $$(".nav > a, .nav-drop > a", nav) : [];
+  /* ---------- 7. dock: sliding pill follows hover, scroll decides when idle ---------- */
+  var dockIn = $(".dock-in"), ind = dockIn && $(".dock-ind", dockIn);
+  var dockLinks = dockIn ? $$(".dock-in > a, .nav-drop > a", dockIn) : [];
   var activeLink = null, indShown = false;
   function moveInd(a, instant) {
     if (!ind) return;
-    if (!a) { animate(ind, { opacity: 0, duration: 250, ease: "outQuad" }); indShown = false; return; }
-    var nr = nav.getBoundingClientRect(), r = a.getBoundingClientRect();
+    dockLinks.forEach(function (l) { l.classList.toggle("active", l === a); });
+    if (!a) { animate(ind, { opacity: 0, duration: 250 }); indShown = false; return; }
+    var nr = dockIn.getBoundingClientRect(), r = a.getBoundingClientRect();
     var props = { x: r.left - nr.left, width: r.width, opacity: 1 };
-    if (instant || !indShown || !motionOK()) { utils.set(ind, props); }
-    else animate(ind, Object.assign({ duration: 600, ease: "outExpo" }, props));
+    /* utils.set does not cancel a running tween (e.g. an earlier fade-out), which would then win: remove first */
+    if (instant || !indShown || !motionOK()) { utils.remove(ind); utils.set(ind, props); }
+    else animate(ind, Object.assign({ duration: 650, ease: "outExpo" }, props));
     indShown = true;
   }
-  navLinks.forEach(function (a) {
-    a.addEventListener("pointerenter", function () { moveInd(a); });
-  });
-  if (nav) nav.addEventListener("pointerleave", function () { moveInd(activeLink); });
+  dockLinks.forEach(function (a) { a.addEventListener("pointerenter", function () { moveInd(a); }); });
+  if (dockIn) dockIn.addEventListener("pointerleave", function () { moveInd(activeLink); });
   var spy = new IntersectionObserver(function (es) {
     es.forEach(function (en) {
       if (!en.isIntersecting) return;
-      var a = navLinks.filter(function (l) { return l.getAttribute("href") === "#" + en.target.id; })[0] || null;
-      navLinks.forEach(function (l) { l.classList.toggle("active", l === a); });
+      var id = en.target.id === "hero" ? "top" : en.target.id;
+      var a = dockLinks.filter(function (l) { return l.getAttribute("href") === "#" + id; })[0] || null;
       activeLink = a; moveInd(a);
     });
-  }, { rootMargin: "-40% 0px -55% 0px" });
-  $$("main section[id]").forEach(function (s) { spy.observe(s); });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  $$("#hero, main section[id]").forEach(function (s) { spy.observe(s); });
   window.addEventListener("resize", function () { moveInd(activeLink, true); });
 
   /* ---------- 8. role roller ---------- */
@@ -319,29 +355,29 @@
     if (!motionOK() || document.hidden) { rollTimer = setTimeout(roll, 2200); return; }
     animate(typed, { y: ["0%", "-110%"], opacity: [1, 0], duration: 420, ease: "inExpo",
       onComplete: function () {
-        ri = (ri + 1) % roles.length;
-        typed.textContent = roles[ri];
+        ri = (ri + 1) % roles.length; typed.textContent = roles[ri];
         animate(typed, { y: ["110%", "0%"], opacity: [0, 1], duration: 700, ease: "outExpo" });
-        rollTimer = setTimeout(roll, 2400);
+        rollTimer = setTimeout(roll, 2600);
       } });
   }
 
-  /* ---------- 9. marquee ---------- */
-  var track = $("#marqueeTrack"), marquee = null;
-  if (track) {
+  /* ---------- 9. marquees ---------- */
+  function marqueeOf(track, ms, reverse) {
+    if (!track) return null;
     var base = Array.prototype.slice.call(track.children);
-    for (var k = 0; k < 2; k++) base.forEach(function (n) { track.appendChild(n.cloneNode(true)); }); /* 3 sets: -33.333% loops seamlessly */
-    marquee = animate(track, { x: ["0%", "-33.3333%"], duration: 42000, ease: "linear", loop: true, autoplay: false });
-    var mio = new IntersectionObserver(function (es) {
-      if (!motionOK()) { marquee.pause(); return; }
-      es[0].isIntersecting ? marquee.play() : marquee.pause();
-    });
-    mio.observe(track.parentNode);
-    track.parentNode.addEventListener("pointerenter", function () { marquee.speed = 0.25; });
-    track.parentNode.addEventListener("pointerleave", function () { marquee.speed = 1; });
+    for (var k = 0; k < 2; k++) base.forEach(function (n) { track.appendChild(n.cloneNode(true)); });
+    var anim = animate(track, { x: reverse ? ["-33.3333%", "0%"] : ["0%", "-33.3333%"], duration: ms, ease: "linear", loop: true, autoplay: false });
+    new IntersectionObserver(function (es) {
+      if (!motionOK()) { anim.pause(); return; }
+      es[0].isIntersecting ? anim.play() : anim.pause();
+    }).observe(track.parentNode);
+    track.parentNode.addEventListener("pointerenter", function () { anim.speed = 0.3; });
+    track.parentNode.addEventListener("pointerleave", function () { anim.speed = 1; });
+    return anim;
   }
+  var marquees = [marqueeOf($("#marqueeTrack"), 44000), marqueeOf($("#mantraTrack"), 30000, true)].filter(Boolean);
 
-  /* ---------- 10. live clock (hyderabad) ---------- */
+  /* ---------- 10. clock (hyderabad) ---------- */
   var clock = $("#clock");
   if (clock && window.Intl) {
     var fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -349,29 +385,21 @@
     tickClock(); setInterval(tickClock, 20000);
   }
 
-  /* ---------- 11. intro ---------- */
-  var topbar = $(".topbar");
-  var chars = $$(".wm-ch");
-  var avatar = $(".avatar");
-  var introEls = $$("[data-intro]");
-  function finishIntro() {
-    root.classList.add("intro-done");
-    rollTimer = setTimeout(roll, 1800);
-  }
+  /* ---------- 11. intro (the particle wordmark assembles itself in hero.js) ---------- */
   function intro() {
-    if (!bootedMo || !motionOK()) { root.classList.add("ready", "intro-done"); finishIntro(); return; }
-    utils.set(introEls, { opacity: 0, y: 20 });
-    utils.set(topbar, { opacity: 0, y: -28 });
-    utils.set(chars, { y: "118%", rotate: 7, opacity: 0 });
-    utils.set(avatar, { opacity: 0, scale: 0.4, rotate: -40 });
+    var hud = $$(".hero [data-intro]"), corners = $$(".cm"), dock = $(".dock"), brand = $(".brand");
+    if (!bootedMo || !motionOK()) { root.classList.add("ready"); rollTimer = setTimeout(roll, 1800); return; }
+    utils.set(hud, { opacity: 0, y: 14 });
+    utils.set(corners, { opacity: 0, scale: 2.2 });
+    utils.set(dock, { opacity: 0, y: 40 });
+    utils.set(brand, { opacity: 0, y: -16 });
     root.classList.add("ready");
-    var tl = A.createTimeline({ defaults: { ease: "outExpo" }, onComplete: finishIntro });
-    tl.add(topbar, { opacity: 1, y: 0, duration: 800 }, 0)
-      .add(chars, { y: "0%", rotate: 0, opacity: 1, duration: 1250, delay: stagger(70) }, 120)
-      .add(avatar, { opacity: 1, scale: 1, rotate: 0, duration: 1100, ease: "outBack(2.4)" }, 650)
-      .add(introEls, { opacity: 1, y: 0, duration: 900, delay: stagger(85), ease: "outQuart" }, 700);
+    A.createTimeline({ defaults: { ease: "outExpo" }, onComplete: function () { rollTimer = setTimeout(roll, 1400); } })
+      .add(corners, { opacity: 1, scale: 1, duration: 1100, delay: stagger(70) }, 200)
+      .add(brand, { opacity: 1, y: 0, duration: 900 }, 500)
+      .add(hud, { opacity: 1, y: 0, duration: 1000, delay: stagger(90) }, 1300)
+      .add(dock, { opacity: 1, y: 0, duration: 1100, ease: "outBack(1.4)" }, 1700);
   }
-  /* start after first paint; if we arrived through the page curtain wait for it to lift */
   var arriving = root.classList.contains("arrive");
   requestAnimationFrame(function () { setTimeout(intro, arriving ? 380 : 40); });
 
@@ -379,18 +407,18 @@
   window.ykMotionChanged = function () {
     if (!motionOK()) {
       root.classList.remove("mo", "arrive");
-      proseWords.forEach(function (w) { w.style.opacity = ""; });
-      if (marquee) marquee.pause();
+      leadWords.forEach(function (w) { w.style.opacity = ""; });
+      marquees.forEach(function (m) { m.pause(); });
       clearTimeout(rollTimer);
       typed.textContent = roles[0]; settle(typed, { y: "0%", opacity: 1 });
     } else {
       if (bootedMo) root.classList.add("mo");
-      if (marquee) marquee.play();
+      marquees.forEach(function (m) { m.play(); });
       rollTimer = setTimeout(roll, 1200);
-      scrubProse();
+      scrubLead();
     }
+    if (window.ykHeroMotion) window.ykHeroMotion();
   };
 
-  /* booted */
   if (bootedMo) window.__moReady = true;
 })();

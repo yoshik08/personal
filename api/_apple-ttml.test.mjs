@@ -29,3 +29,29 @@ test("parseAppleTTML - garbage returns empty array", () => {
   assert.deepStrictEqual(parseAppleTTML('<tt itunes:timing="Word">garbage</tt>'), []);
   assert.deepStrictEqual(parseAppleTTML(''), []);
 });
+
+test("multi-word background vocals never leak into the main line", () => {
+  const X = `<tt itunes:timing="Word"><body><div><p begin="5.0" end="9.0"><span begin="5.0" end="5.5">Hold</span> <span begin="5.5" end="6.0">on</span> <span ttm:role="x-bg"><span begin="6.0" end="6.4">(ooh</span> <span begin="6.4" end="6.9">aah)</span></span> <span begin="7.0" end="8.0">tight</span></p></div></body></tt>`;
+  const res = parseAppleTTML(X);
+  assert.strictEqual(res.length, 1);
+  assert.strictEqual(res[0].text, "Hold on tight");
+  assert.deepStrictEqual(res[0].words, [5000, 5500, 7000]);
+});
+
+test("translation spans are stripped from word lines and surfaced in line mode", () => {
+  const X = `<tt itunes:timing="Word"><body><div><p begin="1.0" end="3.0"><span begin="1.0" end="2.0">Hola</span> <span ttm:role="x-translation" xml:lang="en">Hello &amp; welcome</span></p></div></body></tt>`;
+  assert.strictEqual(parseAppleTTML(X)[0].text, "Hola");
+  const l = parseAppleTTML(X, "line");
+  assert.strictEqual(l[0].text, "Hola");
+  assert.strictEqual(l[0].translation, "Hello & welcome");
+});
+
+test("entities decode once and numeric entities work", () => {
+  const X = `<tt itunes:timing="Word"><body><div><p begin="1.0" end="3.0"><span begin="1.0" end="2.0">AT&amp;lt;T</span> <span begin="2.0" end="3.0">it&#39;s&#x2019;</span></p></div></body></tt>`;
+  assert.strictEqual(parseAppleTTML(X)[0].text, "AT&lt;T it's’");
+});
+
+test("span attribute order does not matter", () => {
+  const X = `<tt itunes:timing="Word"><body><div><p itunes:key="L1" begin="2.0" end="3.0"><span end="2.5" begin="2.0">swap</span> <span ttm:agent="v1" end="3.0" begin="2.5">order</span></p></div></body></tt>`;
+  assert.deepStrictEqual(parseAppleTTML(X)[0].words, [2000, 2500]);
+});

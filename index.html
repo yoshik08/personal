@@ -2,11 +2,12 @@
 <html lang="en" data-theme="dark" data-motion="on">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>yoshik — developer</title>
 <meta name="description" content="yoshik builds full-stack apps, android tools and ml models.">
+<meta name="theme-color" content="#08080a">
+<link rel="preload" href="assets/fonts/Bricolage-wdth.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/vendor/anime-4.5.0.umd.min.js" as="script">
-<link rel="preload" href="assets/fonts/HankenGrotesk-400.woff2" as="font" type="font/woff2" crossorigin>
 <script>
 /* theme + motion preference resolved before first paint (no flash) */
 (function () {
@@ -29,7 +30,9 @@
   }
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=v5">
+<link rel="stylesheet" href="style.css?v=v6">
+<link rel="stylesheet" href="karaoke.css?v=v6">
+<link rel="stylesheet" href="lyrics.css?v=v6">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yoshik.xyz/">
 <meta property="og:title" content="yoshik — developer">
@@ -39,118 +42,104 @@
 </head>
 <body>
 
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-gh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.2-.4-1.3.1-2.6 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.4.1 2.6.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path fill="currentColor" d="M17.7 3H21l-7.3 8.3L22.2 21h-6.7l-5.2-6.2L4.4 21H1l7.8-8.9L1.8 3h6.9l4.7 5.7L17.7 3zm-1.2 16h1.9L6.6 4.9H4.6L16.5 19z"/></symbol>
+  <symbol id="i-ig" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 8.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8z"/><rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-in" viewBox="0 0 24 24"><path fill="currentColor" d="M6.9 8.6H3.6V21h3.3V8.6zM5.2 3.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM21 13.4c0-3.2-1.7-4.7-4-4.7-1.8 0-2.7 1-3.1 1.7V8.6h-3.3V21h3.3v-6.6c0-1.6.8-2.5 2.1-2.5 1.2 0 1.9.8 1.9 2.5V21H21v-7.6z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
 <!-- PAGE TRANSITION CURTAIN -->
 <div class="curtain" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 
-<!-- CURSOR -->
+<!-- CURSOR / PROGRESS / ACCURACY HUD -->
 <div class="cursor-dot" aria-hidden="true"></div>
 <div class="cursor-ring" aria-hidden="true"></div>
-
-<!-- SCROLL PROGRESS -->
 <div class="progress" aria-hidden="true"><i id="progressFill"></i></div>
-
-<!-- ACCURACY HUD -->
 <div class="acc-badge" id="accBadge" data-hover title="click to reset">acc -- <span>0/0</span></div>
 
-<!-- NAV -->
-<header class="topbar">
-  <div class="wrap topbar-in">
-    <a class="brand magnetic" href="#top" data-hover>yk<span class="brand-dot">.</span></a>
-    <nav class="nav" id="nav"><span class="nav-ind" aria-hidden="true"></span>
-      <div class="nav-drop">
-        <a href="#projects" data-hover>projects</a>
-        <div class="nav-menu">
-          <a href="/sportsphere" data-hover>sportsphere</a>
-          <a href="/type" data-hover>type</a>
-          <a href="/attenly" data-hover>attenly</a>
-          <a href="/play" data-hover>play</a>
-          <a href="/engagement" data-hover>engagement</a>
-          <a href="/val" data-hover>val</a>
-          <a href="/gba" data-hover>gba</a>
-          <a href="/lyrics" data-hover>lyrics</a>
-          <a href="https://www.npmjs.com/package/geminiswitcher" target="_blank" rel="noopener" data-hover>geminiswitcher</a>
-          <a href="/assets/spotlight-debug.apk" download data-hover>spotlight launcher ⭳</a>
-        </div>
+<!-- brand + dock -->
+<a class="brand magnetic" href="#top" data-hover aria-label="yoshik — top">yk<span class="brand-dot">.</span></a>
+
+<nav class="dock" id="dock" aria-label="primary">
+  <div class="dock-in">
+    <span class="dock-ind" aria-hidden="true"></span>
+    <a href="#top" data-hover>home</a>
+    <div class="nav-drop">
+      <a href="#projects" data-hover>work</a>
+      <div class="nav-menu">
+        <a href="/sportsphere" data-hover>sportsphere</a>
+        <a href="/type" data-hover>type</a>
+        <a href="/attenly" data-hover>attenly</a>
+        <a href="/play" data-hover>play</a>
+        <a href="/engagement" data-hover>engagement</a>
+        <a href="/val" data-hover>val</a>
+        <a href="/gba" data-hover>gba</a>
+        <a href="/lyrics" data-hover>lyrics</a>
+        <a href="https://www.npmjs.com/package/geminiswitcher" target="_blank" rel="noopener" data-hover>geminiswitcher</a>
+        <a href="/assets/spotlight-debug.apk" download data-hover>spotlight launcher ⭳</a>
       </div>
-      <a href="#about" data-hover>about</a>
-      <a href="#stack" data-hover>stack</a>
-      <a href="#contact" data-hover>contact</a>
-    </nav>
-    <div class="controls">
-      <button id="cmdBtn" class="ctl cmdk-trigger magnetic" data-hover title="command palette (cmd+k / ctrl+k)"><span class="kbd-hint">⌘K</span></button>
-      <button id="themeBtn" class="ctl magnetic" data-hover title="toggle theme">◐</button>
-      <button id="motionBtn" class="ctl magnetic" data-hover title="toggle motion">≋</button>
     </div>
+    <a href="#about" data-hover>about</a>
+    <a href="#stack" data-hover>stack</a>
+    <a href="#live" data-hover>now</a>
+    <a href="#contact" data-hover>contact</a>
+    <span class="dock-sep" aria-hidden="true"></span>
+    <button id="cmdBtn" class="ctl cmdk-trigger" data-hover title="command palette (cmd+k / ctrl+k)" aria-label="command palette"><span class="kbd-hint">⌘K</span></button>
+    <button id="themeBtn" class="ctl" data-hover title="toggle theme" aria-label="toggle theme">◐</button>
+    <button id="motionBtn" class="ctl" data-hover title="toggle motion" aria-label="toggle motion">≋</button>
   </div>
-</header>
+</nav>
 
-<main id="top" class="wrap">
+<main id="top">
 
-  <!-- HERO -->
-  <section class="hero">
-    <p class="kicker" data-intro><span><i class="status-dot"></i>building &amp; shipping</span><span class="sep">/</span><span>hyderabad, in</span><span class="sep">/</span><span id="clock">--:-- ist</span></p>
-    <h1 class="wordmark" id="wordmark" aria-label="yoshik"><span class="wm-mask" aria-hidden="true"><span class="wm-ch">y</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">o</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">s</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">h</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">i</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch">k</span></span><span class="wm-mask" aria-hidden="true"><span class="wm-ch dot">.</span></span></h1>
-    <div class="hero-bottom">
-      <div>
-        <p class="tagline" data-intro><span class="prompt">&gt;</span><span class="roller"><span id="typed">full-stack developer</span></span><span class="caret" aria-hidden="true"></span></p>
-        <p class="hero-note" data-intro>i build full-stack apps, android tools and ml models — then i ship them, break them, and ship them again.</p>
-      </div>
-      <div>
-        <div class="hero-id" data-intro>
-          <div class="avatar" aria-hidden="true">
-            <svg viewBox="0 0 96 96">
-              <circle cx="48" cy="48" r="48" fill="#90c5ff"/>
-              <g fill="#1d2a44">
-                <rect x="30" y="28" width="8" height="8"/><rect x="58" y="28" width="8" height="8"/>
-                <rect x="38" y="36" width="8" height="8"/><rect x="50" y="36" width="8" height="8"/>
-                <rect x="44" y="44" width="8" height="8"/>
-                <rect x="44" y="52" width="8" height="8"/>
-                <rect x="44" y="60" width="8" height="8"/>
-                <rect x="36" y="68" width="24" height="8"/>
-              </g>
-            </svg>
-          </div>
-          <div class="hero-id-text">
-            <p class="subline">developer · hyderabad<br>
-              <button class="copy-mail" id="mailCopy" data-hover title="copy email">me@yoshik.xyz ⧉</button>
-            </p>
-          </div>
-        </div>
-        <div class="sp-line" data-intro>
-          <a class="sp-glyph-link" href="https://open.spotify.com/user/31updzcpgn2v2oxgmn6jcijtmxyi" target="_blank" rel="noopener" aria-label="spotify profile" data-hover><img class="sp-glyph" src="assets/spotify.png" alt="spotify"></a>
-          <span class="sp-label" id="spLabel">last played —</span>
-          <span class="sp-track"><a class="sp-song" id="spHeroLink" target="_blank" rel="noopener">quiet rn</a><span class="sp-artists" id="spHeroArtists"></span></span>
-        </div>
-        <div class="socials" data-intro>
-<a href="https://github.com/yoshik08" target="_blank" rel="noopener" data-hover title="github" aria-label="github">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.2-.4-1.3.1-2.6 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.4.1 2.6.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>
-      </a>
-      <a href="https://x.com/yoshik767" target="_blank" rel="noopener" data-hover title="x" aria-label="x">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.7 3H21l-7.3 8.3L22.2 21h-6.7l-5.2-6.2L4.4 21H1l7.8-8.9L1.8 3h6.9l4.7 5.7L17.7 3zm-1.2 16h1.9L6.6 4.9H4.6L16.5 19z"/></svg>
-      </a>
-      <a href="https://www.instagram.com/yoshik767/" target="_blank" rel="noopener" data-hover title="instagram" aria-label="instagram">
-        <svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 8.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8z"/><rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.2" fill="currentColor"/></svg>
-      </a>
-      <a href="https://www.linkedin.com/in/a-yoshik-212a75362/" target="_blank" rel="noopener" data-hover title="linkedin" aria-label="linkedin">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.9 8.6H3.6V21h3.3V8.6zM5.2 3.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM21 13.4c0-3.2-1.7-4.7-4-4.7-1.8 0-2.7 1-3.1 1.7V8.6h-3.3V21h3.3v-6.6c0-1.6.8-2.5 2.1-2.5 1.2 0 1.9.8 1.9 2.5V21H21v-7.6z"/></svg>
-      </a>
-      <a href="mailto:me@yoshik.xyz" data-hover title="email" aria-label="email">
-        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-      </a>
-        </div>
+  <!-- HERO: particle wordmark inside a viewfinder -->
+  <section class="hero" id="hero">
+    <canvas id="heroCanvas" aria-hidden="true"></canvas>
+    <h1 class="hero-h1">yoshik</h1>
+    <i class="cm tl" aria-hidden="true"></i><i class="cm tr" aria-hidden="true"></i><i class="cm bl" aria-hidden="true"></i><i class="cm br" aria-hidden="true"></i>
+
+    <div class="vf tl" data-intro><span class="vf-k">yoshik.xyz</span><span class="vf-v">full-stack / android / ml</span></div>
+    <div class="vf tr" data-intro><span class="vf-k"><i class="status-dot"></i><span id="clock">--:-- ist</span></span><span class="vf-v">17.385°n 78.487°e · hyderabad</span></div>
+
+    <div class="vf bl" data-intro>
+      <p class="tagline"><span class="prompt">&gt;</span><span class="roller"><span id="typed">full-stack developer</span></span><span class="caret" aria-hidden="true"></span></p>
+      <p class="hero-note">i build full-stack apps, android tools and ml models — then i ship them, break them, and ship them again.</p>
+      <div class="sp-line">
+        <a class="sp-glyph-link" href="https://open.spotify.com/user/31updzcpgn2v2oxgmn6jcijtmxyi" target="_blank" rel="noopener" aria-label="spotify profile" data-hover><img class="sp-glyph" src="assets/spotify.png" alt="spotify"></a>
+        <span class="sp-label" id="spLabel">last played —</span>
+        <span class="sp-track"><a class="sp-song" id="spHeroLink" target="_blank" rel="noopener">quiet rn</a><span class="sp-artists" id="spHeroArtists"></span></span>
       </div>
     </div>
+
+    <div class="vf br" data-intro>
+      <div class="socials">
+        <a href="https://github.com/yoshik08" target="_blank" rel="noopener" data-hover title="github" aria-label="github"><svg><use href="#i-gh"/></svg></a>
+        <a href="https://x.com/yoshik767" target="_blank" rel="noopener" data-hover title="x" aria-label="x"><svg><use href="#i-x"/></svg></a>
+        <a href="https://www.instagram.com/yoshik767/" target="_blank" rel="noopener" data-hover title="instagram" aria-label="instagram"><svg><use href="#i-ig"/></svg></a>
+        <a href="https://www.linkedin.com/in/a-yoshik-212a75362/" target="_blank" rel="noopener" data-hover title="linkedin" aria-label="linkedin"><svg><use href="#i-in"/></svg></a>
+        <a href="mailto:me@yoshik.xyz" data-hover title="email" aria-label="email"><svg><use href="#i-mail"/></svg></a>
+      </div>
+      <button class="copy-mail" id="mailCopy" data-hover title="copy email">me@yoshik.xyz ⧉</button>
+    </div>
+
+    <a class="scroll-cue" href="#projects" data-hover data-intro aria-label="scroll to work"><span>scroll</span><svg><use href="#i-down"/></svg></a>
+    <div class="coords" id="coords" aria-hidden="true">x 0000 · y 0000</div>
   </section>
 
   <!-- MARQUEE -->
   <div class="marquee" aria-hidden="true"><div class="marquee-track" id="marqueeTrack"><span>node.js</span><span>express</span><span>mongodb</span><span>next.js</span><span>typescript</span><span>kotlin</span><span>python</span><span>sklearn</span><span>razorpay</span><span>vanilla js</span><span>vercel</span></div></div>
 
   <!-- PROJECTS -->
-  <section id="projects" class="section">
-    <h2 data-h2><span class="sec-no">01</span><span class="sec-rule"></span><span class="sec-title">projects</span></h2>
+  <section id="projects" class="sec">
+    <header class="sec-head" data-h2><span class="sec-no">01</span><h2><span class="sec-title">selected work</span></h2><span class="sec-meta">09 projects</span></header>
     <div class="rows" data-reveal data-stagger>
 
-      <article class="row">
+      <article class="row" data-tag="web platform" data-hue="28">
         <button class="row-top" data-hover aria-expanded="true">
           <span class="row-main">
             <span class="row-name">sportsphere <span class="pill live"><span class="pdot"></span>live</span></span>
@@ -170,7 +159,7 @@
         </div>
       </article>
 
-      <article class="row">
+      <article class="row" data-tag="riot api web app" data-hue="350">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
             <span class="row-name">val <span class="pill live"><span class="pdot"></span>live</span></span>
@@ -190,7 +179,7 @@
         </div>
       </article>
 
-      <article class="row">
+      <article class="row" data-tag="automation tool" data-hue="200">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
             <span class="row-name">attenly <span class="pill live"><span class="pdot"></span>live</span></span>
@@ -210,7 +199,7 @@
         </div>
       </article>
 
-      <article class="row">
+      <article class="row" data-tag="android apk" data-hue="140">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
             <span class="row-name">spotlight launcher <span class="pill ship">apk shipped</span></span>
@@ -229,7 +218,7 @@
         </div>
       </article>
 
-      <article class="row">
+      <article class="row" data-tag="music web app" data-hue="320">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
             <span class="row-name">play <span class="pill live"><span class="pdot"></span>live</span></span>
@@ -249,7 +238,7 @@
         </div>
       </article>
 
-      <article class="row">
+      <article class="row" data-tag="in-browser ml" data-hue="260">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
             <span class="row-name">engagement predictor <span class="pill live"><span class="pdot"></span>live</span></span>
@@ -269,7 +258,7 @@
         </div>
       </article>
 
-      <article class="row">
+      <article class="row" data-tag="browser emulator" data-hue="100">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
             <span class="row-name">gba <span class="pill live"><span class="pdot"></span>live</span></span>
@@ -289,7 +278,7 @@
         </div>
       </article>
 
-      <article class="row">
+      <article class="row" data-tag="synced lyrics" data-hue="335">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
             <span class="row-name">lyrics <span class="pill live"><span class="pdot"></span>live</span></span>
@@ -309,7 +298,7 @@
         </div>
       </article>
 
-      <article class="row">
+      <article class="row" data-tag="cli tool" data-hue="60">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
             <span class="row-name">geminiswitcher <span class="pill live"><span class="pdot"></span>live</span></span>
@@ -333,20 +322,25 @@
   </section>
 
   <!-- ABOUT -->
-  <section id="about" class="section">
-    <h2 data-h2><span class="sec-no">02</span><span class="sec-rule"></span><span class="sec-title">about</span></h2>
-    <div class="prose" id="aboutProse">
-      <p>i'm yoshik, 18, from hyderabad. i like building things that actually run — apps people tap, models that predict, tools that save me five minutes every day.</p>
+  <section id="about" class="sec">
+    <header class="sec-head" data-h2><span class="sec-no">02</span><h2><span class="sec-title">about</span></h2><span class="sec-meta">the short version</span></header>
+    <div class="about" id="aboutProse">
+      <p class="lead">i'm yoshik, 18, from hyderabad. i like building things that actually run — apps people tap, models that predict, tools that save me five minutes every day.</p>
+      <dl class="facts" data-reveal data-stagger>
+        <div><dt>age</dt><dd>18</dd></div>
+        <div><dt>base</dt><dd>hyderabad, in</dd></div>
+        <div><dt>shipped</dt><dd><span data-count="9">9</span> projects</dd></div>
+        <div><dt>into</dt><dd>apps · android · ml</dd></div>
+      </dl>
     </div>
   </section>
 
   <!-- STACK -->
-  <section id="stack" class="section">
-    <h2 data-h2><span class="sec-no">03</span><span class="sec-rule"></span><span class="sec-title">stack</span></h2>
-    <div class="cards" data-reveal data-stagger>
-      <div class="card tilt" data-hover>
-        <div class="glare" aria-hidden="true"></div>
-        <p class="card-title">backend</p>
+  <section id="stack" class="sec">
+    <header class="sec-head" data-h2><span class="sec-no">03</span><h2><span class="sec-title">stack</span></h2><span class="sec-meta">how comfortable, honestly</span></header>
+    <div class="plots" data-reveal data-stagger>
+      <div class="plot">
+        <p class="plot-title">backend</p>
         <ul class="meters">
           <li><span>node.js / express</span><div class="bar"><i style="--v:94%"></i></div></li>
           <li><span>rest apis</span><div class="bar"><i style="--v:90%"></i></div></li>
@@ -354,66 +348,51 @@
           <li><span>flask</span><div class="bar"><i style="--v:75%"></i></div></li>
           <li><span>sql / tidb</span><div class="bar"><i style="--v:78%"></i></div></li>
         </ul>
-        <span class="card-arrow">↗</span>
       </div>
-      <div class="card tilt" data-hover>
-        <div class="glare" aria-hidden="true"></div>
-        <p class="card-title">frontend</p>
+      <div class="plot">
+        <p class="plot-title">frontend</p>
         <ul class="meters">
           <li><span>html / css</span><div class="bar"><i style="--v:90%"></i></div></li>
           <li><span>javascript</span><div class="bar"><i style="--v:93%"></i></div></li>
           <li><span>responsive ui</span><div class="bar"><i style="--v:86%"></i></div></li>
         </ul>
-        <span class="card-arrow">↗</span>
       </div>
-      <div class="card tilt" data-hover>
-        <div class="glare" aria-hidden="true"></div>
-        <p class="card-title">mobile + ml</p>
+      <div class="plot">
+        <p class="plot-title">mobile + ml</p>
         <ul class="meters">
           <li><span>kotlin / android</span><div class="bar"><i style="--v:80%"></i></div></li>
           <li><span>python</span><div class="bar"><i style="--v:85%"></i></div></li>
           <li><span>pandas / sklearn</span><div class="bar"><i style="--v:78%"></i></div></li>
         </ul>
-        <span class="card-arrow">↗</span>
       </div>
-      <div class="card tilt" data-hover>
-        <div class="glare" aria-hidden="true"></div>
-        <p class="card-title">ops</p>
+      <div class="plot">
+        <p class="plot-title">ops</p>
         <ul class="meters">
           <li><span>git / github</span><div class="bar"><i style="--v:88%"></i></div></li>
           <li><span>vercel / render</span><div class="bar"><i style="--v:84%"></i></div></li>
           <li><span>razorpay</span><div class="bar"><i style="--v:75%"></i></div></li>
           <li><span>postman</span><div class="bar"><i style="--v:82%"></i></div></li>
         </ul>
-        <span class="card-arrow">↗</span>
       </div>
     </div>
   </section>
 
   <!-- LIVE -->
-  <section id="live" class="section">
-    <h2 data-h2><span class="sec-no">04</span><span class="sec-rule"></span><span class="sec-title">right now</span></h2>
-    <div class="cards" data-reveal data-stagger>
-      <div class="card" data-hover>
-        <p class="card-title">
-          ♪ now playing
-          <span class="live-dot" id="spDot"></span>
-          <span class="audio-bars" id="audioBars" aria-hidden="true">
-            <i></i><i></i><i></i><i></i>
-          </span>
-          <button class="lyrics-btn" id="lyricsBtn" data-hover style="display:none">lyrics</button>
-        </p>
+  <section id="live" class="sec">
+    <header class="sec-head" data-h2><span class="sec-no">04</span><h2><span class="sec-title">right now</span></h2><span class="sec-meta">live, not a screenshot</span></header>
+    <div class="live-grid" data-reveal data-stagger>
+      <article class="np" data-hover>
+        <div class="np-disc" aria-hidden="true"><div class="np-art" id="spArt">♪</div></div>
         <div class="np-body">
-          <div class="np-art" id="spArt">♪</div>
-          <div class="np-meta">
-            <p class="np-track" id="spTrack">nothing playing rn</p>
-            <p class="np-artist" id="spArtist">spotify</p>
-          </div>
+          <p class="card-title">now playing <span class="live-dot" id="spDot"></span><span class="audio-bars" id="audioBars" aria-hidden="true"><i></i><i></i><i></i><i></i></span></p>
+          <p class="np-track" id="spTrack">nothing playing rn</p>
+          <p class="np-artist" id="spArtist">spotify</p>
+          <div class="np-bar"><i id="spProg"></i></div>
+          <button class="lyrics-btn" id="lyricsBtn" data-hover style="display:none">lyrics <svg><use href="#i-arrow"/></svg></button>
         </div>
-        <div class="np-bar"><i id="spProg"></i></div>
-      </div>
-      <div class="card" data-hover>
-        <p class="card-title">◉ discord <span class="live-dot" id="dcDot"></span></p>
+      </article>
+      <article class="dc" data-hover>
+        <p class="card-title">discord <span class="live-dot" id="dcDot"></span></p>
         <div class="dc-body">
           <div class="dc-ava" id="dcAva">y</div>
           <div class="dc-meta">
@@ -425,18 +404,17 @@
           <a class="pill-btn" id="dcOpen" data-hover href="https://discord.com/users/746561388612157460" target="_blank" rel="noopener">open discord</a>
           <button class="copy-ico" id="dcCopyName" data-hover aria-label="copy discord username"><svg class="ico-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="ico-check" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
         </div>
-      </div>
-    </div>
-    <div class="quote-card" data-reveal>
-      <p class="q-marks" aria-hidden="true">“</p>
-      <p class="q-text"><em>ship it, break it, ship it again.</em></p>
-      <p class="q-attr">— me, most days</p>
+      </article>
     </div>
   </section>
 
+  <!-- the mantra, big -->
+  <div class="mantra" aria-hidden="true"><div class="marquee-track" id="mantraTrack"><span>ship it</span><span>break it</span><span>ship it again</span></div></div>
+  <p class="sr-only">ship it, break it, ship it again.</p>
+
   <!-- CONTACT -->
-  <section id="contact" class="section">
-    <h2 data-h2><span class="sec-no">05</span><span class="sec-rule"></span><span class="sec-title">contact</span></h2>
+  <section id="contact" class="sec">
+    <header class="sec-head" data-h2><span class="sec-no">05</span><h2><span class="sec-title">contact</span></h2><span class="sec-meta">inbox is open</span></header>
     <div data-reveal>
       <p class="contact-big" id="contactBig"><span class="ln">have an idea?</span><span class="ln">let's talk.</span></p>
       <p class="dim contact-sub">projects, collabs, or arguing about frameworks — my inbox is open.</p>
@@ -451,35 +429,36 @@
 
 <!-- FOOTER -->
 <footer>
-  <div class="wrap foot-grid">
-    <div class="foot-col">
-      <p class="foot-label">navigate</p>
-      <a href="#top" data-hover>home</a>
-      <a href="#projects" data-hover>projects</a>
-      <a href="#about" data-hover>about</a>
-      <a href="#stack" data-hover>stack</a>
-      <a href="#contact" data-hover>contact</a>
-    </div>
-    <div class="foot-col">
-      <p class="foot-label">connect</p>
+  <div class="foot-in">
+    <p class="foot-word" aria-hidden="true">yoshik</p>
+    <div class="foot-row">
+      <nav class="foot-nav" aria-label="footer">
+        <a href="#top" data-hover>home</a>
+        <a href="#projects" data-hover>work</a>
+        <a href="#about" data-hover>about</a>
+        <a href="#stack" data-hover>stack</a>
+        <a href="#contact" data-hover>contact</a>
+      </nav>
       <div class="foot-socials">
-        <a href="https://github.com/yoshik08" target="_blank" rel="noopener" data-hover title="github" aria-label="github"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.2-.4-1.3.1-2.6 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.4.1 2.6.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg></a>
-        <a href="https://x.com/yoshik767" target="_blank" rel="noopener" data-hover title="x" aria-label="x"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.7 3H21l-7.3 8.3L22.2 21h-6.7l-5.2-6.2L4.4 21H1l7.8-8.9L1.8 3h6.9l4.7 5.7L17.7 3zm-1.2 16h1.9L6.6 4.9H4.6L16.5 19z"/></svg></a>
-        <a href="https://www.instagram.com/yoshik767/" target="_blank" rel="noopener" data-hover title="instagram" aria-label="instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 8.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8z"/><rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.2" fill="currentColor"/></svg></a>
-        <a href="https://www.linkedin.com/in/a-yoshik-212a75362/" target="_blank" rel="noopener" data-hover title="linkedin" aria-label="linkedin"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.9 8.6H3.6V21h3.3V8.6zM5.2 3.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM21 13.4c0-3.2-1.7-4.7-4-4.7-1.8 0-2.7 1-3.1 1.7V8.6h-3.3V21h3.3v-6.6c0-1.6.8-2.5 2.1-2.5 1.2 0 1.9.8 1.9 2.5V21H21v-7.6z"/></svg></a>
+        <a href="https://github.com/yoshik08" target="_blank" rel="noopener" data-hover title="github" aria-label="github"><svg><use href="#i-gh"/></svg></a>
+        <a href="https://x.com/yoshik767" target="_blank" rel="noopener" data-hover title="x" aria-label="x"><svg><use href="#i-x"/></svg></a>
+        <a href="https://www.instagram.com/yoshik767/" target="_blank" rel="noopener" data-hover title="instagram" aria-label="instagram"><svg><use href="#i-ig"/></svg></a>
+        <a href="https://www.linkedin.com/in/a-yoshik-212a75362/" target="_blank" rel="noopener" data-hover title="linkedin" aria-label="linkedin"><svg><use href="#i-in"/></svg></a>
       </div>
     </div>
-  </div>
-  <div class="wrap foot-base">
-    <p>© 2026 yoshik — built from scratch, no templates.</p>
+    <p class="foot-base">© 2026 yoshik — built from scratch, no templates.</p>
   </div>
 </footer>
+
+<!-- project cover that follows the pointer over the work list -->
+<div class="work-cover" id="workCover" aria-hidden="true">
+  <canvas id="coverCanvas" width="560" height="700"></canvas>
+  <div class="cover-meta"><span id="coverTag">web platform</span><b id="coverName">sportsphere</b></div>
+</div>
 
 <!-- synced lyrics overlay -->
 <div class="lyrics-overlay" id="lyricsOverlay" aria-hidden="true">
   <div class="lyrics-bg" id="lyricsBg"></div>
-  <div class="lyrics-bg lyrics-bg-r" id="lyricsBgR"></div>
-  <div class="lyrics-bg lyrics-bg-c" id="lyricsBgC"></div>
   <div class="lyrics-vignette"></div>
   <div class="lyrics-controls" id="lyricsControls">
     <div class="sync-group" id="syncGroup">
@@ -490,7 +469,7 @@
     <button class="karaoke-toggle" id="karaokeToggle" data-hover aria-label="toggle karaoke mode" title="Karaoke Mode (K)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg> Karaoke</button>
     <button class="lyrics-close" id="lyricsClose" data-hover aria-label="close lyrics">✕</button>
   </div>
-  
+
   <!-- classic view -->
   <div class="lyrics-body" id="lyricsClassicView">
     <div class="lyrics-side">
@@ -504,16 +483,24 @@
     <div class="lyrics-lines" id="lyricsLines"></div>
   </div>
 
-  <!-- karaoke view -->
+  <!-- karaoke view: per-word, verci-style (karaoke.js) -->
   <div class="lyrics-karaoke" id="lyricsKaraokeView" style="display: none;">
-    <div class="k-top">
-      <img class="k-top-cover" id="kTopCover" alt="">
-      <div class="k-top-title" id="kTopTitle"></div>
-      <div class="k-top-artist" id="kTopArtist"></div>
-      <div class="k-top-prog"><i id="kTopProg"></i></div>
-    </div>
-    <div class="k-tape-stage" id="karaokeStage">
-      <div class="k-tape-col" id="kTapeCol"></div>
+    <div class="vk" id="karaokeStage" data-style="visual"><div class="vk-glow"></div><div class="vk-world" id="vkWorld"></div></div>
+    <div class="vk-meta"><img id="kTopCover" alt=""><div><b id="kTopTitle"></b><span id="kTopArtist"></span></div></div>
+    <div class="vk-prog"><i id="kTopProg"></i></div>
+    <div class="vk-settings" id="vkSettings">
+      <div class="vk-seg" role="group" aria-label="karaoke style">
+        <button data-s="ship" aria-pressed="false">Ship</button>
+        <button data-s="fisheye" aria-pressed="false">Fisheye</button>
+        <button data-s="fisheye-visual" aria-pressed="false">Fisheye Visual</button>
+        <button data-s="visual" aria-pressed="true">Visual</button>
+      </div>
+      <div class="vk-colors">
+        <label><input type="color" data-c="lyric" value="#ffffff" aria-label="lyric colour"><span>lyric</span></label>
+        <label><input type="color" data-c="highlight" value="#ff3d8b" aria-label="highlight colour"><span>highlight</span></label>
+        <label><input type="color" data-c="secondary" value="#d6906c" aria-label="secondary colour"><span>secondary</span></label>
+      </div>
+      <button class="vk-reset" id="vkReset" type="button">reset</button>
     </div>
   </div>
 
@@ -537,22 +524,11 @@
   </div>
 </div>
 
-<!-- floating project preview on hover -->
-<div class="proj-preview" id="projPreview" aria-hidden="true">
-  <div class="proj-preview-in">
-    <div class="proj-preview-bar">
-      <span class="proj-preview-dot"></span>
-      <span class="proj-preview-tag" id="ppTag">web app</span>
-    </div>
-    <h3 class="proj-preview-title" id="ppTitle">sportsphere</h3>
-    <p class="proj-preview-desc" id="ppDesc">sports venue & booking</p>
-    <div class="proj-preview-chips" id="ppChips"></div>
-  </div>
-</div>
-
 <script src="assets/vendor/anime-4.5.0.umd.min.js" defer></script>
 <script src="assets/page-fx.v1.js" defer></script>
-<script src="script.js?v=v5"></script>
-<script src="motion.js?v=v5" defer></script>
+<script src="karaoke.js?v=v6" defer></script>
+<script src="script.js?v=v6" defer></script>
+<script src="hero.js?v=v6" defer></script>
+<script src="motion.js?v=v6" defer></script>
 </body>
 </html>
