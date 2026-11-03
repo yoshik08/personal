@@ -2022,7 +2022,7 @@ function envelopeTarget(win, now) {
 
     var meta = {
       "sportsphere": { tag: "web platform", desc: "sports venue & program booking platform with razorpay & mongodb sync", chips: ["node.js", "express", "mongodb", "razorpay"] },
-      "val": { tag: "riot api web app", desc: "live valorant shop rotation, night market and match tracker", chips: ["next.js", "typescript", "riot api", "express"] },
+      "sexyval": { tag: "windows desktop app", desc: "valorant companion: store with skin videos, loadout, party, history and live agent select", chips: ["electron", "typescript", "react", "riot api"] },
       "attenly": { tag: "automation tool", desc: "college erp attendance auto-fetcher with safe-bunk calculator", chips: ["next.js", "mongodb", "next-auth", "tailwind"] },
       "spotlight launcher": { tag: "android apk", desc: "super-fast android launcher opening straight into instant search", chips: ["kotlin", "android sdk", "native"] },
       "play": { tag: "music web app", desc: "audio player with real search, synced lyrics and saved playlists", chips: ["node.js", "express", "mongodb", "vanilla js"] },
@@ -2086,7 +2086,7 @@ function envelopeTarget(win, now) {
 
     var commands = [
       { id: "proj-sportsphere", title: "sportsphere", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/sportsphere", "_blank"); } },
-      { id: "proj-val", title: "val (valorant tracker)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/val", "_blank"); } },
+      { id: "proj-sexyval", title: "sexyval (valorant companion for windows)", cat: "projects", hint: "download", action: function () { window.location.href = "https://github.com/yoshik08/sexyval/releases/download/v1.1.1/SexyVal-Setup-1.1.1.exe"; } },
       { id: "proj-attenly", title: "attenly (erp auto-sync)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/attenly", "_blank"); } },
       { id: "proj-play", title: "play (music player)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/play", "_blank"); } },
       { id: "proj-spotlight", title: "spotlight launcher apk", cat: "projects", hint: "download", action: function () { window.location.href = "https://raw.githubusercontent.com/yoshik08/personal/main/assets/spotlight-debug.apk"; } },

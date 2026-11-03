@@ -19,6 +19,16 @@
       "source": "/play/",
       "destination": "/play",
       "permanent": true
+    },
+    {
+      "source": "/sexyval",
+      "destination": "https://github.com/yoshik08/sexyval/releases/latest",
+      "permanent": false
+    },
+    {
+      "source": "/val/:path*",
+      "destination": "/sexyval",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -61,14 +71,6 @@
         }
       ],
       "destination": "/play/:path*"
-    },
-    {
-      "destination": "https://val-lake.vercel.app/val",
-      "source": "/val"
-    },
-    {
-      "destination": "https://val-lake.vercel.app/val/:path*",
-      "source": "/val/:path*"
     }
   ],
   "trailingSlash": false,
