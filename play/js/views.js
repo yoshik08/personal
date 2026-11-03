@@ -482,9 +482,10 @@ export function mintCode(v, code) {
   v.innerHTML = `<section class="mint">
     <div class="state-ic big">${icon("hard-drives")}</div>
     <h1 class="display sm">Drive authorization code</h1>
-    <p class="sub">Paste this into the terminal running <code>mint-drive-token.js</code>. It works once, for a few minutes.</p>
+    <p class="sub">Give this to <code>node scripts/mint-drive-token.js "&lt;code&gt;"</code>. It works once, for a few minutes.</p>
     <div class="codebox"><code id="mintcode">${esc(code)}</code><button class="btn primary sm" data-copy>${icon("check")}<span>Copy</span></button></div>
-    <a class="btn ghost" href="#/">Back to library</a></section>`;
+    <button class="btn ghost" data-leave>Back to library</button></section>`;
+  v.querySelector("[data-leave]").onclick = () => location.replace(location.pathname + "#/");
   const btn = v.querySelector("[data-copy]");
   btn.querySelector("svg").style.display = "none";
   btn.onclick = async () => {

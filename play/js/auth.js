@@ -9,21 +9,22 @@ export const auth = {
   async init() {
     const q = new URLSearchParams(location.search);
     const code = q.get("code"), state = q.get("state") || "", err = q.get("error");
-    if (code || err) history.replaceState(null, "", location.pathname + (location.hash || "#/"));
+    // only a code from our own sign-in button (state "login-…", matching this
+    // tab) is spent as a sign-in. any other code — e.g. from the drive mint
+    // script — is shown and left in the address bar, never exchanged.
+    const isLogin = state.startsWith("login-");
+    let expected = null;
+    if (isLogin) { try { expected = sessionStorage.getItem("play_oauth_state"); sessionStorage.removeItem("play_oauth_state"); } catch (e) {} }
 
-    if (code && state === "drive-mint") {
-      // this code belongs to the terminal script, not to a sign-in: show it, never spend it
+    if (code && !isLogin) {
       this.mintCode = code;
     } else if (err) {
+      history.replaceState(null, "", location.pathname + (location.hash || "#/"));
       if (err !== "access_denied") toast("Google sign-in failed: " + err, { kind: "error" });
     } else if (code) {
-      let expected = null;
-      try { expected = sessionStorage.getItem("play_oauth_state"); sessionStorage.removeItem("play_oauth_state"); } catch (e) {}
-      if (expected && state !== expected) {
-        toast("Sign-in link expired — try again", { kind: "error" });
-      } else {
-        await this.exchange(code);
-      }
+      history.replaceState(null, "", location.pathname + (location.hash || "#/"));
+      if (state !== expected) toast("Sign-in link expired — try again", { kind: "error" });
+      else await this.exchange(code);
     }
 
     if (!this.user) {

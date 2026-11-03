@@ -307,7 +307,9 @@ function route() {
   teardown = null;
   closeMenu();
   let r = "library", m;
-  if (auth.mintCode) { r = "mint"; teardown = views.mintCode(v, auth.mintCode); auth.mintCode = null; }
+  // the code screen survives re-renders (e.g. the background session check);
+  // it only goes away when the person navigates somewhere
+  if (auth.mintCode) { r = "mint"; teardown = views.mintCode(v, auth.mintCode); }
   else if (/^#\/playlists\/?$/.test(hsh)) { r = "playlists"; teardown = views.playlists(v); }
   else if ((m = hsh.match(/^#\/playlist\/([a-f0-9]{24})$/i))) { r = "playlists"; teardown = views.playlist(v, m[1]); }
   else if (/^#\/settings\/?$/.test(hsh)) { r = "settings"; teardown = views.settings(v); }
@@ -452,7 +454,10 @@ function wire() {
   addEventListener("offline", () => toast("You're offline — songs you've played before still work", { ms: 5000 }));
 
   swipeToClose($("#np"));
-  window.addEventListener("hashchange", route);
+  window.addEventListener("hashchange", () => {
+    if (auth.mintCode) { auth.mintCode = null; history.replaceState(null, "", location.pathname + location.hash); }
+    route();
+  });
   matchMedia("(max-width: 900px)").addEventListener("change", () => { if (!$("#np").hidden) setTab(npTab); });
 }
 
