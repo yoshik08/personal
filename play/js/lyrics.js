@@ -1,163 +1,163 @@
-/* lyrics: fetch once per track, sync locally against audio clock.
-   word-level: letters fade within real word timing windows.
-   line-level: active line highlight only. */
-(function () {
-"use strict";
-const { utils, api } = window.Play;
+/* lyrics: fetched once per song, synced to the audio clock on rAF.
+   word timings (lrcmux) fill each word as it's sung; line timings (lrclib)
+   light the line. auto-scroll pauses while you scroll by hand. */
+import { api, esc, motionOK } from "./core.js";
+import { player } from "./player.js";
 
-const lyrics = {
-  data: null,      /* {source, wordSync, lines} */
-  trackId: null,
-  state: "idle",   /* idle | loading | ready | none | error */
-  raf: 0,
-  container: null,
-  compact: false,
-  autoScroll: true,
+const memo = new Map(); // song id → promise of {source, lines|plain}
 
-  async load(track, container, compact) {
-    this.unload();
-    this.container = container;
-    this.compact = !!compact;
-    this.trackId = track.id;
-    this.state = "loading";
-    this.render();
-    try {
-      const d = await api.get(
-        `/api/lyrics?artist=${encodeURIComponent(track.artist)}&title=${encodeURIComponent(track.title)}&duration=${track.duration || 0}`);
-      if (this.trackId !== track.id) return; /* stale */
-      if (d.lines && d.lines.length) {
-        this.data = d;
-        this.state = "ready";
-        this.buildWordSpans();
-      } else if (d.plain) {
-        this.data = { ...d, lines: d.plain.split("\n").filter(Boolean).map((text) => ({ time: 0, text, words: null })) };
-        this.state = "ready";
-      } else {
-        this.state = "none";
-      }
-    } catch (e) {
-      if (this.trackId !== track.id) return;
-      this.state = "error";
-    }
-    this.render();
-    if (this.state === "ready") this.start();
-  },
+function fetchLyrics(song) {
+  const key = song.id + "|" + song.name + "|" + (song.artist || "");
+  if (!memo.has(key)) {
+    const q = `?artist=${encodeURIComponent(song.artist || "")}&title=${encodeURIComponent(song.name)}&duration=${Math.round(song.duration || 0)}`;
+    const p = api.get("/api/lyrics" + q, { timeout: 30000 });
+    p.catch(() => memo.delete(key));
+    memo.set(key, p);
+  }
+  return memo.get(key);
+}
 
-  unload() {
-    cancelAnimationFrame(this.raf);
-    this.data = null; this.trackId = null; this.state = "idle";
-  },
+/** with gaps of silence marked by a breathing "•••" line, like Apple Music */
+function withInterludes(lines) {
+  const out = [];
+  if (lines.length && lines[0].time > 5000) out.push({ time: 400, end: lines[0].time - 300, dots: true });
+  lines.forEach((ln, i) => {
+    out.push(ln);
+    const next = lines[i + 1];
+    if (!next) return;
+    const lineEnd = ln.words && ln.words.length ? ln.words[ln.words.length - 1] + 1200 : ln.time + 4500;
+    if (next.time - lineEnd > 7000) out.push({ time: lineEnd, end: next.time - 300, dots: true });
+  });
+  return out;
+}
 
-  buildWordSpans() {
-    /* precompute per-line word spans for the word-sync renderer */
-    this.data.lines.forEach((ln) => {
-      if (!ln.words || !utils.motionOK()) { ln._spans = null; return; }
-      const words = ln.text.split(/\s+/);
-      ln._spans = words.map((w, i) => ({
-        word: w,
-        start: ln.words[i] != null ? ln.words[i] : ln.time,
-        end: ln.words[i + 1] != null ? ln.words[i + 1] : (ln.time + 4000),
-      }));
+export class LyricsView {
+  constructor(host) {
+    this.host = host;
+    this.song = null;
+    this.lines = [];
+    this.active = -2;
+    this.raf = 0;
+    this.userScrollUntil = 0;
+    this.visible = false;
+    host.addEventListener("wheel", () => this.userScrolled(), { passive: true });
+    host.addEventListener("touchmove", () => this.userScrolled(), { passive: true });
+    host.addEventListener("click", (e) => {
+      const el = e.target.closest(".ly-line[data-t]");
+      if (!el) return;
+      player.seekTo(parseFloat(el.dataset.t) / 1000);
+      if (!player.isPlaying) player.play();
+      this.userScrollUntil = 0;
+      this.active = -2;
     });
-  },
+  }
 
-  render() {
-    const c = this.container;
-    if (!c) return;
-    const { esc } = utils;
-    if (this.state === "loading") {
-      c.innerHTML = `<div class="lyrics-head"><h3>lyrics</h3></div>` +
-        [0, 1, 2, 3].map(() => `<div class="skel" style="height:28px;margin:10px 0"></div>`).join("");
+  userScrolled() {
+    this.userScrollUntil = performance.now() + 3500;
+    this.host.classList.add("free");
+  }
+
+  async show(song) {
+    if (!song) { this.host.innerHTML = ""; this.song = null; return; }
+    if (this.song && this.song.id === song.id && this.song.name === song.name && this.song.artist === song.artist) return;
+    this.song = song;
+    this.lines = [];
+    this.active = -2;
+    this.host.classList.remove("free");
+    this.host.innerHTML = `<div class="ly-state"><div class="ly-skel"><i></i><i></i><i></i><i></i></div></div>`;
+    let d;
+    try { d = await fetchLyrics(song); }
+    catch (e) {
+      if (this.song !== song) return;
+      this.host.innerHTML = `<div class="ly-state"><p>Couldn't load lyrics</p><button class="btn ghost sm" data-retry>Try again</button></div>`;
+      this.host.querySelector("[data-retry]").onclick = () => { this.song = null; this.show(song); };
       return;
     }
-    if (this.state === "none" || this.state === "error") {
-      c.innerHTML = `<div class="lyrics-head"><h3>lyrics</h3></div>
-        <div class="empty" style="padding:30px"><div class="big">♪</div>
-        <p>${this.state === "error" ? "couldn't load lyrics" : "no lyrics for this track"}</p></div>`;
-      return;
+    if (this.song !== song) return;
+    if (d.lines && d.lines.length) {
+      this.lines = withInterludes(d.lines);
+      this.render(d.source, true);
+    } else if (d.plain) {
+      this.lines = d.plain.split("\n").map((text) => ({ text: text.trim() })).filter((l) => l.text);
+      this.render(d.source, false);
+    } else {
+      this.host.innerHTML = `<div class="ly-state"><p class="ly-none">No lyrics found for this song</p>
+        <p class="ly-hint">${song.artist ? "" : "Adding the artist name (Edit info) helps find them."}</p></div>`;
     }
-    if (this.state !== "ready" || !this.data) return;
-    const lines = this.data.lines.map((ln, i) => {
-      let inner = esc(ln.text);
-      if (ln._spans) {
-        inner = ln._spans.map((s) => {
-          const chars = esc(s.word).split("").map((ch) => `<span class="ch">${ch}</span>`).join("");
-          return `<span class="w" data-s="${s.start}" data-e="${s.end}">${chars}</span> `;
-        }).join("");
-      }
-      return `<div class="ly-line" data-i="${i}" data-t="${ln.time}">${inner}</div>`;
+    this.start();
+  }
+
+  render(source, synced) {
+    const motion = motionOK();
+    const html = this.lines.map((ln, i) => {
+      if (ln.dots) return `<div class="ly-line ly-dots" data-i="${i}" data-t="${ln.time}"><span></span><span></span><span></span></div>`;
+      let inner;
+      if (synced && ln.words && motion) {
+        const ws = ln.text.split(/\s+/);
+        inner = ws.map((w, j) => `<span class="w" data-j="${j}">${esc(w)}</span>`).join(" ");
+      } else inner = esc(ln.text);
+      return `<div class="ly-line${synced ? "" : " plain"}" data-i="${i}"${synced ? ` data-t="${ln.time}"` : ""}>${inner}</div>`;
     }).join("");
-    c.innerHTML = `<div class="lyrics-head"><h3>lyrics · ${esc(this.data.source)}</h3>
-      <button class="txtbtn" id="ly-compact">${this.compact ? "expand" : "compact"}</button></div>
-      <div class="lyrics${this.compact ? " ly-compact" : ""}" id="ly-body">${lines}</div>`;
-    c.querySelector("#ly-compact").onclick = () => {
-      this.compact = !this.compact;
-      this.render();
-      this.start();
-    };
-    c.querySelectorAll(".ly-line").forEach((el) => {
-      el.onclick = () => {
-        const t = parseFloat(el.dataset.t) / 1000;
-        const p = window.Play.player;
-        if (p.audio.duration) { p.audio.currentTime = t; this.autoScroll = true; }
-      };
-    });
-    /* pause auto-scroll while user scrolls manually */
-    const body = c.querySelector("#ly-body");
-    let scrollT;
-    body.addEventListener("scroll", () => {
-      this.autoScroll = false;
-      clearTimeout(scrollT);
-      scrollT = setTimeout(() => { this.autoScroll = true; }, 4000);
-    });
-  },
+    this.host.innerHTML = `<div class="ly-pad"></div>${html}<div class="ly-pad"></div>
+      <div class="ly-credit">${synced ? "" : "Not time-synced · "}lyrics from ${esc(source)}</div>`;
+    this.synced = synced;
+    this.els = [...this.host.querySelectorAll(".ly-line")];
+  }
+
+  setVisible(v) { this.visible = v; if (v) { this.active = -2; this.start(); } }
 
   start() {
     cancelAnimationFrame(this.raf);
-    const p = window.Play.player;
-    const motionOK = utils.motionOK();
+    if (!this.synced || !this.lines.length) return;
     const tick = () => {
       this.raf = requestAnimationFrame(tick);
-      if (!this.data || !this.container) return;
-      const nowMs = (p.audio.currentTime || 0) * 1000;
-      const lines = this.data.lines;
-      let active = -1;
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].time <= nowMs) active = i; else break;
-      }
-      const els = this.container.querySelectorAll(".ly-line");
-      els.forEach((el, i) => {
-        const isActive = i === active;
-        el.classList.toggle("active", isActive);
-        el.classList.toggle("past", i < active);
-        if (isActive && motionOK) {
-          const ln = lines[i];
-          if (ln._spans) {
-            el.querySelectorAll(".w").forEach((w) => {
-              const s = parseFloat(w.dataset.s), e = parseFloat(w.dataset.e);
-              const lit = nowMs >= s;
-              w.querySelectorAll(".ch").forEach((ch, ci, arr) => {
-                /* letters fade progressively through the word window */
-                const frac = arr.length <= 1 ? 1 : ci / (arr.length - 1);
-                ch.classList.toggle("lit", lit && nowMs >= s + (e - s) * frac * 0.7);
-              });
-            });
-          }
-        }
-      });
-      if (active >= 0 && this.autoScroll) {
-        const ael = els[active];
-        if (ael) {
-          const body = this.container.querySelector("#ly-body");
-          // center active line vertically in the pane
-          const top = ael.offsetTop - body.clientHeight / 2 + ael.clientHeight / 2;
-          body.scrollTo({ top, behavior: motionOK ? "smooth" : "auto" });
-        }
-      }
+      if (!this.visible || document.hidden) return;
+      this.frame(player.time * 1000);
     };
     tick();
-  },
-};
+  }
+  stop() { cancelAnimationFrame(this.raf); }
 
-window.Play.lyrics = lyrics;
-})();
+  frame(now) {
+    const lines = this.lines;
+    let a = -1;
+    for (let i = 0; i < lines.length; i++) { if (lines[i].time <= now) a = i; else break; }
+    if (a !== this.active) {
+      const prev = this.active;
+      this.active = a;
+      this.els.forEach((el, i) => {
+        el.classList.toggle("on", i === a);
+        el.classList.toggle("past", i < a);
+        const d = Math.abs(i - a);
+        el.style.setProperty("--d", Math.min(d, 6));
+      });
+      if (prev >= 0 && this.els[prev]) this.els[prev].querySelectorAll(".w").forEach((w) => w.style.removeProperty("--p"));
+      if (performance.now() > this.userScrollUntil) {
+        this.host.classList.remove("free");
+        const el = this.els[Math.max(0, a)];
+        if (el) {
+          const top = el.offsetTop - this.host.clientHeight * 0.36;
+          this.host.scrollTo({ top, behavior: motionOK() && prev !== -2 ? "smooth" : "auto" });
+        }
+      }
+    }
+    // word fill inside the active line
+    const ln = lines[a];
+    if (ln && ln.words) {
+      const el = this.els[a];
+      const next = lines[a + 1];
+      const ws = el.querySelectorAll(".w");
+      for (let j = 0; j < ws.length; j++) {
+        const s = ln.words[j];
+        const e = ln.words[j + 1] != null ? ln.words[j + 1] : Math.min(next ? next.time : s + 800, s + 1200);
+        const p = now <= s ? 0 : now >= e ? 1 : (now - s) / (e - s);
+        const v = p.toFixed(3);
+        if (ws[j]._p !== v) { ws[j]._p = v; ws[j].style.setProperty("--p", v); }
+      }
+    }
+    if (ln && ln.dots) {
+      const p = Math.min(1, Math.max(0, (now - ln.time) / Math.max(1, ln.end - ln.time)));
+      this.els[a].style.setProperty("--p", p.toFixed(3));
+    }
+  }
+}
