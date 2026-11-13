@@ -151,7 +151,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 /* ---------- page transition curtain (shared with the homepage) ---------- */
 .curtain { position: fixed; inset: 0; z-index: 500; pointer-events: none; display: flex; }
 .curtain i { flex: 1; background: #d2ff3a; transform: scaleY(0); transform-origin: bottom; will-change: transform; }
-html.arrive .curtain { pointer-events: auto; }
 html.arrive .curtain i { transform: scaleY(1); }
 html[data-motion="off"] .curtain { display: none; }
 /* ---------- v6 display touches ---------- */

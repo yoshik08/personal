@@ -2085,10 +2085,13 @@ function envelopeTarget(win, now) {
     var filteredItems = [];
 
     var commands = [
-      { id: "proj-sportsphere", title: "sportsphere", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/sportsphere", "_blank"); } },
-      { id: "proj-sexyval", title: "sexyval (valorant companion for windows)", cat: "projects", hint: "download", action: function () { window.location.href = "https://github.com/yoshik08/sexyval/releases/download/v1.1.1/SexyVal-Setup-1.1.1.exe"; } },
+      { id: "proj-cadence", title: "cadence (spotify client for windows)", cat: "projects", hint: "download", action: function () { window.location.href = "https://github.com/yoshik08/cadence/releases/latest/download/cadence.exe"; } },
+      { id: "proj-sexyval", title: "sexyval (valorant companion for windows)", cat: "projects", hint: "download", action: function () { window.location.href = "https://github.com/yoshik08/sexyval/releases/download/v1.4.2/SexyVal-Setup-1.4.2.exe"; } },
       { id: "proj-attenly", title: "attenly (erp auto-sync)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/attenly", "_blank"); } },
+      { id: "proj-sportsphere", title: "sportsphere", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/sportsphere", "_blank"); } },
+      { id: "proj-gba", title: "gba (emulator in the browser)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/gba", "_blank"); } },
       { id: "proj-play", title: "play (music player)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/play", "_blank"); } },
+      { id: "proj-type", title: "type test (beat me)", cat: "projects", hint: "open", action: function () { if (window.ykFx && document.documentElement.getAttribute("data-motion") !== "off") window.ykFx.leave(location.origin + "/type"); else location.href = "/type"; } },
       { id: "proj-spotlight", title: "spotlight launcher apk", cat: "projects", hint: "download", action: function () { window.location.href = "https://raw.githubusercontent.com/yoshik08/personal/main/assets/spotlight-debug.apk"; } },
       { id: "nav-about", title: "about yoshik", cat: "navigation", hint: "jump", action: function () { location.hash = "#about"; } },
       { id: "nav-stack", title: "tech stack & skills", cat: "navigation", hint: "jump", action: function () { location.hash = "#stack"; } },

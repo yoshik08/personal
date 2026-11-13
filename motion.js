@@ -143,35 +143,53 @@
     .forEach(function (el) { io.observe(el); });
 
   /* ---------- 4. accordion ---------- */
+  /* state lives on .row.is-open (what the user asked for); .row-detail.open only
+     means "rendered". every toggle first cancels whatever is still animating on
+     that row, so rapid clicking can never leave a stale height, half-faded links
+     or a closing row that ignores the next click. closed details are inert. */
   var rows = $$(".row");
-  rows.forEach(function (r) { if ($(".row-detail", r).classList.contains("open")) r.classList.add("is-open"); });
+  var detailOf = function (row) { return $(".row-detail", row); };
+  var kidsOf = function (d) { return $$(".row-detail-in > *", d); };
+  function setInert(d, on) { if (on) d.setAttribute("inert", ""); else d.removeAttribute("inert"); }
+  function stopRow(d) { utils.remove(d); utils.remove(kidsOf(d)); }
+  rows.forEach(function (r) {
+    var open = detailOf(r).classList.contains("open");
+    r.classList.toggle("is-open", open);
+    setInert(detailOf(r), !open);
+  });
   function closeRow(row) {
-    var d = $(".row-detail", row);
-    if (!d.classList.contains("open")) return;
+    if (!row.classList.contains("is-open")) return;
+    var d = detailOf(row), kids = kidsOf(d);
     $(".row-top", row).setAttribute("aria-expanded", "false");
     row.classList.remove("is-open");
-    if (!motionOK()) { d.classList.remove("open"); d.style.height = ""; return; }
+    setInert(d, true);
     var h = d.offsetHeight;
+    stopRow(d);
+    if (!motionOK() || !h) { d.classList.remove("open"); d.style.height = ""; settle(kids, { opacity: 1, y: 0 }); return; }
     d.style.height = h + "px";
-    animate(d, { height: [h + "px", "0px"], duration: 520, ease: "inOutQuart",
-      onComplete: function () { d.classList.remove("open"); d.style.height = ""; } });
+    animate(d, { height: [h + "px", "0px"], duration: 480, ease: "inOutQuart",
+      onComplete: function () { if (!row.classList.contains("is-open")) { d.classList.remove("open"); d.style.height = ""; } } });
   }
   function openRow(row) {
-    var d = $(".row-detail", row);
+    var d = detailOf(row), kids = kidsOf(d);
     $(".row-top", row).setAttribute("aria-expanded", "true");
     row.classList.add("is-open");
+    setInert(d, false);
+    var from = d.classList.contains("open") ? d.offsetHeight : 0;   /* reopened mid-close: continue from here */
+    stopRow(d);
     d.classList.add("open");
-    if (!motionOK()) return;
     d.style.height = "auto";
-    var target = d.offsetHeight, kids = $$(".row-detail-in > *", d);
-    utils.set(kids, { opacity: 0, y: 18 });
-    d.style.height = "0px";
-    animate(d, { height: ["0px", target + "px"], duration: 800, ease: "outExpo", onComplete: function () { d.style.height = ""; } });
-    animate(kids, { opacity: 1, y: 0, duration: 800, delay: stagger(70, { start: 160 }), ease: "outQuart" });
+    var target = d.offsetHeight;
+    if (!motionOK()) { d.style.height = ""; settle(kids, { opacity: 1, y: 0 }); return; }
+    if (!from) utils.set(kids, { opacity: 0, y: 18 });
+    d.style.height = from + "px";
+    animate(d, { height: [from + "px", target + "px"], duration: 800, ease: "outExpo",
+      onComplete: function () { if (row.classList.contains("is-open")) d.style.height = ""; } });
+    animate(kids, { opacity: 1, y: 0, duration: 800, delay: from ? 0 : stagger(70, { start: 160 }), ease: "outQuart" });
   }
   rows.forEach(function (row) {
     $(".row-top", row).addEventListener("click", function () {
-      var isOpen = $(".row-detail", row).classList.contains("open");
+      var isOpen = row.classList.contains("is-open");
       rows.forEach(function (r) { if (r !== row) closeRow(r); });
       if (isOpen) closeRow(row); else openRow(row);
     });

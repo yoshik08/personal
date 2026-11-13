@@ -90,7 +90,6 @@ main, footer { position: relative; z-index: 2; }
 /* ---------- page transition curtain (shared with /type via assets/page-fx) ---------- */
 .curtain { position: fixed; inset: 0; z-index: 500; pointer-events: none; display: flex; }
 .curtain i { flex: 1; background: var(--accent); transform: scaleY(0); transform-origin: bottom; will-change: transform; }
-html.arrive .curtain { pointer-events: auto; }
 html.arrive .curtain i { transform: scaleY(1); }
 
 /* ---------- cursor ---------- */
@@ -145,7 +144,7 @@ html[data-theme="light"] .brand { mix-blend-mode: normal; color: var(--ink); }
   opacity: 0; visibility: hidden; transform: translateX(-50%) translateY(10px) scale(.97); transform-origin: bottom center;
   transition: opacity .2s ease, transform .35s var(--ease-out), visibility .2s;
 }
-.nav-drop:hover .nav-menu, .nav-drop:focus-within .nav-menu { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1); }
+.nav-drop:hover .nav-menu, .nav-drop:has(:focus-visible) .nav-menu { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1); }
 .nav-menu a { display: block; padding: 9px 14px; border-radius: 12px; font-size: 14px; color: var(--dim); transition: background .15s ease, color .15s ease, padding-left .3s var(--ease-out); }
 .nav-menu a:hover { background: var(--accent-soft); color: var(--ink); padding-left: 20px; }
 .ctl {
@@ -176,6 +175,17 @@ html.hero-canvas .hero-h1 { position: absolute !important; width: 1px; height: 1
 .vf.tr { top: 28px; right: 40px; text-align: right; align-items: flex-end; }
 .vf.bl { left: 40px; bottom: 44px; max-width: min(500px, 44vw); text-transform: none; letter-spacing: 0; font-size: 13px; gap: 12px; }
 .vf.br { right: 40px; bottom: 44px; align-items: flex-end; gap: 12px; text-transform: none; letter-spacing: 0; }
+/* hero dare: small link to the type test, sits under the clock */
+.type-dare {
+  margin-top: 8px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 10px;
+  border: 1px solid var(--line); border-radius: 999px; color: var(--ink); text-transform: none; letter-spacing: .02em; font-size: 11.5px;
+  background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: border-color .2s ease, color .2s ease, background .2s ease;
+}
+.type-dare-k { color: var(--accent); font-size: 13px; line-height: 1; }
+.type-dare-arrow { color: var(--dim); transition: transform .3s var(--ease-out), color .2s ease; }
+.type-dare:hover { border-color: var(--accent); background: var(--accent-soft); }
+.type-dare:hover .type-dare-arrow { color: var(--accent); transform: translateX(3px); }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--grn); animation: ping 2.4s ease-out infinite; }
 @keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--grn) 60%, transparent); } 80%, 100% { box-shadow: 0 0 0 9px transparent; } }
 .tagline { font-size: clamp(16px, 1.7vw, 21px); color: var(--ink); display: flex; align-items: center; min-height: 1.7em; }
@@ -256,8 +266,9 @@ html.hero-canvas .hero-h1 { position: absolute !important; width: 1px; height: 1
 .pdot { width: 6px; height: 6px; border-radius: 50%; background: var(--grn); animation: pulse 1.8s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .35; } }
 .pill.ship { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft); }
-.row-detail { height: 0; overflow: hidden; }
-.row-detail.open { height: auto; }
+.row-detail { height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.row-detail.open { height: auto; visibility: visible; pointer-events: auto; }
+.row-links { position: relative; z-index: 2; }
 .row-detail-in { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px 48px; padding: 0 56px 34px 76px; align-items: start; }
 .row-detail-in p { grid-row: span 2; color: var(--dim); font-size: 17px; line-height: 1.55; max-width: 620px; }
 .chips { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -368,7 +379,7 @@ footer { margin-top: clamp(80px, 12vw, 160px); border-top: 1px solid var(--line)
 
 /* ---------- accuracy hud + pokeball layer (pokefx in script.js) ---------- */
 .acc-badge {
-  position: fixed; top: 84px; right: 28px; z-index: 90; font: 11px var(--mono); letter-spacing: .05em;
+  position: fixed; top: 136px; right: 28px; z-index: 90; font: 11px var(--mono); letter-spacing: .05em;
   color: var(--dim); background: color-mix(in srgb, var(--panel) 80%, transparent); border: 1px solid var(--line); border-radius: 99px; padding: 7px 13px;
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); user-select: none; -webkit-user-select: none; transition: border-color .15s ease, color .15s ease;
 }

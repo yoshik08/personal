@@ -30,9 +30,9 @@
   }
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=v6">
-<link rel="stylesheet" href="karaoke.css?v=v6">
-<link rel="stylesheet" href="lyrics.css?v=v6">
+<link rel="stylesheet" href="style.css?v=v7">
+<link rel="stylesheet" href="karaoke.css?v=v7">
+<link rel="stylesheet" href="lyrics.css?v=v7">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yoshik.xyz/">
 <meta property="og:title" content="yoshik — developer">
@@ -72,14 +72,15 @@
     <div class="nav-drop">
       <a href="#projects" data-hover>work</a>
       <div class="nav-menu">
-        <a href="/sportsphere" data-hover>sportsphere</a>
-        <a href="/type" data-hover>type</a>
+        <a href="https://github.com/yoshik08/cadence" target="_blank" rel="noopener" data-hover>cadence</a>
+        <a href="/sexyval" target="_blank" rel="noopener" data-hover>sexyval</a>
         <a href="/attenly" data-hover>attenly</a>
+        <a href="/sportsphere" data-hover>sportsphere</a>
+        <a href="/gba" data-hover>gba</a>
         <a href="/play" data-hover>play</a>
         <a href="/engagement" data-hover>engagement</a>
-        <a href="/sexyval" target="_blank" rel="noopener" data-hover>sexyval</a>
-        <a href="/gba" data-hover>gba</a>
         <a href="/lyrics" data-hover>lyrics</a>
+        <a href="/type" data-hover>type</a>
         <a href="https://www.npmjs.com/package/geminiswitcher" target="_blank" rel="noopener" data-hover>geminiswitcher</a>
         <a href="/assets/spotlight-debug.apk" download data-hover>spotlight launcher ⭳</a>
       </div>
@@ -104,7 +105,7 @@
     <i class="cm tl" aria-hidden="true"></i><i class="cm tr" aria-hidden="true"></i><i class="cm bl" aria-hidden="true"></i><i class="cm br" aria-hidden="true"></i>
 
     <div class="vf tl" data-intro><span class="vf-k">yoshik.xyz</span><span class="vf-v">full-stack / android / ml</span></div>
-    <div class="vf tr" data-intro><span class="vf-k"><i class="status-dot"></i><span id="clock">--:-- ist</span></span><span class="vf-v">17.385°n 78.487°e · hyderabad</span></div>
+    <div class="vf tr" data-intro><span class="vf-k"><i class="status-dot"></i><span id="clock">--:-- ist</span></span><span class="vf-v">17.385°n 78.487°e · hyderabad</span><a class="type-dare" href="/type" data-hover aria-label="beat me in a type test"><span class="type-dare-k" aria-hidden="true">⌨</span><span>beat me in a type test</span><span class="type-dare-arrow" aria-hidden="true">→</span></a></div>
 
     <div class="vf bl" data-intro>
       <p class="tagline"><span class="prompt">&gt;</span><span class="roller"><span id="typed">full-stack developer</span></span><span class="caret" aria-hidden="true"></span></p>
@@ -136,24 +137,23 @@
 
   <!-- PROJECTS -->
   <section id="projects" class="sec">
-    <header class="sec-head" data-h2><span class="sec-no">01</span><h2><span class="sec-title">selected work</span></h2><span class="sec-meta">09 projects</span></header>
+    <header class="sec-head" data-h2><span class="sec-no">01</span><h2><span class="sec-title">selected work</span></h2><span class="sec-meta">10 projects</span></header>
     <div class="rows" data-reveal data-stagger>
-
-      <article class="row" data-tag="web platform" data-hue="28">
+      <article class="row" data-tag="windows desktop app" data-hue="145">
         <button class="row-top" data-hover aria-expanded="true">
           <span class="row-main">
-            <span class="row-name">sportsphere <span class="pill live"><span class="pdot"></span>live</span></span>
-            <span class="row-desc">sports venue + program booking platform</span>
+            <span class="row-name">cadence <span class="pill ship">exe shipped</span></span>
+            <span class="row-desc">lightweight spotify client for windows, pure rust</span>
           </span>
           <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail open">
           <div class="row-detail-in">
-            <p>book venues, programs and coaches. google login, razorpay payments, admin panel with live invoice sync. node/express backend on mongodb atlas.</p>
-            <div class="chips"><span>node.js</span><span>express</span><span>mongodb</span><span>razorpay</span></div>
+            <p>a native spotify client with no electron, no chromium, no webview. 320 kbps gapless playback, spotify connect, word-synced lyrics, media keys, tray and a mini player, all at roughly a tenth of the official app's ram.</p>
+            <div class="chips"><span>rust</span><span>slint</span><span>opengl</span><span>librespot</span><span>spotify api</span></div>
             <div class="row-links">
-              <a href="https://yoshik.xyz/sportsphere" target="_blank" rel="noopener" data-hover>open app ↗</a>
-              <a href="https://github.com/yoshik08/DBSE-PROJECT" target="_blank" rel="noopener" data-hover>repo ↗</a>
+              <a href="https://github.com/yoshik08/cadence/releases/latest/download/cadence.exe" data-hover>download for windows ⭳</a>
+              <a href="https://github.com/yoshik08/cadence" target="_blank" rel="noopener" data-hover>repo ↗</a>
             </div>
           </div>
         </div>
@@ -172,7 +172,7 @@
             <p>desktop app that talks to the riot client directly. daily store with skin videos and prices, collection and loadout editor, missions, party, match history, friends and lineups, plus a live agent-select view that shows your starting side. no instalock, no automation.</p>
             <div class="chips"><span>electron</span><span>typescript</span><span>react</span><span>tailwind</span><span>riot api</span></div>
             <div class="row-links">
-              <a href="https://github.com/yoshik08/sexyval/releases/download/v1.1.1/SexyVal-Setup-1.1.1.exe" data-hover>download for windows ⭳</a>
+              <a href="https://github.com/yoshik08/sexyval/releases/download/v1.4.2/SexyVal-Setup-1.4.2.exe" data-hover>download for windows ⭳</a>
               <a href="https://github.com/yoshik08/sexyval" target="_blank" rel="noopener" data-hover>repo ↗</a>
             </div>
           </div>
@@ -199,20 +199,41 @@
         </div>
       </article>
 
-      <article class="row" data-tag="android apk" data-hue="140">
+      <article class="row" data-tag="web platform" data-hue="28">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
-            <span class="row-name">spotlight launcher <span class="pill ship">apk shipped</span></span>
-            <span class="row-desc">android launcher, opens straight into search</span>
+            <span class="row-name">sportsphere <span class="pill live"><span class="pdot"></span>live</span></span>
+            <span class="row-desc">sports venue + program booking platform</span>
           </span>
           <span class="chev" aria-hidden="true"><i></i><i></i></span>
         </button>
         <div class="row-detail">
           <div class="row-detail-in">
-            <p>native android launcher. opens straight into search in under a second, filters installed apps as you type, one tap to launch. zero bloat.</p>
-            <div class="chips"><span>kotlin</span><span>android sdk</span><span>native</span></div>
+            <p>book venues, programs and coaches. google login, razorpay payments, admin panel with live invoice sync. node/express backend on mongodb atlas.</p>
+            <div class="chips"><span>node.js</span><span>express</span><span>mongodb</span><span>razorpay</span></div>
             <div class="row-links">
-              <a href="https://raw.githubusercontent.com/yoshik08/personal/main/assets/spotlight-debug.apk" data-hover>download apk ⭳</a>
+              <a href="https://yoshik.xyz/sportsphere" target="_blank" rel="noopener" data-hover>open app ↗</a>
+              <a href="https://github.com/yoshik08/DBSE-PROJECT" target="_blank" rel="noopener" data-hover>repo ↗</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="row" data-tag="browser emulator" data-hue="100">
+        <button class="row-top" data-hover aria-expanded="false">
+          <span class="row-main">
+            <span class="row-name">gba <span class="pill live"><span class="pdot"></span>live</span></span>
+            <span class="row-desc">game boy advance emulator, in the browser</span>
+          </span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
+        </button>
+        <div class="row-detail">
+          <div class="row-detail-in">
+            <p>play real gba roms right in the tab. google login, your rom library on google drive, gameshark/action replay cheats, 2x fast-forward and on-screen controls for touch.</p>
+            <div class="chips"><span>vite</span><span>javascript</span><span>google drive</span><span>oauth</span></div>
+            <div class="row-links">
+              <a href="https://yoshik.xyz/gba" target="_blank" rel="noopener" data-hover>open app ↗</a>
+              <a href="https://github.com/yoshik08/gba" target="_blank" rel="noopener" data-hover>repo ↗</a>
             </div>
           </div>
         </div>
@@ -258,26 +279,6 @@
         </div>
       </article>
 
-      <article class="row" data-tag="browser emulator" data-hue="100">
-        <button class="row-top" data-hover aria-expanded="false">
-          <span class="row-main">
-            <span class="row-name">gba <span class="pill live"><span class="pdot"></span>live</span></span>
-            <span class="row-desc">game boy advance emulator, in the browser</span>
-          </span>
-          <span class="chev" aria-hidden="true"><i></i><i></i></span>
-        </button>
-        <div class="row-detail">
-          <div class="row-detail-in">
-            <p>play real gba roms right in the tab. google login, your rom library on google drive, gameshark/action replay cheats, 2x fast-forward and on-screen controls for touch.</p>
-            <div class="chips"><span>vite</span><span>javascript</span><span>google drive</span><span>oauth</span></div>
-            <div class="row-links">
-              <a href="https://yoshik.xyz/gba" target="_blank" rel="noopener" data-hover>open app ↗</a>
-              <a href="https://github.com/yoshik08/gba" target="_blank" rel="noopener" data-hover>repo ↗</a>
-            </div>
-          </div>
-        </div>
-      </article>
-
       <article class="row" data-tag="synced lyrics" data-hue="335">
         <button class="row-top" data-hover aria-expanded="false">
           <span class="row-main">
@@ -318,6 +319,25 @@
         </div>
       </article>
 
+      <article class="row" data-tag="android apk" data-hue="185">
+        <button class="row-top" data-hover aria-expanded="false">
+          <span class="row-main">
+            <span class="row-name">spotlight launcher <span class="pill ship">apk shipped</span></span>
+            <span class="row-desc">android launcher, opens straight into search</span>
+          </span>
+          <span class="chev" aria-hidden="true"><i></i><i></i></span>
+        </button>
+        <div class="row-detail">
+          <div class="row-detail-in">
+            <p>native android launcher. opens straight into search in under a second, filters installed apps as you type, one tap to launch. zero bloat.</p>
+            <div class="chips"><span>kotlin</span><span>android sdk</span><span>native</span></div>
+            <div class="row-links">
+              <a href="https://raw.githubusercontent.com/yoshik08/personal/main/assets/spotlight-debug.apk" data-hover>download apk ⭳</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
     </div>
   </section>
 
@@ -329,7 +349,7 @@
       <dl class="facts" data-reveal data-stagger>
         <div><dt>age</dt><dd>18</dd></div>
         <div><dt>base</dt><dd>hyderabad, in</dd></div>
-        <div><dt>shipped</dt><dd><span data-count="9">9</span> projects</dd></div>
+        <div><dt>shipped</dt><dd><span data-count="10">10</span> projects</dd></div>
         <div><dt>into</dt><dd>apps · android · ml</dd></div>
       </dl>
     </div>
@@ -526,10 +546,10 @@
 </div>
 
 <script src="assets/vendor/anime-4.5.0.umd.min.js" defer></script>
-<script src="assets/page-fx.v1.js" defer></script>
-<script src="karaoke.js?v=v6" defer></script>
-<script src="script.js?v=v6" defer></script>
-<script src="hero.js?v=v6" defer></script>
-<script src="motion.js?v=v6" defer></script>
+<script src="assets/page-fx.v2.js" defer></script>
+<script src="karaoke.js?v=v7" defer></script>
+<script src="script.js?v=v7" defer></script>
+<script src="hero.js?v=v7" defer></script>
+<script src="motion.js?v=v7" defer></script>
 </body>
 </html>
