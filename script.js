@@ -2024,6 +2024,7 @@ function envelopeTarget(win, now) {
       "sportsphere": { tag: "web platform", desc: "sports venue & program booking platform with razorpay & mongodb sync", chips: ["node.js", "express", "mongodb", "razorpay"] },
       "sexyval": { tag: "windows desktop app", desc: "valorant companion: store with skin videos, loadout, party, history and live agent select", chips: ["electron", "typescript", "react", "riot api"] },
       "attenly": { tag: "automation tool", desc: "college erp attendance auto-fetcher with safe-bunk calculator", chips: ["next.js", "mongodb", "next-auth", "tailwind"] },
+      "rosint": { tag: "browser extension", desc: "chrome + firefox extension restoring hidden reddit profiles from public archives", chips: ["javascript", "manifest v3", "chrome", "firefox"] },
       "spotlight launcher": { tag: "android apk", desc: "super-fast android launcher opening straight into instant search", chips: ["kotlin", "android sdk", "native"] },
       "play": { tag: "music web app", desc: "audio player with real search, synced lyrics and saved playlists", chips: ["node.js", "express", "mongodb", "vanilla js"] },
       "engagement predictor": { tag: "in-browser ml", desc: "browser-trained random forest predicting social post metrics", chips: ["machine learning", "javascript", "chart.js"] }
@@ -2088,6 +2089,7 @@ function envelopeTarget(win, now) {
       { id: "proj-cadence", title: "cadence (spotify client for windows)", cat: "projects", hint: "download", action: function () { window.location.href = "https://github.com/yoshik08/cadence/releases/latest/download/cadence.exe"; } },
       { id: "proj-sexyval", title: "sexyval (valorant companion for windows)", cat: "projects", hint: "download", action: function () { window.location.href = "https://github.com/yoshik08/sexyval/releases/download/v1.4.2/SexyVal-Setup-1.4.2.exe"; } },
       { id: "proj-attenly", title: "attenly (erp auto-sync)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/attenly", "_blank"); } },
+      { id: "proj-rosint", title: "rosint (hidden reddit history extension)", cat: "projects", hint: "open repo", action: function () { window.open("https://github.com/yoshik08/ROSINT-Extension", "_blank"); } },
       { id: "proj-sportsphere", title: "sportsphere", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/sportsphere", "_blank"); } },
       { id: "proj-gba", title: "gba (emulator in the browser)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/gba", "_blank"); } },
       { id: "proj-play", title: "play (music player)", cat: "projects", hint: "open project", action: function () { window.open("https://yoshik.xyz/play", "_blank"); } },
